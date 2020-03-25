@@ -2,14 +2,14 @@
 #![no_main]
 #![feature(asm)]
 
-mod vga;
 mod panic_handler;
+mod vga;
 
-static GREET: &[u8] = b"Talk to me, Goose !";
+static GREET: &str = "Talk to me, Goose !";
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    vga::write_bytes(GREET);
+    vga::write_str(GREET);
 
     loop {}
 }
