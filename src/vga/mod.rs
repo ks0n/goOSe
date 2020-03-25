@@ -5,7 +5,7 @@ pub mod write;
 use crate::vga::cell::Cell;
 
 /// Write a string to the VGA buffer
-pub fn print(data: &str) -> u32 {
+pub fn write(data: &str) -> u32 {
     let mut idx = 0;
 
     for character in data.bytes() {
@@ -15,4 +15,16 @@ pub fn print(data: &str) -> u32 {
     }
 
     return idx;
+}
+
+mod tests {
+    // FIXME: Add custom test framework that does not depend on `test`
+    /*
+    use super::*;
+
+    #[cfg(test)]
+    fn print_size() {
+        assert_eq!(print("Hey"), 3);
+    }
+    */
 }

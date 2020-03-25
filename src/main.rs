@@ -9,7 +9,7 @@ static GREET: &str = "Talk to me, Goose !";
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    vga::print(GREET);
+    vga::write(GREET);
 
     loop {}
 }
