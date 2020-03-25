@@ -7,8 +7,8 @@
     "target-c-int-width": "32",
     "os": "none",
     "executables": true,
-    "linker-flaver": "ld.lld"
-    "linker": "rust-lld"
+    "linker-flavor": "ld.lld",
+    "linker": "rust-lld",
     "panic-strategy": "abort",
     "disable-redzone": true,
     "features": "-mmx,-sse,+soft-float"
