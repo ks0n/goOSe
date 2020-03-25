@@ -1,0 +1,6 @@
+# Cargo ignores
+/target
+**/*.rs.bk
+
+# Ignore tags
+tags
