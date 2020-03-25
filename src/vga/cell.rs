@@ -28,8 +28,7 @@ impl Cell {
         return self;
     }
 
-    // FIXME: Add Result as return value ?
-    pub fn write(&self, index: u32) {
+    pub fn write(&self, index: usize) {
         write_data(self.character as u8, index);
         self.attribute.write(index + 1);
     }

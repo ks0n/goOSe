@@ -5,7 +5,7 @@ pub mod write;
 use crate::vga::cell::Cell;
 
 /// Write a string to the VGA buffer
-pub fn write(data: &str) -> u32 {
+pub fn write(data: &str) -> usize {
     let mut idx = 0;
 
     for character in data.bytes() {

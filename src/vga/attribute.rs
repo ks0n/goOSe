@@ -40,7 +40,7 @@ impl CellAttribute {
         0xa
     }
 
-    pub fn write(&self, index: u32) {
+    pub fn write(&self, index: usize) {
         write_data(self.get_u8_representation(), index);
     }
 }
