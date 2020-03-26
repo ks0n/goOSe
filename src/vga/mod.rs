@@ -1,5 +1,7 @@
-static VGA_BUFFER_ADDR: u32 = 0xb8000;
+pub mod buffer;
+
+use crate::vga::buffer::Buffer;
 
 pub fn write(data: &str) -> usize {
-    return 0;
+    return Buffer::from_str(data).write();
 }
