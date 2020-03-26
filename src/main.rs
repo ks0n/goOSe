@@ -15,9 +15,10 @@ pub extern "C" fn _start() -> ! {
     #[cfg(test)]
     utests_launch();
 
-    // FIXME: Add multiple write support
-    vga::write(GREET);
-    vga::write("HeWörld");
+    let mut vga_buffer = vga::buffer::Buffer::new();
+
+    vga::write(&mut vga_buffer, GREET);
+    vga::write(&mut vga_buffer, "HeWörld");
 
     loop {}
 }

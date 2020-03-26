@@ -3,6 +3,6 @@ pub mod buffer;
 
 use crate::vga::buffer::Buffer;
 
-pub fn write(data: &str) -> usize {
-    return Buffer::from_str(data).write();
+pub fn write(buffer: &mut Buffer, data: &str) -> usize {
+    return buffer.append_str(data).write();
 }

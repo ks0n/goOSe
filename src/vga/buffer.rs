@@ -29,16 +29,14 @@ impl Buffer {
         new_buf
     }
 
-    pub fn from_str(data: &str) -> Buffer {
-        let mut new_buf = Buffer::new();
-
+    pub fn append_str(&mut self, data: &str) -> &Buffer {
         let bytes = data.as_bytes();
 
         for i in 0..data.len() {
-            new_buf.append(bytes[i]);
+            self.append(bytes[i]);
         }
 
-        new_buf
+        self
     }
 
     pub fn append(&mut self, data: u8) -> &Buffer {
