@@ -39,6 +39,7 @@ impl Buffer {
         }
 
         new_buf.size = data.len();
+
         new_buf
     }
 
@@ -51,7 +52,6 @@ impl Buffer {
         self
     }
 
-    // FIXME: Rewrite
     pub fn write(&self) -> usize {
         let mut idx = 0;
 
@@ -62,15 +62,9 @@ impl Buffer {
             write_byte(attr.get_representation(), idx + 1);
 
             idx += 2;
-
-            // FIXME
-            // write_byte(attributes[i].get_representation(), i + 1);
-
-            // write_byte(self.attributes[i], i + 1);
         }
 
-        // FIXME: Return only written size, not the whole area
-        return self.size;
+        return idx;
     }
 
     pub fn flush(&mut self) -> usize {
