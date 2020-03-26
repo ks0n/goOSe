@@ -1,3 +1,5 @@
+use crate::vga::attribute::Attribute;
+
 const VGA_BUF_W: usize = 80;
 const VGA_BUF_H: usize = 25;
 const VGA_AREA: usize = VGA_BUF_H * VGA_BUF_W;
@@ -13,9 +15,7 @@ fn write_byte(data: u8, index: usize) {
 pub struct Buffer {
     size: usize,
     characters: [u8; VGA_AREA],
-    // FIXME:
-    // attributes: [CellAttribute; VGA_AREA]
-    attributes: [u8; VGA_AREA],
+    attributes: [Attribute; VGA_AREA]
 }
 
 impl Buffer {
@@ -23,7 +23,7 @@ impl Buffer {
         let new_buf = Buffer {
             size: 0,
             characters: [0x0; VGA_AREA],
-            attributes: [0xa; VGA_AREA],
+            attributes: [*Attribute::new().with_fg_color(0xa); VGA_AREA],
         };
 
         new_buf
@@ -45,7 +45,7 @@ impl Buffer {
     pub fn reset(&mut self) -> &Buffer {
         for i in 0..self.size {
             self.characters[i] = 0x0;
-            self.attributes[i] = 0x0;
+            self.attributes[i] = Attribute::new();
         }
 
         self
@@ -59,7 +59,7 @@ impl Buffer {
             let (symbol, attr) = tuple;
 
             write_byte(*symbol, idx);
-            write_byte(*attr, idx + 1);
+            write_byte(attr.get_representation(), idx + 1);
 
             idx += 2;
 
