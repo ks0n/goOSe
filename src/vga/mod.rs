@@ -1,5 +1,5 @@
-pub mod buffer;
 pub mod attribute;
+pub mod buffer;
 
 use crate::vga::buffer::Buffer;
 
