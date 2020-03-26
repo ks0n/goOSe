@@ -1,11 +1,11 @@
-# goose
+# goOSe
 
-Goose is a minimal Kernel written in Rust. The aim of this project is to end up
+goOSe is a minimal Kernel written in Rust. The aim of this project is to end up
 with a functional, albeit simple kernel.
 
 # Design
 
-Goose is focused on modularity. Each feature should be a submodule in the
+goOSe is focused on modularity. Each feature should be a submodule in the
 `src` directory, or its own crate.
 
 # Cargo dependencies
