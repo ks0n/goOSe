@@ -8,7 +8,7 @@ mod panic_handler;
 mod utest;
 mod vga;
 
-static GREET: &str = "Talk to me, Goose !\nWelcome to goOSe !\n\nAnd another one";
+static GREET: &str = "Talk to me, Goose !\n\nWelcome to goOSe !\n\nAnd another one\n";
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
