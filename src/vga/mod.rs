@@ -1,20 +1,15 @@
 pub mod cell;
 pub mod attribute;
 pub mod write;
+pub mod buffer;
 
-use crate::vga::cell::Cell;
+use crate::vga::buffer::Buffer;
 
 /// Write a string to the VGA buffer
 pub fn write(data: &str) -> usize {
-    let mut idx = 0;
+    let vga_buffer = Buffer::from_str(data);
 
-    for character in data.bytes() {
-        Cell::write(Cell::new().with_character(character as char), idx);
-
-        idx += 2;
-    }
-
-    return idx;
+    return vga_buffer.write();
 }
 
 mod tests {

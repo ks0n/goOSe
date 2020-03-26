@@ -1,5 +1,10 @@
 use crate::vga::write::write_data;
 
+static DEFAULT_BG_COLOR: u8 = 0x0;
+static DEFAULT_FG_COLOR: u8 = 0xa;
+static DEFAULT_BLINK: bool = false;
+
+#[derive(Debug, Clone, Copy)]
 pub struct CellAttribute {
     blink: bool,
     bg_color: u8,
@@ -9,9 +14,9 @@ pub struct CellAttribute {
 impl CellAttribute {
     pub fn new() -> CellAttribute {
         let new_ca = CellAttribute {
-            blink: false,
-            bg_color: 0x0,
-            fg_color: 0xa,
+            blink: DEFAULT_BLINK,
+            bg_color: DEFAULT_BG_COLOR,
+            fg_color: DEFAULT_FG_COLOR,
         };
 
         new_ca
@@ -42,5 +47,11 @@ impl CellAttribute {
 
     pub fn write(&self, index: usize) {
         write_data(self.get_u8_representation(), index);
+    }
+
+    pub fn reset(&mut self) {
+        self.blink = DEFAULT_BLINK;
+        self.bg_color = DEFAULT_BG_COLOR;
+        self.fg_color = DEFAULT_FG_COLOR;
     }
 }
