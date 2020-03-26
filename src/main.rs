@@ -8,6 +8,8 @@ mod panic_handler;
 mod utest;
 mod vga;
 
+use core::fmt::Write;
+
 static GREET: &str = "Talk to me, Goose !\n\nWelcome to goOSe !\n\nAnd another one\n";
 
 #[no_mangle]
@@ -18,7 +20,9 @@ pub extern "C" fn _start() -> ! {
     let mut vga_buffer = vga::buffer::Buffer::new();
 
     vga::write(&mut vga_buffer, GREET);
-    vga::write(&mut vga_buffer, "HeWörld");
+    vga::write(&mut vga_buffer, "HeWörld\n\n");
+
+    write!(vga_buffer, "Hey there ! This is {} from {}", "Maverick", "Goose").unwrap();
 
     loop {}
 }

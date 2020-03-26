@@ -1,4 +1,5 @@
 use crate::vga::attribute::Attribute;
+use core::fmt;
 
 const VGA_BUF_W: usize = 80;
 const VGA_BUF_H: usize = 25;
@@ -101,5 +102,14 @@ impl Buffer {
         self.reset();
 
         return written;
+    }
+}
+
+impl fmt::Write for Buffer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.append_str(s);
+        self.write();
+
+        Ok(())
     }
 }
