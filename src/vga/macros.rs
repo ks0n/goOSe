@@ -1,5 +1,6 @@
-use core::fmt::Write;
+use core::fmt::{Arguments, Write};
 
+/*
 macro_rules! print {
     ($($arg::tt)*) => ($crate::vga::macro_print());
 }
@@ -12,3 +13,4 @@ macro_rules! println {
 pub fn macro_print(args: fmt::Arguments) {
     vga::write_fmt(args).unwrap();
 }
+*/

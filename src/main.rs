@@ -22,7 +22,13 @@ pub extern "C" fn _start() -> ! {
     vga::write(&mut vga_buffer, GREET);
     vga::write(&mut vga_buffer, "HeWörld\n\n");
 
-    write!(vga_buffer, "Hey there ! This is {} from {}", "Maverick", "Goose").unwrap();
+    write!(
+        vga_buffer,
+        "Hey there ! This is {} from {}\n",
+        "Maverick", "Goose"
+    )
+    .unwrap();
+    write!(vga_buffer, "Coucou Esteban!\n").unwrap();
 
     loop {}
 }

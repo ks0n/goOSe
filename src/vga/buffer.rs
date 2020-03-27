@@ -60,8 +60,14 @@ impl Buffer {
 
     pub fn new_line(&mut self) -> &Buffer {
         // FIXME: Fix formula
-        let mut cells_to_fill = ((VGA_BUF_W - (self.size % VGA_BUF_W)) / 2);
-        cells_to_fill += if cells_to_fill % 2 == 0 { 1 } else { 0 };
+        let offset = self.size + {
+            if self.size % 2 == 0 {
+                1
+            } else {
+                0
+            }
+        };
+        let mut cells_to_fill = ((VGA_BUF_W - (offset % VGA_BUF_W)) / 2);
 
         for i in 0..cells_to_fill {
             self.append(0);
