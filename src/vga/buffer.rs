@@ -1,4 +1,5 @@
 use crate::vga::attribute::Attribute;
+use core::fmt;
 
 const VGA_BUF_W: usize = 80;
 const VGA_BUF_H: usize = 25;
@@ -15,7 +16,7 @@ fn write_byte(data: u8, index: usize) {
 pub struct Buffer {
     size: usize,
     characters: [u8; VGA_AREA],
-    attributes: [Attribute; VGA_AREA]
+    attributes: [Attribute; VGA_AREA],
 }
 
 impl Buffer {
@@ -29,18 +30,46 @@ impl Buffer {
         new_buf
     }
 
-    pub fn from_str(data: &str) -> Buffer {
-        let mut new_buf = Buffer::new();
+    pub fn append_str(&mut self, data: &str) -> &Buffer {
+        let bytes = data.as_bytes();
 
-        // TODO: Prettify
         for i in 0..data.len() {
-            // FIXME: Add check for valid u8/ascii character
-            new_buf.characters[i] = data.as_bytes()[i];
+            self.append(bytes[i]);
         }
 
-        new_buf.size = data.len();
+        self
+    }
 
-        new_buf
+    pub fn append(&mut self, data: u8) -> &Buffer {
+        match data {
+            // FIXME: Fix 'magical' values
+            invalid_byte if invalid_byte >= 0x7e => {
+                self.append('?' as u8);
+            }
+            b'\n' => {
+                self.new_line();
+            }
+            _ => {
+                self.characters[self.size] = data;
+                self.size += 1;
+            }
+        };
+
+        self
+    }
+
+    pub fn new_line(&mut self) -> &Buffer {
+        // FIXME: Fix formula
+        let mut cells_to_fill = ((VGA_BUF_W - (self.size % VGA_BUF_W)) / 2);
+        cells_to_fill += if cells_to_fill % 2 == 0 { 1 } else { 0 };
+
+        for i in 0..cells_to_fill {
+            self.append(0);
+        }
+
+        self.size += cells_to_fill;
+
+        self
     }
 
     pub fn reset(&mut self) -> &Buffer {
@@ -73,5 +102,14 @@ impl Buffer {
         self.reset();
 
         return written;
+    }
+}
+
+impl fmt::Write for Buffer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.append_str(s);
+        self.write();
+
+        Ok(())
     }
 }

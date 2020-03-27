@@ -35,12 +35,7 @@ impl Attribute {
     }
 
     pub fn get_representation(&self) -> u8 {
-        let mut repr: u8 =
-            if self.blink {
-                0b10000000
-            } else {
-                0b00000000
-            };
+        let mut repr: u8 = if self.blink { 0b10000000 } else { 0b00000000 };
 
         // FIXME: This erases the boolean set
         repr |= self.bg_color << 4;
