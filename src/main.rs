@@ -23,7 +23,7 @@ pub extern "C" fn _start() -> ! {
     /// FIXME
     // vga::write(&mut vga_buffer, GREET);
 
-    serial::test_write("Hey there, this is on serial");
+    serial::write_str("Hey there, this is on serial\nNewlines !");
 
     loop {}
 }
