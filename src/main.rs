@@ -5,12 +5,13 @@
 #![reexport_test_harness_main = "utests_launch"]
 
 mod panic_handler;
+mod serial;
 mod utest;
 mod vga;
 
 use core::fmt::Write;
 
-static GREET: &str = "Talk to me, Goose !\n\nWelcome to goOSe !\n\nAnd another one\n";
+static GREET: &str = "Talk to me, Goose !";
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
@@ -19,16 +20,10 @@ pub extern "C" fn _start() -> ! {
 
     let mut vga_buffer = vga::buffer::Buffer::new();
 
-    vga::write(&mut vga_buffer, GREET);
-    vga::write(&mut vga_buffer, "HeWörld\n\n");
+    /// FIXME
+    // vga::write(&mut vga_buffer, GREET);
 
-    write!(
-        vga_buffer,
-        "Hey there ! This is {} from {}\n",
-        "Maverick", "Goose"
-    )
-    .unwrap();
-    write!(vga_buffer, "Coucou Esteban!\n").unwrap();
+    serial::test_write("Hey there, this is on serial");
 
     loop {}
 }
