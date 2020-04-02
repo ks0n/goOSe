@@ -1,9 +1,8 @@
 use crate::asm_wrappers;
 
 #[derive(Clone, Copy)]
-#[repr(packed)]
-pub struct Segment {
-}
+#[repr(C, packed)]
+pub struct Segment {}
 
 impl Segment {
     pub fn new() -> Segment {
@@ -11,9 +10,9 @@ impl Segment {
     }
 }
 
-#[repr(packed)]
-pub struct GlobalDescriptorTable {
-}
+#[derive(Clone, Copy)]
+#[repr(C, packed)]
+pub struct GlobalDescriptorTable {}
 
 impl GlobalDescriptorTable {
     pub fn init() -> GlobalDescriptorTable {
@@ -24,8 +23,11 @@ impl GlobalDescriptorTable {
         asm_wrappers::sti();
     }
 
-
     pub fn add_entry(seg: Segment) {
+        todo!();
+    }
+
+    pub fn load(&self) {
         todo!();
     }
 }
