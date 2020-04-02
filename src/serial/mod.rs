@@ -19,6 +19,11 @@ pub fn init_com1() {
 
 pub fn write_str(data: &str) {
     for byte in data.bytes() {
-        assembly::outb(assembly::COM1, byte);
+        if byte == '\n' as u8 {
+            assembly::outb(assembly::COM1, '\r' as u8);
+            assembly::outb(assembly::COM1, '\n' as u8);
+        } else {
+            assembly::outb(assembly::COM1, byte);
+        }
     }
 }
