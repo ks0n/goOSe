@@ -25,6 +25,8 @@ pub static MSR_OFF: u16 = 0x6;
 pub static SR_OFF: u16 = 0x7;
 */
 
+static mut serial_port: Serial = Serial { port: COM1 };
+
 pub struct Serial {
     port: u16,
 }
@@ -70,15 +72,17 @@ impl fmt::Write for Serial {
     }
 }
 
-/*
 #[macro_export]
 macro_rules! print {
-    ($($arg::tt)*) => ($crate::serial::print_fmt(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::serial::print_fmt(format_args!($($arg)*)))
 }
 
 #[doc(hidden)]
 pub fn print_fmt(args: fmt::Arguments) {
-    use core::fmt::write;
+    use core::fmt::Write;
 
+    // FIXME: Change from mut static to lazy_static! or Mutex
+    unsafe {
+        serial_port.write_fmt(args);
+    }
 }
-*/
