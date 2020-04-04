@@ -77,6 +77,12 @@ macro_rules! print {
     ($($arg:tt)*) => ($crate::serial::print_fmt(format_args!($($arg)*)))
 }
 
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
 #[doc(hidden)]
 pub fn print_fmt(args: fmt::Arguments) {
     use core::fmt::Write;

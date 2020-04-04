@@ -29,6 +29,8 @@ pub extern "C" fn _start() -> ! {
 
     write!(serial, "Hi there, this is serial");
 
+    println!("Hey there, that's a macro");
+
     loop {}
 }
 
