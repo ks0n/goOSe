@@ -25,6 +25,7 @@ pub static MSR_OFF: u16 = 0x6;
 pub static SR_OFF: u16 = 0x7;
 */
 
+// FIXME: Remove use of static mut
 static mut serial_port: Serial = Serial { port: COM1 };
 
 pub struct Serial {
