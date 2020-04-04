@@ -1,12 +1,24 @@
+use core::mem;
+
 use crate::asm_wrappers;
 
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
-pub struct Segment {}
+pub struct Segment {
+    base: u32,
+    limit: u32,
+    flag: u16,
+}
 
 impl Segment {
-    pub fn new() -> Segment {
-        todo!();
+    pub fn new(base: u32, limit: u32, flag: u16) -> Segment {
+        let new_s = Segment {
+            base: base,
+            limit: limit,
+            flag: flag,
+        };
+
+        new_s
     }
 }
 
@@ -28,6 +40,7 @@ impl GlobalDescriptorTable {
     }
 
     pub fn load(&self) {
+        /* Use mem::transmute ? */
         todo!();
     }
 }
