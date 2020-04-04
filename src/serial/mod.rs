@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::asm_wrappers;
 
 pub static COM1: u16 = 0x3f8;
@@ -23,30 +25,60 @@ pub static MSR_OFF: u16 = 0x6;
 pub static SR_OFF: u16 = 0x7;
 */
 
-// FIXME: Needed ?
-pub fn syscall_write(data: &[u8], count: usize) {
-    for i in 0..count {
-        asm_wrappers::outb(COM1, data[i]);
+pub struct Serial {
+    port: u16,
+}
+
+impl Serial {
+    // FIXME: Needed ?
+    pub fn syscall_write(data: &[u8], count: usize) {
+        for i in 0..count {
+            asm_wrappers::outb(COM1, data[i]);
+        }
     }
-}
 
-pub fn init_serial(port: u16) {
-    /* We initialize the Baude Rate of the port to 38400 bps */
-    asm_wrappers::outb(port + DLL_OFF, 0x3);
-    asm_wrappers::outb(port + DLH_OFF, 0x0);
-}
+    pub fn init(port: u16) -> Serial {
+        let new_s = Serial { port: port };
 
-pub fn init_com1() {
-    init_serial(COM1);
-}
+        /* We initialize the Baude Rate of the port to 38400 bps */
+        asm_wrappers::outb(port + DLL_OFF, 0x3);
+        asm_wrappers::outb(port + DLH_OFF, 0x0);
 
-pub fn write_str(data: &str) {
-    for byte in data.bytes() {
-        if byte == '\n' as u8 {
-            asm_wrappers::outb(COM1, '\r' as u8);
-            asm_wrappers::outb(COM1, '\n' as u8);
-        } else {
-            asm_wrappers::outb(COM1, byte);
+        new_s
+    }
+
+    pub fn init_com1() -> Serial {
+        return Serial::init(COM1);
+    }
+
+    fn _write_str(&self, data: &str) {
+        for byte in data.bytes() {
+            if byte == '\n' as u8 {
+                asm_wrappers::outb(self.port, '\r' as u8);
+                asm_wrappers::outb(self.port, '\n' as u8);
+            } else {
+                asm_wrappers::outb(self.port, byte);
+            }
         }
     }
 }
+
+impl fmt::Write for Serial {
+    fn write_str(&mut self, data: &str) -> fmt::Result {
+        self._write_str(data);
+        Ok(())
+    }
+}
+
+/*
+#[macro_export]
+macro_rules! print {
+    ($($arg::tt)*) => ($crate::serial::print_fmt(format_args!($($arg)*)))
+}
+
+#[doc(hidden)]
+pub fn print_fmt(args: fmt::Arguments) {
+    use core::fmt::write;
+
+}
+*/
