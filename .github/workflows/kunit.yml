@@ -21,5 +21,4 @@ jobs:
     - uses: actions/checkout@v2
     - name: Compile and run unit tests
       run: |
-          rustup default nightly
           cargo xtest
