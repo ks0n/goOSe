@@ -39,7 +39,7 @@ macro_rules! kassert {
 }
 
 #[cfg(test)]
-fn uassert_eq<T: Eq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
+fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
     print!("{}... ", test_name);
     assert_eq!(lhs, rhs);
     println!("[{}]", UTEST_SUCESS);
