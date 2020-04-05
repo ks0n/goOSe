@@ -19,6 +19,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Cargo setup
+      run: |
+          source $HOME/.cargo/env/
     - name: Compile and run unit tests
       run: |
           cargo xtest
