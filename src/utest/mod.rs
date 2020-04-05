@@ -13,6 +13,13 @@ static QEMU_EXIT_PORT: u16 = 0xf4;
 static QEMU_SUCCESS_CODE: u8 = 0xfe;
 static QEMU_FAILURE_CODE: u8 = 0xbe;
 
+/// Assert the equality of two elements, with a given test name
+#[cfg(test)]
+pub fn uassert_eq<T: Eq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
+    print!("{}... ", test_name);
+    assert_eq!(lhs, rhs);
+    println!("[{}]", UTEST_SUCESS);
+}
 
 #[cfg(test)]
 pub fn runner(tests: &[&dyn Fn()]) {
@@ -25,13 +32,14 @@ pub fn runner(tests: &[&dyn Fn()]) {
     end_utests();
 }
 
+#[cfg(test)]
 fn end_utests() {
     asm_wrappers::outb(QEMU_EXIT_PORT, QEMU_SUCCESS_CODE);
 }
 
 #[cfg(test)]
 #[panic_handler]
-pub fn panic(info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
     println!("[{}]", UTEST_FAILURE);
     println!("{}", info);
 
@@ -41,8 +49,6 @@ pub fn panic(info: &PanicInfo) -> ! {
 }
 
 #[test_case]
-fn trivial_assertion() {
-    print!("trivial assertion... ");
-    assert_eq!(0, 1);
-    println!("[{}]", UTEST_SUCESS);
+fn utests_test() {
+    uassert_eq(1, 1, "utest framework initialization");
 }
