@@ -19,7 +19,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Compile and run unit tests
+    - name: Set-up rustup and components
       run: |
           rustup default nightly
+          rustup component add rust-src llvm-tools-preview
+
+    - name: Compile and run unit tests
+      run: |
           cargo xtest
