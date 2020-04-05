@@ -7,12 +7,12 @@
 
 mod asm_wrappers;
 mod gdt;
-mod panic_handler;
 mod serial;
 mod utest;
 mod vga;
 
 use core::fmt::Write;
+use core::panic::PanicInfo;
 
 static GREET: &str = "Talk to me, Goose !";
 
@@ -31,6 +31,13 @@ pub extern "C" fn _start() -> ! {
     write!(serial, "Hi there, this is serial");
 
     println!("Hey there, that's a macro");
+
+    loop {}
+}
+
+#[panic_handler]
+pub fn panic(_info: &PanicInfo) -> ! {
+    println!("{}", _info);
 
     loop {}
 }
