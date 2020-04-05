@@ -19,6 +19,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: Set-up Cargo and packages
+      run: |
+          cargo install cargo-xbuild
+
     - name: Compile and run unit tests
       run: |
           cargo xtest
