@@ -9,7 +9,8 @@ static UTEST_FAILURE: &str = "\x1b[31mKO\x1b[0m";
 static QEMU_EXIT_PORT: u16 = 0xf4;
 
 /* We need a custom exit code in order to not interfere with QEMU
- * This will cause a 253 exit code on success */
+ * This will cause a 253 exit code on success, which is expected in
+ * the Cargo.toml file */
 static QEMU_SUCCESS_CODE: u8 = 0xfe;
 static QEMU_FAILURE_CODE: u8 = 0xbe;
 
