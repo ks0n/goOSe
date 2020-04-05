@@ -1,0 +1,24 @@
+name: Kernel Unit Tests CI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - develop
+  push:
+    branches:
+      - master
+      - develop
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    container:
+      image: cohenarthur/rust-kernel-ci:latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Compile and run unit tests
+      run: |
+          cargo xtest
