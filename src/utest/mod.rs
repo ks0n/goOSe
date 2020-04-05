@@ -1,11 +1,11 @@
 #[cfg(test)]
-use core::panic::PanicInfo;
-#[cfg(test)]
-use crate::println;
+use crate::asm_wrappers;
 #[cfg(test)]
 use crate::print;
 #[cfg(test)]
-use crate::asm_wrappers;
+use crate::println;
+#[cfg(test)]
+use core::panic::PanicInfo;
 
 #[cfg(test)]
 static UTEST_SUCESS: &str = "\x1b[32mOK\x1b[0m";
@@ -25,25 +25,25 @@ static QEMU_FAILURE_CODE: u8 = 0xbe;
 /// Assert the equality of two elements
 #[macro_export]
 macro_rules! kassert_eq {
-    ($l_exp: expr, $r_exp: expr) => ({
+    ($l_exp: expr, $r_exp: expr) => {{
         // FIXME: Show function name
         uassert_eq($l_exp, $r_exp, "anonymous test")
-    });
-    ($l_exp: expr, $r_exp: expr, $name: tt) => ({
+    }};
+    ($l_exp: expr, $r_exp: expr, $name: tt) => {{
         uassert_eq($l_exp, $r_exp, $name)
-    });
+    }};
 }
 
 /// Assert the validity of a statement
 #[macro_export]
 macro_rules! kassert {
-    ($stmt: expr) => ({
+    ($stmt: expr) => {{
         // FIXME: Show function name
         uassert_eq($stmt, true, "anonymous test")
-    });
-    ($stmt: expr, $name: tt) => ({
+    }};
+    ($stmt: expr, $name: tt) => {{
         uassert_eq($stmt, true, $name)
-    });
+    }};
 }
 
 #[cfg(test)]
