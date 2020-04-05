@@ -28,7 +28,7 @@ pub fn lgdt(gdt: u64) {
              :
              : "r"(gdt)
              :
-             : "memory");
+             :);
     }
 }
 

@@ -67,9 +67,10 @@ impl Buffer {
                 0
             }
         };
-        let mut cells_to_fill = ((VGA_BUF_W - (offset % VGA_BUF_W)) / 2);
 
-        for i in 0..cells_to_fill {
+        let cells_to_fill = (VGA_BUF_W - (offset % VGA_BUF_W)) / 2;
+
+        for _ in 0..cells_to_fill {
             self.append(0);
         }
 

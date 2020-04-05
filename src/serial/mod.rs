@@ -26,7 +26,7 @@ pub static SR_OFF: u16 = 0x7;
 */
 
 // FIXME: Remove use of static mut
-static mut serial_port: Serial = Serial { port: COM1 };
+static mut SERIAL_PORT: Serial = Serial { port: COM1 };
 
 pub struct Serial {
     port: u16,
@@ -90,6 +90,6 @@ pub fn print_fmt(args: fmt::Arguments) {
 
     // FIXME: Change from mut static to lazy_static! or Mutex
     unsafe {
-        serial_port.write_fmt(args);
+        SERIAL_PORT.write_fmt(args).unwrap();
     }
 }

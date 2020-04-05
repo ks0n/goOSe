@@ -1,5 +1,3 @@
-use core::mem;
-
 use crate::asm_wrappers;
 
 #[derive(Clone, Copy)]
@@ -29,13 +27,13 @@ pub struct GlobalDescriptorTable {}
 impl GlobalDescriptorTable {
     pub fn init() -> GlobalDescriptorTable {
         asm_wrappers::cli();
+        asm_wrappers::sti();
 
         todo!();
-
-        asm_wrappers::sti();
     }
 
-    pub fn add_entry(seg: Segment) {
+    // FIXME: Use seg
+    pub fn add_entry(_seg: Segment) {
         todo!();
     }
 
