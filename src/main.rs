@@ -8,11 +8,10 @@
 
 mod asm_wrappers;
 mod gdt;
+mod panic;
 mod serial;
 mod utest;
 mod vga;
-
-use core::panic::PanicInfo;
 
 static GREET: &str = "Talk to me, Goose !";
 
@@ -24,16 +23,4 @@ pub extern "C" fn _start() -> ! {
     println!("{}", GREET);
 
     loop {}
-}
-
-#[cfg(not(test))]
-#[panic_handler]
-pub fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
-
-    loop {}
-}
-
-mod tests {
-    // FIXME: Add test for invalid characters: vga::write("HeWörld");
 }
