@@ -24,6 +24,23 @@ Alternatively, `cargo xrun` will build and run said binary kernel.
 
 To run the tests, use `cargo xtest`.
 
+# Contributing
+
+## Adding unit tests
+
+Adding unit tests is done through the `kassert_eq` macro. Here's an example:
+
+```rust
+use crate::kassert_eq;
+
+#[test_case]
+fn new_test() {
+    kassert_eq(1, 1); // Will assert with 'Unknown test' as the test name
+    kassert_eq(1, 1, "new_test"); // Will assert with 'new_test' as the test name
+}
+```
+
 # Origin
 
 [Philipp Opperman's Blog](https://os.phil-opp.com/)
+[LSE's K Project](https://k.lse.epita.fr)
