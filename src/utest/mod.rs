@@ -13,9 +13,20 @@ static QEMU_EXIT_PORT: u16 = 0xf4;
 static QEMU_SUCCESS_CODE: u8 = 0xfe;
 static QEMU_FAILURE_CODE: u8 = 0xbe;
 
-/// Assert the equality of two elements, with a given test name
+/// Assert the equality of two elements
+#[macro_export]
+macro_rules! kassert_eq {
+    ($l_exp: expr, $r_exp: expr) => ({
+        // FIXME: Show function name
+        uassert_eq($l_exp, $r_exp, "anonymous test")
+    });
+    ($l_exp: expr, $r_exp: expr, $name: tt) => ({
+        uassert_eq($l_exp, $r_exp, $name)
+    });
+}
+
 #[cfg(test)]
-pub fn uassert_eq<T: Eq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
+fn uassert_eq<T: Eq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
     print!("{}... ", test_name);
     assert_eq!(lhs, rhs);
     println!("[{}]", UTEST_SUCESS);
@@ -50,5 +61,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[test_case]
 fn utests_test() {
-    uassert_eq(1, 1, "utest framework initialization");
+    uassert_eq(true, true, "utest framework initialization");
+    kassert_eq!(true, true);
+    kassert_eq!(true, true, "utest framework initialization complete");
 }
