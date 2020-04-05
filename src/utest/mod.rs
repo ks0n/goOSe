@@ -25,6 +25,18 @@ macro_rules! kassert_eq {
     });
 }
 
+/// Assert the validity of a statement
+#[macro_export]
+macro_rules! kassert {
+    ($stmt: expr) => ({
+        // FIXME: Show function name
+        uassert_eq($stmt, true, "anonymous test")
+    });
+    ($stmt: expr, $name: tt) => ({
+        uassert_eq($stmt, true, $name)
+    });
+}
+
 #[cfg(test)]
 fn uassert_eq<T: Eq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
     print!("{}... ", test_name);
@@ -63,5 +75,6 @@ fn panic(info: &PanicInfo) -> ! {
 fn utests_test() {
     uassert_eq(true, true, "utest framework initialization");
     kassert_eq!(true, true);
+    kassert!(true);
     kassert_eq!(true, true, "utest framework initialization complete");
 }
