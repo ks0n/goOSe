@@ -1,8 +1,32 @@
-#![test_runner(crate::utest_runner)]
+use crate::println;
+use crate::print;
+
+use crate::asm_wrappers;
+
+static QEMU_EXIT_PORT: u16 = 0xf4;
+
+/* We need a custom exit code in order to not interfere with QEMU
+ * This will cause a 253 exit code on success */
+static QEMU_SUCCESS_CODE: u8 = 0xfe;
+
+fn end_utests() {
+    asm_wrappers::outb(QEMU_EXIT_PORT, QEMU_SUCCESS_CODE);
+}
 
 #[cfg(test)]
-fn utest_runner(tests: &[&dyn Fn()]) {
+pub fn runner(tests: &[&dyn Fn()]) {
+    println!("Running goOSe tests... Amount: {}\n", tests.len());
+
     for test in tests {
         test();
     }
+
+    end_utests();
+}
+
+#[test_case]
+fn trivial_assertion() {
+    print!("trivial assertion... ");
+    assert_eq!(1, 1);
+    println!("[ok]");
 }

@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(asm)]
 #![feature(custom_test_frameworks)]
+#![test_runner(crate::utest::runner)]
 #![reexport_test_harness_main = "utests_launch"]
 
 mod asm_wrappers;
