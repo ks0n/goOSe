@@ -35,9 +35,10 @@ pub extern "C" fn _start() -> ! {
     loop {}
 }
 
+#[cfg(not(test))]
 #[panic_handler]
-pub fn panic(_info: &PanicInfo) -> ! {
-    println!("{}", _info);
+pub fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
 
     loop {}
 }
