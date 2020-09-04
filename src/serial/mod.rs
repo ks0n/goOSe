@@ -1,8 +1,6 @@
 use core::fmt;
 
-use crate::asm_wrappers;
-
-pub static COM1: u16 = 0x3f8;
+use crate::arch;
 
 /* Avoid unused code, but might be useful later
 pub static COM2: u16 = 0x2f8;
@@ -26,41 +24,32 @@ pub static SR_OFF: u16 = 0x7;
 */
 
 // FIXME: Remove use of static mut
-static mut SERIAL_PORT: Serial = Serial { port: COM1 };
+static mut UART0: Serial = Serial { addr: arch::UART0 };
 
 pub struct Serial {
-    port: u16,
+    addr: usize,
 }
 
 impl Serial {
-    // FIXME: Needed ?
-    pub fn syscall_write(data: &[u8], count: usize) {
-        for i in 0..count {
-            asm_wrappers::outb(COM1, data[i]);
-        }
-    }
+    pub fn init(addr: usize) -> Serial {
+        let serial = Serial { addr: addr };
 
-    pub fn init(port: u16) -> Serial {
-        let new_s = Serial { port: port };
+        arch::outb(addr + 3, 0b01000000);
 
         /* We initialize the Baude Rate of the port to 38400 bps */
-        asm_wrappers::outb(port + DLL_OFF, 0x3);
-        asm_wrappers::outb(port + DLH_OFF, 0x0);
+        arch::outb(addr + DLL_OFF as usize, 0x3);
+        arch::outb(addr + DLH_OFF as usize, 0x0);
 
-        new_s
-    }
-
-    pub fn init_com1() -> Serial {
-        return Serial::init(COM1);
+        serial
     }
 
     fn _write_str(&self, data: &str) {
         for byte in data.bytes() {
             if byte == '\n' as u8 {
-                asm_wrappers::outb(self.port, '\r' as u8);
-                asm_wrappers::outb(self.port, '\n' as u8);
+                arch::outb(self.addr, '\r' as u8);
+                arch::outb(self.addr, '\n' as u8);
             } else {
-                asm_wrappers::outb(self.port, byte);
+                arch::outb(self.addr, byte);
             }
         }
     }
@@ -90,6 +79,6 @@ pub fn print_fmt(args: fmt::Arguments) {
 
     // FIXME: Change from mut static to lazy_static! or Mutex
     unsafe {
-        SERIAL_PORT.write_fmt(args).unwrap();
+        UART0.write_fmt(args).unwrap();
     }
 }
