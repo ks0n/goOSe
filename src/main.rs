@@ -6,9 +6,7 @@
 #![reexport_test_harness_main = "utests_launch"]
 #![allow(dead_code)] // FIXME: Eww
 
-#[path = "arch/riscv/mod.rs"]
 mod arch;
-
 mod gdt;
 mod panic;
 mod serial;
@@ -25,9 +23,5 @@ fn kmain () -> !
 
     println!("{}", GREET);
 
-    loop {
-        unsafe {
-            asm!("wfi");
-        }
-    }
+    arch::busy_loop();
 }

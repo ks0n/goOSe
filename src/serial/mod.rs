@@ -3,10 +3,6 @@ use core::fmt;
 use crate::arch;
 
 /* Avoid unused code, but might be useful later
-pub static COM2: u16 = 0x2f8;
-pub static COM3: u16 = 0x3e8;
-pub static COM4: u16 = 0x2e8;
-
 pub static THR_OFF: u16 = 0x0;
 pub static RBR_OFF: u16 = 0x0;
 */

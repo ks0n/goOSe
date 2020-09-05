@@ -1,10 +1,8 @@
-OUTPUT_ARCH("riscv")
-
 ENTRY(_start)
 
 MEMORY
 {
-    ram (rx) : ORIGIN = 0x80200000, LENGTH = 256M
+    ram (rx) : ORIGIN = 0x200000, LENGTH = 256M
 }
 
 SECTIONS
@@ -14,6 +12,7 @@ SECTIONS
     .data : { *(.data*) } > ram
     .sdata : { *(.sdata*) } > ram
     .rodata : { *(.rodata*) } > ram
+    .got : { *(.got*) } > ram
     .bss (NOLOAD) : {
         *(.bss*)
         PROVIDE(_bss_end = .);

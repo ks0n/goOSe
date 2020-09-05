@@ -16,3 +16,11 @@ pub fn outb(addr: usize, byte: u8) {
         reg.add(0).write_volatile(byte);
     }
 }
+
+pub fn busy_loop() -> ! {
+    loop {
+        unsafe {
+            asm!("wfi");
+        }
+    }
+}
