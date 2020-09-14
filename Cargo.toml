@@ -7,14 +7,17 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bootloader = "0.8.0"
+bootloader = "0.9.8"
+qemu-exit = "0.1.4"
+rlibc = "1.0.0"
 
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
+# [profile.dev]
+# panic = "abort"
+#
+# [profile.release]
+# panic = "abort"
 
 [package.metadata.bootimage]
-test-args = ["-nographic", "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"]
+run-args = ["-serial", "stdio"]
+test-args = ["-nographic", "-monitor", "none", "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"]
 test-success-exit-code = 253

@@ -33,25 +33,16 @@ pub struct Serial {
 }
 
 impl Serial {
-    // FIXME: Needed ?
-    pub fn syscall_write(data: &[u8], count: usize) {
-        for i in 0..count {
-            asm_wrappers::outb(COM1, data[i]);
-        }
-    }
-
     pub fn init(port: u16) -> Serial {
         let new_s = Serial { port: port };
+
+        asm_wrappers::outb(port + 3, 0b01000000);
 
         /* We initialize the Baude Rate of the port to 38400 bps */
         asm_wrappers::outb(port + DLL_OFF, 0x3);
         asm_wrappers::outb(port + DLH_OFF, 0x0);
 
         new_s
-    }
-
-    pub fn init_com1() -> Serial {
-        return Serial::init(COM1);
     }
 
     fn _write_str(&self, data: &str) {
