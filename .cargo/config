@@ -1,5 +1,9 @@
 [build]
 target = "x86_64_goose.json"
 
-[target.'cfg(target_os = "none")']
+[unstable]
+build-std = ["core", "compiler_builtins"]
+
+
+[target.'cfg(target_arch = "x86_64")']
 runner = "bootimage runner"

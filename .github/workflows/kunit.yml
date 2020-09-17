@@ -23,7 +23,8 @@ jobs:
       run: |
           rustup default nightly
           rustup component add rust-src llvm-tools-preview
+          cargo install bootimage
 
     - name: Compile and run unit tests
       run: |
-          cargo xtest
+          cargo test

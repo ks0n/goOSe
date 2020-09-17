@@ -13,6 +13,8 @@ mod serial;
 mod utest;
 mod vga;
 
+extern crate rlibc;
+
 static GREET: &str = "Talk to me, Goose !";
 
 #[no_mangle]
