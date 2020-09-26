@@ -7,9 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bootloader = "0.9.8"
-qemu-exit = "0.1.4"
+bootloader = "0.9.10"
+qemu-exit = { git = "https://github.com/andre-richter/qemu-exit.git" }
 rlibc = "1.0.0"
+cfg-if = "0.1.10"
 
 # [profile.dev]
 # panic = "abort"

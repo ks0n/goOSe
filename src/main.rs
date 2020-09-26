@@ -6,12 +6,10 @@
 #![reexport_test_harness_main = "utests_launch"]
 #![allow(dead_code)] // FIXME: Eww
 
-mod asm_wrappers;
-mod gdt;
+mod arch;
 mod panic;
 mod serial;
 mod utest;
-mod vga;
 
 extern crate rlibc;
 
