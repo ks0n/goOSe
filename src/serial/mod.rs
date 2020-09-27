@@ -2,8 +2,6 @@ use core::fmt;
 
 use crate::arch;
 
-pub static COM1: u16 = 0x3f8;
-
 /* Avoid unused code, but might be useful later
 pub static COM2: u16 = 0x2f8;
 pub static COM3: u16 = 0x3e8;
@@ -26,21 +24,21 @@ pub static SR_OFF: u16 = 0x7;
 */
 
 // FIXME: Remove use of static mut
-static mut SERIAL_PORT: Serial = Serial { port: COM1 };
+static mut SERIAL_PORT: Serial = Serial { port: arch::UART0 };
 
 pub struct Serial {
-    port: u16,
+    port: usize,
 }
 
 impl Serial {
-    pub fn init(port: u16) -> Serial {
+    pub fn init(port: usize) -> Serial {
         let new_s = Serial { port: port };
 
         arch::outb(port + 3, 0b01000000);
 
         /* We initialize the Baude Rate of the port to 38400 bps */
-        arch::outb(port + DLL_OFF, 0x3);
-        arch::outb(port + DLH_OFF, 0x0);
+        arch::outb(port + (DLL_OFF as usize), 0x3);
+        arch::outb(port + (DLH_OFF as usize), 0x0);
 
         new_s
     }
