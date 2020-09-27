@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::asm_wrappers;
+use crate::arch;
 
 pub static COM1: u16 = 0x3f8;
 
@@ -36,11 +36,11 @@ impl Serial {
     pub fn init(port: u16) -> Serial {
         let new_s = Serial { port: port };
 
-        asm_wrappers::outb(port + 3, 0b01000000);
+        arch::outb(port + 3, 0b01000000);
 
         /* We initialize the Baude Rate of the port to 38400 bps */
-        asm_wrappers::outb(port + DLL_OFF, 0x3);
-        asm_wrappers::outb(port + DLH_OFF, 0x0);
+        arch::outb(port + DLL_OFF, 0x3);
+        arch::outb(port + DLH_OFF, 0x0);
 
         new_s
     }
@@ -48,10 +48,10 @@ impl Serial {
     fn _write_str(&self, data: &str) {
         for byte in data.bytes() {
             if byte == '\n' as u8 {
-                asm_wrappers::outb(self.port, '\r' as u8);
-                asm_wrappers::outb(self.port, '\n' as u8);
+                arch::outb(self.port, '\r' as u8);
+                arch::outb(self.port, '\n' as u8);
             } else {
-                asm_wrappers::outb(self.port, byte);
+                arch::outb(self.port, byte);
             }
         }
     }

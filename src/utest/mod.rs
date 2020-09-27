@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::asm_wrappers;
+use crate::arch;
 #[cfg(test)]
 use crate::print;
 #[cfg(test)]
@@ -66,7 +66,7 @@ fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) 
 
 #[cfg(test)]
 fn end_utests() {
-    asm_wrappers::outb(QEMU_EXIT_PORT, QEMU_SUCCESS_CODE);
+    arch::outb(QEMU_EXIT_PORT, QEMU_SUCCESS_CODE);
 }
 
 #[cfg(test)]
