@@ -12,19 +12,38 @@ on:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-    container:
-      image: cohenarthur/rust-kernel-ci:latest
+    runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set-up rustup and components
-      run: |
-          rustup default nightly
-          rustup component add rust-src llvm-tools-preview
-          cargo install bootimage
+      - uses: actions/checkout@v2
 
-    - name: Compile and run unit tests
-      run: |
-          cargo test
+      - name: Rust setup
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          components: rust-src, llvm-tools-preview
+
+      - name: Install qemu
+        run: sudo apt install qemu-kvm
+
+      - name: Cargo install bootimage
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: bootimage
+
+      - name: Cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+      - name: Cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      - name: Cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
