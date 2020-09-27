@@ -9,5 +9,5 @@ runner = "bootimage runner"
 
 [target.'cfg(target_arch = "riscv64")']
 rustflags = ["-C", "link-args=-Tsrc/arch/riscv64/link.lds"]
-runner = 'qemu-system-riscv64 -M virt -bios fw_jump.bin -nographic -monitor none -serial stdio -kernel '
+runner = 'qemu-system-riscv64 -M virt -nographic -monitor none -serial stdio -kernel '
 
