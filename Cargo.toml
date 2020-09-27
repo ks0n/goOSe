@@ -8,7 +8,6 @@ edition = "2018"
 
 [dependencies]
 bootloader = "0.9.8"
-qemu-exit = "0.1.4"
 rlibc = "1.0.0"
 
 # [profile.dev]
