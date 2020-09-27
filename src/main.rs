@@ -11,8 +11,6 @@ mod panic;
 mod serial;
 mod utest;
 
-extern crate rlibc;
-
 static GREET: &str = "Talk to me, Goose !";
 
 #[no_mangle]
