@@ -9,14 +9,19 @@
 mod arch;
 mod panic;
 mod serial;
-mod utest;
 
-extern crate rlibc;
+cfg_if! {
+    if #[cfg(test)] {
+        mod utest;
+        extern crate qemu_exit;
+    }
+}
+
+use cfg_if::cfg_if;
 
 static GREET: &str = "Talk to me, Goose !";
 
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub fn kmain() -> ! {
     #[cfg(test)]
     utests_launch();
 

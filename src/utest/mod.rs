@@ -1,26 +1,15 @@
-#[cfg(test)]
 use crate::arch;
-#[cfg(test)]
 use crate::print;
-#[cfg(test)]
 use crate::println;
-#[cfg(test)]
+use crate::qemu_exit::QEMUExit;
 use core::panic::PanicInfo;
 
-#[cfg(test)]
 static UTEST_SUCESS: &str = "\x1b[32mOK\x1b[0m";
-#[cfg(test)]
 static UTEST_FAILURE: &str = "\x1b[31mKO\x1b[0m";
-#[cfg(test)]
-static QEMU_EXIT_PORT: u16 = 0xf4;
 
 /* We need a custom exit code in order to not interfere with QEMU
  * This will cause a 253 exit code on success, which is expected in
  * the Cargo.toml file */
-#[cfg(test)]
-static QEMU_SUCCESS_CODE: u8 = 0xfe;
-#[cfg(test)]
-static QEMU_FAILURE_CODE: u8 = 0xbe;
 
 /// Assert the equality of two elements
 #[macro_export]
@@ -46,7 +35,6 @@ macro_rules! kassert {
     }};
 }
 
-#[cfg(test)]
 pub fn runner(tests: &[&dyn Fn()]) {
     println!("Running goOSe tests... Amount: {}\n", tests.len());
 
@@ -57,19 +45,17 @@ pub fn runner(tests: &[&dyn Fn()]) {
     end_utests();
 }
 
-#[cfg(test)]
 fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
     print!("{}... ", test_name);
     assert_eq!(lhs, rhs);
     println!("[{}]", UTEST_SUCESS);
 }
 
-#[cfg(test)]
 fn end_utests() {
-    arch::outb(QEMU_EXIT_PORT, QEMU_SUCCESS_CODE);
+    arch::QEMU_EXIT.exit_success();
+    // arch::outb(QEMU_EXIT_PORT, QEMU_SUCCESS_CODE);
 }
 
-#[cfg(test)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("[{}]", UTEST_FAILURE);
