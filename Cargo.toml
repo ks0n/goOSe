@@ -11,7 +11,7 @@ qemu-exit = "1.0.0"
 cfg-if = "0.1.10"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-bootloader = "0.9.10"
+bootloader = "0.9.11"
 rlibc = "1.0.0"
 
 # [profile.dev]
