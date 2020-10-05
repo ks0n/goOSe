@@ -13,21 +13,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        target: [riscv64gc-unknown-none-elf, x86_64_goose.json]
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Rust setup
+      - name: Rustup setup
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           override: true
           components: rust-src, llvm-tools-preview
 
+      - name: Rustup extra target
+        if: matrix.target != 'x86_64_goose.json'
+        run: rustup target add ${{ matrix.target }}
+
       - name: Install qemu
-        run: sudo apt install qemu-kvm
+        run: sudo apt install qemu-system
 
       - name: Cargo install bootimage
+        if: matrix.target == 'x86_64_goose.json'
         uses: actions-rs/cargo@v1
         with:
           command: install
@@ -37,13 +45,16 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
+          args: --target ${{ matrix.target }}
 
       - name: Cargo build
         uses: actions-rs/cargo@v1
         with:
           command: build
+          args: --target ${{ matrix.target }}
 
       - name: Cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --target ${{ matrix.target }} --verbose
