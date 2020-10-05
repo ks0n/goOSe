@@ -10,19 +10,15 @@ goOSe is focused on modularity. Each feature should be a submodule in the
 
 # Cargo dependencies
 
-* `cargo-xbuild`
 * `bootimage`
 
 # Building
 
-`cargo bootimage` will build `.bin` file in the target directory. You can
-launch it with qemu with the following command:
+To build, use `cargo build`.
 
-`qemu -drive format=raw,file=target/x86_64_goose/debug/bootimage-goose.bin`
+To run in qemu, use `cargo run`.
 
-Alternatively, `cargo xrun` will build and run said binary kernel.
-
-To run the tests, use `cargo xtest`.
+To run the tests, use `cargo test`.
 
 # Contributing
 
@@ -47,7 +43,17 @@ fn new_test() {
 * [Philipp Opperman's Blog](https://os.phil-opp.com/)
 * [LSE's K Project](https://k.lse.epita.fr)
 
-## License
+## License and copyright
+
+Copyright 2020 Arthur Cohen and Esteban Blanc
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE-2](LICENSE-APACHE-2) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
 
 See the [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for more information about utilized third
 party projects and their respective licenses.
+
