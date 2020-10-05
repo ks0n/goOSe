@@ -46,3 +46,8 @@ fn new_test() {
 
 * [Philipp Opperman's Blog](https://os.phil-opp.com/)
 * [LSE's K Project](https://k.lse.epita.fr)
+
+## License
+
+See the [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for more information about utilized third
+party projects and their respective licenses.
