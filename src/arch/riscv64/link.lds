@@ -7,15 +7,32 @@ MEMORY
 
 SECTIONS
 {
+    PROVIDE(START_START = 0x8020000);
     .start : { *(.start*) } > ram
+    PROVIDE(START_END = .);
+
+    PROVIDE(TEXT_START = .);
     .text : { *(.text*) } > ram
+    PROVIDE(TEXT_END = .);
+
+    PROVIDE(data_start = .);
     .data : { *(.data*) } > ram
+    PROVIDE(DATA_END = .);
+
+    PROVIDE(SDATA_START = .);
     .sdata : { *(.sdata*) } > ram
+    PROVIDE(SDATA_END = .);
+
+    PROVIDE(RODATA_START = .);
     .rodata : { *(.rodata*) } > ram
+    PROVIDE(RODATA_END = .);
+
+    PROVIDE(BSS_START = .);
     .bss (NOLOAD) : {
         *(.bss*)
-        PROVIDE(_bss_end = .);
     } > ram
+    PROVIDE(BSS_END = .);
 
-    PROVIDE(_stack = _bss_end + 1M);
+    PROVIDE(STACK_END = BSS_END);
+    PROVIDE(STACK_START = BSS_END + 1M);
 }

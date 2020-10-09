@@ -25,6 +25,18 @@ pub fn kmain() -> ! {
     #[cfg(test)]
     utests_launch();
 
+    // println!(
+    //     "START: {:#X} -> {:#X}",
+    //     unsafe { arch::START_START },
+    //     unsafe { arch::START_END }
+    // );
+
+    println!(
+        "TEXT: {:#X} -> {:#X}",
+        unsafe { arch::TEXT_START },
+        unsafe { arch::TEXT_END }
+    );
+
     println!("{}", GREET);
 
     loop {}
