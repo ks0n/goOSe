@@ -7,32 +7,42 @@ MEMORY
 
 SECTIONS
 {
-    PROVIDE(START_START = 0x8020000);
-    .start : { *(.start*) } > ram
-    PROVIDE(START_END = .);
-
-    PROVIDE(TEXT_START = .);
-    .text : { *(.text*) } > ram
-    PROVIDE(TEXT_END = .);
-
-    PROVIDE(data_start = .);
-    .data : { *(.data*) } > ram
-    PROVIDE(DATA_END = .);
-
-    PROVIDE(SDATA_START = .);
-    .sdata : { *(.sdata*) } > ram
-    PROVIDE(SDATA_END = .);
-
-    PROVIDE(RODATA_START = .);
-    .rodata : { *(.rodata*) } > ram
-    PROVIDE(RODATA_END = .);
-
-    PROVIDE(BSS_START = .);
-    .bss (NOLOAD) : {
-        *(.bss*)
+    .start : {
+        START_START = .;
+        *(.start*);
+        START_END = .;
     } > ram
-    PROVIDE(BSS_END = .);
 
-    PROVIDE(STACK_END = BSS_END);
-    PROVIDE(STACK_START = BSS_END + 1M);
+    .text : { 
+        TEXT_START = .;
+        *(.text*);
+        TEXT_END = .;
+    } > ram
+
+    .data : { 
+        PROVIDE(DATA_START = .);
+        *(.data*);
+        PROVIDE(DATA_END = .);
+    } > ram
+
+    .sdata : {
+        PROVIDE(_sdata_start = .);
+        *(.sdata*);
+        PROVIDE(_sdata_end = .);
+    } > ram
+
+    .rodata : {
+        PROVIDE(_rodata_start = .);
+        *(.rodata*);
+        PROVIDE(_rodata_end = .);
+    } > ram
+
+    .bss (NOLOAD) : {
+        PROVIDE(_bss_start = .);
+        *(.bss*);
+        PROVIDE(_bss_end = .);
+    } > ram
+
+    PROVIDE(_stack_end = _bss_end);
+    PROVIDE(STACK_START = _bss_end + 1M);
 }

@@ -11,36 +11,37 @@ cfg_if! {
 }
 
 extern "C" {
-    pub static START_START: usize;
-    pub static START_END: usize;
-    pub static TEXT_START: usize;
-    pub static TEXT_END: usize;
-    pub static DATA_START: usize;
-    pub static DATA_END: usize;
-    pub static RODATA_START: usize;
-    pub static RODATA_END: usize;
-    pub static BSS_START: usize;
-    pub static BSS_END: usize;
-    pub static STACK_START: usize;
-    pub static STACK_END: usize;
+    pub static START_START: ();
+    pub static START_END: ();
+    pub static TEXT_START: ();
+    pub static TEXT_END: ();
+    pub static DATA_START: ();
+    pub static DATA_END: ();
 }
+
+// pub static RODATA_START: usize = &_rodata_start;
+// pub static RODATA_END: *const !;
+// pub static BSS_START: *const !;
+// pub static BSS_END: *const !;
+// pub static STACK_START: *const !;
+// pub static STACK_END: *const !;
 
 #[no_mangle]
 #[link_section = ".start"]
 pub unsafe extern "C" fn _start() -> ! {
     asm!("la sp, STACK_START");
 
-    clear_bss();
+    // clear_bss();
 
     kmain();
 }
 
-pub unsafe fn clear_bss() {
-    for addr in BSS_START..BSS_END {
-        let addr = addr as *mut u8;
-        *addr = 0;
-    }
-}
+// pub unsafe fn clear_bss() {
+//     for addr in BSS_START..BSS_END {
+//         let addr = addr as *mut u8;
+//         *addr = 0;
+//     }
+// }
 
 pub fn outb(addr: usize, byte: u8) {
     let addr = addr as *mut u8;
