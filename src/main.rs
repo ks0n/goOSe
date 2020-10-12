@@ -27,25 +27,30 @@ pub fn kmain() -> ! {
     #[cfg(test)]
     utests_launch();
 
-    print_info();
+    println!("Kernel Entry");
+
+    print_sections_info();
 
     println!("{}", GREET);
 
     loop {}
 }
 
-fn print_info() {
-    println!();
+fn print_sections_info() {
     println!(
         "START: {:p} -> {:p}",
         unsafe { &arch::START_START },
         unsafe { &arch::START_END }
     );
-
     println!("TEXT: {:p} -> {:p}", unsafe { &arch::TEXT_START }, unsafe {
         &arch::TEXT_END
     });
     println!("DATA: {:p} -> {:p}", unsafe { &arch::DATA_START }, unsafe {
         &arch::DATA_END
     });
+    println!(
+        "STACK: {:p} -> {:p}",
+        unsafe { &arch::STACK_START },
+        unsafe { &arch::STACK_END }
+    );
 }

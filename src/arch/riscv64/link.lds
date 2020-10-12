@@ -20,29 +20,20 @@ SECTIONS
     } > ram
 
     .data : { 
-        PROVIDE(DATA_START = .);
+        DATA_START = .;
         *(.data*);
-        PROVIDE(DATA_END = .);
-    } > ram
-
-    .sdata : {
-        PROVIDE(_sdata_start = .);
-        *(.sdata*);
-        PROVIDE(_sdata_end = .);
-    } > ram
-
-    .rodata : {
-        PROVIDE(_rodata_start = .);
         *(.rodata*);
-        PROVIDE(_rodata_end = .);
+        *(.sdata*);
+        DATA_END = .;
     } > ram
 
     .bss (NOLOAD) : {
-        PROVIDE(_bss_start = .);
+        BSS_START = .;
         *(.bss*);
-        PROVIDE(_bss_end = .);
+        BSS_END = .;
     } > ram
 
-    PROVIDE(_stack_end = _bss_end);
-    PROVIDE(STACK_START = _bss_end + 1M);
+    . = ALIGN(4096);
+    STACK_END = .;
+    STACK_START = BSS_END + 1M;
 }
