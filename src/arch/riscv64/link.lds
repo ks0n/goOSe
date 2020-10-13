@@ -1,4 +1,5 @@
-ENTRY(_start)
+ENTRY(kstart)
+EXTERN(ARCH);
 
 MEMORY
 {
@@ -23,6 +24,7 @@ SECTIONS
         DATA_START = .;
         *(.data*);
         *(.rodata*);
+        KEEP(*(.rodata.ARCH));
         *(.sdata*);
         DATA_END = .;
     } > ram

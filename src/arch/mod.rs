@@ -1,3 +1,5 @@
+use crate::kmain;
+
 use cfg_if::cfg_if;
 
 cfg_if! {
@@ -7,8 +9,11 @@ cfg_if! {
         extern crate rlibc;
     }
     else if #[cfg(target_arch = "riscv64")] {
-        mod riscv64;
+        pub mod riscv64;
         pub use riscv64::*;
+
+        #[used]
+        pub static ARCH: riscv64::RISCV64 = riscv64::RISCV64{};
     }
 }
 
@@ -24,4 +29,25 @@ extern "Rust" {
     pub static BSS_END: ();
     pub static STACK_START: ();
     pub static STACK_END: ();
+}
+
+#[no_mangle]
+#[link_section = ".start"]
+unsafe extern "C" fn kstart() -> ! {
+    #[cfg(target_arch = "riscv64")]
+    asm!(
+        "la sp, STACK_START
+          call init"
+    );
+
+    kmain();
+}
+
+#[no_mangle]
+fn init() {
+    ARCH.init();
+}
+
+trait Arch {
+    fn init(&self);
 }

@@ -1,5 +1,4 @@
 use super::*;
-use crate::kmain;
 use crate::println;
 use cfg_if::cfg_if;
 
@@ -12,21 +11,13 @@ cfg_if! {
     }
 }
 
-#[no_mangle]
-#[link_section = ".start"]
-unsafe extern "C" fn _start() -> ! {
-    asm!(
-        "la sp, STACK_START
-          call init"
-    );
+pub struct RISCV64 {}
 
-    kmain();
-}
-
-#[no_mangle]
-extern "C" fn init() {
-    println!("\nRISCV64 Init"); // Separation from OpenSBI boot info
-    clear_bss();
+impl Arch for RISCV64 {
+    fn init(&self) {
+        println!("\nRISCV64 Init"); // Separation from OpenSBI boot info
+        clear_bss();
+    }
 }
 
 fn clear_bss() {
