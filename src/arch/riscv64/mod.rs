@@ -1,3 +1,4 @@
+use super::*;
 use crate::kmain;
 use crate::println;
 use cfg_if::cfg_if;
@@ -11,27 +12,9 @@ cfg_if! {
     }
 }
 
-extern "C" {
-    pub static START_START: ();
-    pub static START_END: ();
-    pub static TEXT_START: ();
-    pub static TEXT_END: ();
-    pub static DATA_START: ();
-    pub static DATA_END: ();
-    pub static BSS_START: ();
-    pub static BSS_END: ();
-    pub static STACK_START: ();
-    pub static STACK_END: ();
-}
-
-// pub static RODATA_START: usize = &_rodata_start;
-// pub static RODATA_END: *const !;
-// pub static STACK_START: *const !;
-// pub static STACK_END: *const !;
-
 #[no_mangle]
 #[link_section = ".start"]
-pub unsafe extern "C" fn _start() -> ! {
+unsafe extern "C" fn _start() -> ! {
     asm!(
         "la sp, STACK_START
           call init"
@@ -47,17 +30,17 @@ extern "C" fn init() {
 }
 
 fn clear_bss() {
-    let _BSS_START = unsafe { (&BSS_START as *const ()) as usize };
-    let _BSS_END = unsafe { (&BSS_END as *const ()) as usize };
+    let _bss_start = unsafe { (&BSS_START as *const ()) as usize };
+    let _bss_end = unsafe { (&BSS_END as *const ()) as usize };
 
-    for addr in _BSS_START.._BSS_END {
+    for addr in _bss_start.._bss_end {
         let addr = addr as *mut u8;
         unsafe {
             *addr = 0;
         }
     }
 
-    println!("BSS cleared ({:#X} -> {:#X})", _BSS_START, _BSS_END);
+    println!("BSS cleared ({:#X} -> {:#X})", _bss_start, _bss_end);
 }
 
 pub fn outb(addr: usize, byte: u8) {
