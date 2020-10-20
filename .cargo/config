@@ -1,12 +1,9 @@
 [build]
-target = "x86_64_goose.json"
+target = "riscv64gc-unknown-none-elf"
 
 [unstable]
 build-std = ["core", "compiler_builtins"]
 build-std-features = ["compiler-builtins-mem"]
-
-[target.'cfg(target_arch = "x86_64")']
-runner = "bootimage runner"
 
 [target.'cfg(target_arch = "riscv64")']
 rustflags = ["-C", "link-args=-Tsrc/arch/riscv64/link.lds"]
