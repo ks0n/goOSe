@@ -37,11 +37,11 @@ pub fn kmain() -> ! {
 }
 
 fn print_sections_info() {
-    println!(
-        "START: {:p} -> {:p}",
-        unsafe { &arch::START_START },
-        unsafe { &arch::START_END }
-    );
+    // println!(
+    //     "START: {:p} -> {:p}",
+    //     unsafe { &arch::START_START },
+    //     unsafe { &arch::START_END }
+    // );
     println!("TEXT: {:p} -> {:p}", unsafe { &arch::TEXT_START }, unsafe {
         &arch::TEXT_END
     });
