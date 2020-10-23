@@ -1,4 +1,6 @@
 use super::*;
+pub mod mmu;
+
 use crate::kmain;
 use crate::println;
 use cfg_if::cfg_if;

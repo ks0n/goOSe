@@ -35,6 +35,8 @@ pub fn kmain() -> ! {
 
     println!("{}", GREET);
 
+    let entry = arch::mmu::PageEntry::new();
+
     loop {}
 }
 
