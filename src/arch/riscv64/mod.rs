@@ -1,3 +1,5 @@
+pub mod mmu;
+
 use crate::kmain;
 use cfg_if::cfg_if;
 

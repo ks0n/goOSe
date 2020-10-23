@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 qemu-exit = "1.0.0"
 cfg-if = "0.1.10"
+bitfield = "0.13.2"
 
 # [profile.dev]
 # panic = "abort"
