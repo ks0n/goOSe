@@ -1,10 +1,13 @@
 use bitfield::bitfield;
-use crate::println;
 
+use core::alloc::boxed;
 use core::mem;
 
-bitfield!{
-    // #[repr(packed())]
+const PAGE_SIZE: usize = 4096;
+const ENTRIES_PER_PAGE: usize = PAGE_SIZE / mem::size_of::<PageEntry>();
+
+bitfield! {
+    #[derive(Default, Copy, Clone)]
     pub struct PageEntry(u64);
 
     impl Debug;
@@ -24,12 +27,43 @@ bitfield!{
     reserved, set_reserved: 63, 54;
 }
 
+pub struct PageTable {
+    entries: [PageEntry; ENTRIES_PER_PAGE],
+}
+
 impl PageEntry {
     pub fn new() -> PageEntry {
-        let test = 0xffffffffffffffff as u64;
+        PageEntry {
+            ..Default::default()
+        }
+    }
 
-        let entry: PageEntry = unsafe {mem::transmute::<u64, PageEntry>(test)};
-        println!("{:#X}", entry.reserved());
-        entry
+    pub fn set_ppn(&mut self, ppn: usize) {
+        self.set_ppn2((ppn >> 18) as u64);
+        self.set_ppn1(((ppn >> 9) & 0x1ff) as u64); // 0x1ff for queping only the 9 last bits
+        self.set_ppn1(((ppn) & 0x1ff) as u64);
     }
 }
+
+impl PageTable {
+    pub fn size() -> usize {
+        mem::size_of::<PageTable>()
+    }
+}
+
+impl Default for PageTable {
+    fn default() -> PageTable {
+        PageTable {
+            entries: [Default::default(); ENTRIES_PER_PAGE],
+        }
+    }
+}
+
+// pub fn new(addr: usize) -> PageTable {
+//     extern "Rust" {
+//         mmu: PageTable,
+//     }
+//     let root_pagetable: PageTable = (addr as *mut PageTable).read();
+//
+//     root_pagetable
+// }
