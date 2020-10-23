@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        target: [riscv64gc-unknown-none-elf, x86_64_goose.json]
+        target: [riscv64gc-unknown-none-elf]
 
     steps:
       - uses: actions/checkout@v2
@@ -24,22 +24,14 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
+          targets: ${{ matrix.target }}
           override: true
           components: rust-src, llvm-tools-preview
 
-      - name: Rustup extra target
-        if: matrix.target != 'x86_64_goose.json'
-        run: rustup target add ${{ matrix.target }}
-
       - name: Install qemu
-        run: sudo apt install qemu-system
-
-      - name: Cargo install bootimage
-        if: matrix.target == 'x86_64_goose.json'
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: bootimage
+        run: |
+          sudo apt update
+          sudo apt install qemu-system
 
       - name: Cargo check
         uses: actions-rs/cargo@v1

@@ -10,17 +10,8 @@ edition = "2018"
 qemu-exit = "1.0.0"
 cfg-if = "0.1.10"
 
-[target.'cfg(target_arch = "x86_64")'.dependencies]
-bootloader = "0.9.11"
-rlibc = "1.0.0"
-
 # [profile.dev]
 # panic = "abort"
 #
 # [profile.release]
 # panic = "abort"
-
-[package.metadata.bootimage]
-run-args = ["-serial", "stdio"]
-test-args = ["-nographic", "-monitor", "none", "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"]
-test-success-exit-code = 253
