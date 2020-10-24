@@ -1,34 +1,29 @@
 ENTRY(kstart)
-EXTERN(ARCH);
-
-MEMORY
-{
-    ram (rx) : ORIGIN = 0x80200000, LENGTH = 256M
-}
 
 SECTIONS
 {
+    . = ALIGN(4096);
     .text : { 
         TEXT_START = .;
-        *(.text.kstart); # Warning: Should allways be at the top of all sections
         *(.text*);
         TEXT_END = .;
-    } > ram
+    }
 
+    . = ALIGN(4096);
     .data : { 
         DATA_START = .;
         *(.data*);
         *(.rodata*);
-        KEEP(*(.rodata.ARCH));
         *(.sdata*);
         DATA_END = .;
-    } > ram
+    }
 
+    . = ALIGN(4096);
     .bss (NOLOAD) : {
         BSS_START = .;
         *(.bss*);
         BSS_END = .;
-    } > ram
+    }
 
     . = ALIGN(4096);
     STACK_END = .;
