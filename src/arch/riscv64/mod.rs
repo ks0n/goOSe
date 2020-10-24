@@ -1,6 +1,8 @@
 pub mod mmu;
 
+use super::*;
 use crate::kmain;
+use crate::println;
 use cfg_if::cfg_if;
 
 pub static UART0: usize = 0x10000000;
@@ -13,11 +15,34 @@ cfg_if! {
 }
 
 #[no_mangle]
-#[link_section = ".start"]
-pub unsafe extern "C" fn _start() -> ! {
-    asm!("la sp, _stack");
+unsafe extern "C" fn kstart() -> ! {
+    #[cfg(target_arch = "riscv64")]
+    asm!(
+        "la sp, STACK_START
+      call {}", sym init
+    );
 
     kmain();
+}
+
+#[no_mangle]
+fn init() {
+    println!("\nRISCV64 Init"); // Separation from OpenSBI boot info
+    clear_bss();
+}
+
+fn clear_bss() {
+    let _bss_start = unsafe { (&BSS_START as *const ()) as usize };
+    let _bss_end = unsafe { (&BSS_END as *const ()) as usize };
+
+    for addr in _bss_start.._bss_end {
+        let addr = addr as *mut u8;
+        unsafe {
+            *addr = 0;
+        }
+    }
+
+    println!("BSS cleared ({:#X} -> {:#X})", _bss_start, _bss_end);
 }
 
 pub fn outb(addr: usize, byte: u8) {
