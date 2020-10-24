@@ -4,6 +4,7 @@
 #![feature(never_type)]
 #![feature(custom_test_frameworks)]
 #![feature(const_raw_ptr_to_usize_cast)]
+#![feature(const_in_array_repeat_expressions)]
 #![test_runner(crate::utest::runner)]
 #![reexport_test_harness_main = "utests_launch"]
 #![allow(dead_code)] // FIXME: Eww
@@ -16,6 +17,7 @@ cfg_if! {
     }
 }
 
+mod allocator;
 mod arch;
 mod panic;
 mod serial;
@@ -35,7 +37,7 @@ pub fn kmain() -> ! {
 
     println!("{}", GREET);
 
-    let entry = arch::mmu::PageEntry::new();
+    arch::mmu::new(unsafe { &arch::MMU as *const () } as usize);
 
     loop {}
 }
