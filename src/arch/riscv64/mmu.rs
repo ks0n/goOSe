@@ -1,10 +1,11 @@
+use crate::println;
 use bitfield::bitfield;
 
-use core::alloc::boxed;
 use core::mem;
 
 const PAGE_SIZE: usize = 4096;
 const ENTRIES_PER_PAGE: usize = PAGE_SIZE / mem::size_of::<PageEntry>();
+const MAX_LEVEL: usize = 3;
 
 bitfield! {
     #[derive(Default, Copy, Clone)]
@@ -28,7 +29,7 @@ bitfield! {
 }
 
 pub struct PageTable {
-    entries: [PageEntry; ENTRIES_PER_PAGE],
+    pub entries: [PageEntry; ENTRIES_PER_PAGE],
 }
 
 impl PageEntry {
@@ -36,6 +37,30 @@ impl PageEntry {
         PageEntry {
             ..Default::default()
         }
+    }
+
+    pub fn init(&mut self, level: usize, addr: usize) -> usize {
+        let addr = addr + PAGE_SIZE;
+        println!(
+            "Init a PageEntry of level {} and which point to {:#x}",
+            level, addr
+        );
+
+        self.set_ppn(addr);
+        self.set_valid(true);
+
+        if level == MAX_LEVEL {
+            self.set_read(true);
+            self.set_write(true);
+            self.set_execute(true);
+        } else {
+            self.set_read(false);
+            self.set_write(false);
+            self.set_execute(false);
+        }
+
+        let page_table = addr as *mut PageTable;
+        unsafe { (*page_table).init(level + 1, addr) }
     }
 
     pub fn set_ppn(&mut self, ppn: usize) {
@@ -46,6 +71,15 @@ impl PageEntry {
 }
 
 impl PageTable {
+    pub fn init(&mut self, level: usize, addr: usize) -> usize {
+        println!("Init a PageTable at addres: {:p} and level {}", self, level);
+        let mut addr = addr;
+        for page_entry in &mut self.entries {
+            addr = page_entry.init(level + 1, addr)
+        }
+
+        addr
+    }
     pub fn size() -> usize {
         mem::size_of::<PageTable>()
     }
@@ -59,11 +93,16 @@ impl Default for PageTable {
     }
 }
 
-// pub fn new(addr: usize) -> PageTable {
-//     extern "Rust" {
-//         mmu: PageTable,
-//     }
-//     let root_pagetable: PageTable = (addr as *mut PageTable).read();
-//
-//     root_pagetable
-// }
+pub fn new(addr: usize) -> PageTable {
+    println!("MMU Initialization");
+
+    let root_pagetable = addr as *mut PageTable;
+    let level = 0;
+
+    unsafe {
+        (*root_pagetable).init(level, addr);
+    }
+
+    let root: &mut PageTable = unsafe { &mut *root_pagetable };
+    mem::take(root)
+}
