@@ -3,7 +3,7 @@ EXTERN(ARCH);
 
 MEMORY
 {
-    ram (rx) : ORIGIN = 0x80200000, LENGTH = 256M
+    ram (rx) : ORIGIN = 0x80200000, LENGTH = 2048M
 }
 
 SECTIONS
@@ -33,4 +33,9 @@ SECTIONS
     . = ALIGN(4096);
     STACK_END = .;
     STACK_START = BSS_END + 1M;
+
+    HEAP_START = .;
+    HEAP_END = . + 25M;
+
+    PROVIDE(MMU = .);
 }

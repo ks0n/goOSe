@@ -3,7 +3,7 @@ use bitfield::bitfield;
 
 use core::mem;
 
-const PAGE_SIZE: usize = 4096;
+pub const PAGE_SIZE: usize = 4096;
 const ENTRIES_PER_PAGE: usize = PAGE_SIZE / mem::size_of::<PageEntry>();
 const MAX_LEVEL: usize = 3;
 
@@ -40,7 +40,7 @@ impl PageEntry {
     }
 
     pub fn init(&mut self, level: usize, addr: usize) -> usize {
-        let addr = addr + PAGE_SIZE;
+        let mut addr = addr + PAGE_SIZE;
         println!(
             "Init a PageEntry of level {} and which point to {:#x}",
             level, addr
@@ -57,10 +57,12 @@ impl PageEntry {
             self.set_read(false);
             self.set_write(false);
             self.set_execute(false);
+
+            let page_table = addr as *mut PageTable;
+            addr = unsafe { (*page_table).init(level + 1, addr) }
         }
 
-        let page_table = addr as *mut PageTable;
-        unsafe { (*page_table).init(level + 1, addr) }
+        addr
     }
 
     pub fn set_ppn(&mut self, ppn: usize) {
@@ -75,7 +77,7 @@ impl PageTable {
         println!("Init a PageTable at addres: {:p} and level {}", self, level);
         let mut addr = addr;
         for page_entry in &mut self.entries {
-            addr = page_entry.init(level + 1, addr)
+            addr = page_entry.init(level, addr)
         }
 
         addr
@@ -95,6 +97,7 @@ impl Default for PageTable {
 
 pub fn new(addr: usize) -> PageTable {
     println!("MMU Initialization");
+    println!("Root PageTable = {:#x}", addr);
 
     let root_pagetable = addr as *mut PageTable;
     let level = 0;

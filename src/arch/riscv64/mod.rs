@@ -28,13 +28,14 @@ unsafe extern "C" fn kstart() -> ! {
 #[no_mangle]
 fn init() {
     println!("\nRISCV64 Init"); // Separation from OpenSBI boot info
-    clear_bss();
+                                // clear_bss();
 }
 
 fn clear_bss() {
     let _bss_start = unsafe { (&BSS_START as *const ()) as usize };
     let _bss_end = unsafe { (&BSS_END as *const ()) as usize };
 
+    // FIXME: Iterator
     for addr in _bss_start.._bss_end {
         let addr = addr as *mut u8;
         unsafe {
