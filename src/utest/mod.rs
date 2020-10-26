@@ -45,7 +45,7 @@ pub fn runner(tests: &[&dyn Fn()]) {
     end_utests();
 }
 
-fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
+pub fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
     print!("{}... ", test_name);
     assert_eq!(lhs, rhs);
     println!("[{}]", UTEST_SUCESS);
