@@ -32,7 +32,7 @@ SECTIONS
 
     . = ALIGN(4096);
     STACK_END = .;
-    STACK_START = BSS_END + 1M;
+    STACK_START = . + 1M;
 
     HEAP_START = .;
     HEAP_END = . + 25M;
