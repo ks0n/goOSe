@@ -3,7 +3,7 @@ EXTERN(ARCH);
 
 MEMORY
 {
-    ram (rx) : ORIGIN = 0x80200000, LENGTH = 2048M
+    ram (rx) : ORIGIN = 0x80200000, LENGTH = 5M
 }
 
 SECTIONS
