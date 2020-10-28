@@ -30,6 +30,7 @@ SECTIONS
         BSS_END = .;
     } > ram
 
+    # Stack should alway be aligned to 16 bits
     . = ALIGN(4096);
     STACK_END = .;
     STACK_START = . + 1M;
