@@ -1,7 +1,8 @@
 // use crate::arch;
 use crate::*;
 
-// TODO: Find real value
+use core::ptr;
+
 const PAGE_NUMBER: usize = 50;
 
 static mut PageUsage: [UsageFlags; PAGE_NUMBER] = [UsageFlags::Free; PAGE_NUMBER];
@@ -11,6 +12,20 @@ static mut PageUsage: [UsageFlags; PAGE_NUMBER] = [UsageFlags::Free; PAGE_NUMBER
 enum UsageFlags {
     Used = 1,
     Free = 0,
+}
+
+#[derive(Debug)]
+pub struct PageAllocator {
+    // status: Vec<UsageFlags>,
+}
+
+impl PageAllocator {
+    pub fn new() -> () {
+        let allocator_addr: usize = unsafe { (&arch::HEAP_START as *const ()) as usize};
+        let allocator = unsafe {ptr::NonNull::new(allocator_addr as *mut PageAllocator).unwrap().as_mut()};
+
+        println!("Allocator = {:?}", allocator);
+    }
 }
 
 pub fn page_alloc() -> Option<usize> {

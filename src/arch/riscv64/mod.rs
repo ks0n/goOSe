@@ -6,6 +6,7 @@ use crate::println;
 use cfg_if::cfg_if;
 
 pub static UART0: usize = 0x10000000;
+pub static PAGE_SIZE: usize = 4096;
 
 cfg_if! {
     if #[cfg(test)] {
