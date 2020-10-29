@@ -28,7 +28,8 @@ unsafe extern "C" fn kstart() -> ! {
 #[no_mangle]
 fn init() {
     println!("\nRISCV64 Init"); // Separation from OpenSBI boot info
-                                // clear_bss();
+
+    clear_bss();
 }
 
 fn clear_bss() {
