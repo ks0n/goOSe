@@ -25,19 +25,17 @@ mod spin_lock;
 
 use cfg_if::cfg_if;
 
-static GREET: &str = "Talk to me, Goose !";
-
 pub fn kmain() -> ! {
     #[cfg(test)]
     utests_launch();
 
     println!("Kernel Entry");
-
     print_sections_info();
 
-    println!("{}", GREET);
+    allocator::PageAllocator::new();
 
-    arch::mmu::new(unsafe { &arch::MMU as *const () } as usize);
+
+    // arch::mmu::new(unsafe { &arch::MMU as *const () } as usize);
 
     loop {}
 }
