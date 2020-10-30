@@ -34,7 +34,7 @@ macro_rules! kassert {
 }
 
 pub fn runner(tests: &[&dyn Fn()]) {
-    println!("Running goOSe tests... Amount: {}\n", tests.len());
+    println!("\nRunning goOSe tests... Amount: {}\n", tests.len());
 
     for test in tests {
         test();
@@ -50,8 +50,8 @@ pub fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &s
 }
 
 fn end_utests() {
+    println!("\nAll tests were run");
     arch::QEMU_EXIT.exit_success();
-    // arch::outb(QEMU_EXIT_PORT, QEMU_SUCCESS_CODE);
 }
 
 #[panic_handler]
@@ -62,12 +62,4 @@ fn panic(info: &PanicInfo) -> ! {
     end_utests();
 
     loop {}
-}
-
-#[test_case]
-fn utests_test() {
-    uassert_eq(true, true, "utest framework initialization");
-    kassert_eq!(true, true);
-    kassert!(true);
-    kassert_eq!(true, true, "utest framework initialization complete");
 }
