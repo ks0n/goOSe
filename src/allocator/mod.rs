@@ -68,19 +68,19 @@ mod test {
     use crate::utest::uassert_eq;
 
     #[test_case]
-    fn page_alloc_one_test() {
+    fn page_alloc_one() {
         let mut allocator = PageAllocator::new();
         let test = allocator.page_alloc();
         kassert_eq!(test.is_some(), true, "Page alloc one page test");
     }
 
     #[test_case]
-    fn page_alloc_all_test() {
+    fn page_alloc_out_of_memory() {
         let mut allocator = PageAllocator::new();
         while allocator.page_alloc().is_some() {
             // At some point we will not have any free pages left
         }
 
-        kassert_eq!(true, true, "Page alloc all pages test");
+        kassert_eq!(true, true, "Page alloc out of memory");
     }
 }
