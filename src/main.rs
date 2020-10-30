@@ -30,20 +30,12 @@ pub fn kmain() -> ! {
     println!("Kernel Entry");
     print_sections_info();
 
-    allocator::PageAllocator::new();
-
-
     // arch::mmu::new(unsafe { &arch::MMU as *const () } as usize);
 
     loop {}
 }
 
 fn print_sections_info() {
-    // println!(
-    //     "START: {:p} -> {:p}",
-    //     unsafe { &arch::START_START },
-    //     unsafe { &arch::START_END }
-    // );
     println!("TEXT: {:p} -> {:p}", unsafe { &arch::TEXT_START }, unsafe {
         &arch::TEXT_END
     });
@@ -55,4 +47,7 @@ fn print_sections_info() {
         unsafe { &arch::STACK_START },
         unsafe { &arch::STACK_END }
     );
+    println!("HEAP: {:p} -> {:p}", unsafe { &arch::HEAP_START }, unsafe {
+        &arch::HEAP_END
+    });
 }

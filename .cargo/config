@@ -8,4 +8,3 @@ build-std-features = ["compiler-builtins-mem"]
 [target.'cfg(target_arch = "riscv64")']
 rustflags = ["-C", "link-args=-Tsrc/arch/riscv64/link.lds"]
 runner = 'qemu-system-riscv64 -M virt -bios tools/fw_jump.elf -m 50M -nographic -monitor none -serial stdio -kernel '
-
