@@ -1,11 +1,8 @@
 // use crate::arch;
 use crate::*;
 
-use core::ptr;
-
-const PAGE_NUMBER: usize = 50;
-
-static mut PageUsage: [UsageFlags; PAGE_NUMBER] = [UsageFlags::Free; PAGE_NUMBER];
+use core::mem;
+use core::slice;
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -14,35 +11,55 @@ enum UsageFlags {
     Free = 0,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PageAllocator {
-    // status: Vec<UsageFlags>,
+    usage: &'static mut [UsageFlags],
+    number_of_pages: usize,
+    first_page: usize,
 }
 
 impl PageAllocator {
-    pub fn new() -> () {
-        let allocator_addr: usize = unsafe { (&arch::HEAP_START as *const ()) as usize};
-        let allocator = unsafe {ptr::NonNull::new(allocator_addr as *mut PageAllocator).unwrap().as_mut()};
+    pub fn new() -> PageAllocator {
+        let heap_start: usize = unsafe { &arch::HEAP_START as *const () } as usize;
+        let heap_end: usize = unsafe { &arch::HEAP_END as *const () } as usize;
 
-        println!("Allocator = {:?}", allocator);
+        let heap_pages_count: usize = (heap_end - heap_start) / arch::PAGE_SIZE;
+        let metadata_overhead: usize = (heap_pages_count) * mem::size_of::<UsageFlags>();
+        // Calculat the address of the first page after heap_start + metadata
+        let first_allocatable_page: usize =
+            ((heap_start + metadata_overhead + arch::PAGE_SIZE - 1) / arch::PAGE_SIZE)
+                * arch::PAGE_SIZE;
+        let allocatable_pages_count =
+            heap_pages_count - (first_allocatable_page - heap_start) / arch::PAGE_SIZE;
+
+        // println!("heap_start = {}\nheap_end = {}\nheap_pages_count = {}\nmetadata_overhead = {}\nfirst_allocatable_page = {:#x}\nallocatable_pages_count= {}", heap_start, heap_end, heap_pages_count, metadata_overhead, first_allocatable_page, allocatable_pages_count);
+
+        PageAllocator {
+            usage: unsafe {
+                slice::from_raw_parts_mut(
+                    first_allocatable_page as *mut UsageFlags,
+                    allocatable_pages_count,
+                )
+            },
+            number_of_pages: allocatable_pages_count,
+            first_page: first_allocatable_page,
+        }
     }
-}
 
-pub fn page_alloc() -> Option<usize> {
-    for index in 0..PAGE_NUMBER {
-        unsafe {
-            match PageUsage[index] {
+    pub fn page_alloc(&mut self) -> Option<usize> {
+        for index in 0..self.number_of_pages {
+            match self.usage[index] {
                 UsageFlags::Free => {
-                    PageUsage[index] = UsageFlags::Used;
-                    let addr =
-                        (&arch::HEAP_START as *const ()) as usize + index * arch::mmu::PAGE_SIZE;
+                    self.usage[index] = UsageFlags::Used;
+                    let addr = self.first_page + index * arch::mmu::PAGE_SIZE;
                     return Some(addr);
                 }
                 UsageFlags::Used => (),
             }
         }
+
+        None
     }
-    None
 }
 
 #[cfg(test)]
@@ -52,13 +69,15 @@ mod test {
 
     #[test_case]
     fn page_alloc_one_test() {
-        let test = page_alloc();
+        let mut allocator = PageAllocator::new();
+        let test = allocator.page_alloc();
         kassert_eq!(test.is_some(), true, "Page alloc one page test");
     }
 
     #[test_case]
     fn page_alloc_all_test() {
-        while page_alloc().is_some() {
+        let mut allocator = PageAllocator::new();
+        while allocator.page_alloc().is_some() {
             // At some point we will not have any free pages left
         }
 
