@@ -12,7 +12,6 @@ static UTEST_FAILURE: &str = "\x1b[31mKO\x1b[0m";
  * the Cargo.toml file */
 
 /// Assert the equality of two elements
-#[macro_export]
 macro_rules! kassert_eq {
     ($l_exp: expr, $r_exp: expr) => {{
         // FIXME: Show function name
@@ -24,7 +23,6 @@ macro_rules! kassert_eq {
 }
 
 /// Assert the validity of a statement
-#[macro_export]
 macro_rules! kassert {
     ($stmt: expr) => {{
         // FIXME: Show function name
@@ -45,7 +43,7 @@ pub fn runner(tests: &[&dyn Fn()]) {
     end_utests();
 }
 
-fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
+pub fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
     print!("{}... ", test_name);
     assert_eq!(lhs, rhs);
     println!("[{}]", UTEST_SUCESS);
