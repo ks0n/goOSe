@@ -8,16 +8,18 @@
 #![reexport_test_harness_main = "utests_launch"]
 #![allow(dead_code)] // FIXME: Eww
 
-mod arch;
-mod panic;
-mod serial;
-
 cfg_if! {
     if #[cfg(test)] {
+        #[macro_use]
         mod utest;
         extern crate qemu_exit;
     }
 }
+
+mod arch;
+mod panic;
+mod serial;
+mod spin_lock;
 
 use cfg_if::cfg_if;
 
