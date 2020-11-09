@@ -10,6 +10,8 @@ edition = "2018"
 qemu-exit = "1.0.0"
 cfg-if = "0.1.10"
 bitfield = "0.13.2"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+spin = "0.7.0"
 
 # [profile.dev]
 # panic = "abort"

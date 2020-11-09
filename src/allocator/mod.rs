@@ -1,8 +1,16 @@
 // use crate::arch;
+extern crate spin;
+
 use crate::*;
 
 use core::mem;
 use core::slice;
+
+use spin::RwLock;
+
+lazy_static! {
+    pub static ref PAGE_ALLOC: RwLock<PageAllocator> = RwLock::new(PageAllocator::new());
+}
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -51,7 +59,7 @@ impl PageAllocator {
             match self.usage[index] {
                 UsageFlags::Free => {
                     self.usage[index] = UsageFlags::Used;
-                    let addr = self.first_page + index * arch::mmu::PAGE_SIZE;
+                    let addr = self.first_page + index * arch::PAGE_SIZE;
                     return Some(addr);
                 }
                 UsageFlags::Used => (),
@@ -69,14 +77,13 @@ mod test {
 
     #[test_case]
     fn page_alloc_one() {
-        let mut allocator = PageAllocator::new();
-        let test = allocator.page_alloc();
-        kassert_eq!(test.is_some(), true, "Page alloc one page test");
+        let page = PAGE_ALLOC.write().page_alloc();
+        kassert_eq!(page.is_some(), true, "Page alloc one page test");
     }
 
     #[test_case]
     fn page_alloc_out_of_memory() {
-        let mut allocator = PageAllocator::new();
+        let mut allocator = PAGE_ALLOC.write();
         while allocator.page_alloc().is_some() {
             // At some point we will not have any free pages left
         }

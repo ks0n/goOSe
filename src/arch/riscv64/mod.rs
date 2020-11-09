@@ -1,5 +1,4 @@
 use super::*;
-pub mod mmu;
 
 use crate::kmain;
 use crate::println;

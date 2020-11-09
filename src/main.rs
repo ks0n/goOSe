@@ -17,11 +17,13 @@ cfg_if! {
     }
 }
 
+#[macro_use]
+extern crate lazy_static;
+
 mod allocator;
 mod arch;
 mod panic;
 mod serial;
-mod spin_lock;
 
 use cfg_if::cfg_if;
 
