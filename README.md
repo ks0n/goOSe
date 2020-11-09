@@ -12,6 +12,13 @@ goOSe is focused on modularity. Each feature should be a submodule in the
 
 * `bootimage`
 
+Enter in the provided nix-shell:
+`nix-shell goose.nix`
+
+To specifiy a different shell like `zsh`, `nix-shell goose.nix --command zsh`
+
+This will install the required, non-cargo dependencies, such as `qemu`, locally.
+
 # Building
 
 To build, use `cargo build`.
@@ -56,4 +63,3 @@ at your option.
 
 See the [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for more information about utilized third
 party projects and their respective licenses.
-
