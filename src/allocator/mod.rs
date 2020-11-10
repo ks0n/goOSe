@@ -33,7 +33,7 @@ impl PageAllocator {
 
         let heap_pages_count: usize = (heap_end - heap_start) / arch::PAGE_SIZE;
         let metadata_overhead: usize = (heap_pages_count) * mem::size_of::<UsageFlags>();
-        // Calculat the address of the first page after heap_start + metadata
+        // Calculate the address of the first page after heap_start + metadata
         let first_allocatable_page: usize =
             ((heap_start + metadata_overhead + arch::PAGE_SIZE - 1) / arch::PAGE_SIZE)
                 * arch::PAGE_SIZE;
@@ -78,7 +78,7 @@ mod test {
     #[test_case]
     fn page_alloc_one() {
         let page = PAGE_ALLOC.write().page_alloc();
-        kassert_eq!(page.is_some(), true, "Page alloc one page test");
+        kassert!(page.is_some(), "Page alloc one page test");
     }
 
     #[test_case]
@@ -88,6 +88,6 @@ mod test {
             // At some point we will not have any free pages left
         }
 
-        kassert_eq!(true, true, "Page alloc out of memory");
+        kassert!(true, "Page alloc out of memory");
     }
 }
