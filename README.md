@@ -8,6 +8,11 @@ with a functional, albeit simple kernel.
 goOSe is focused on modularity. Each feature should be a submodule in the
 `src` directory, or its own crate.
 
+# Objectives
+
+goOSe aims to become a tiny micro kernel. For more information, have a look at
+the [roadmap](ROADMAP.md)
+
 # Cargo dependencies
 
 * `bootimage`
