@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(asm)]
+#![warn(missing_docs)]
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::utest::runner)]
 #![reexport_test_harness_main = "utests_launch"]
