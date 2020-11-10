@@ -1,12 +1,9 @@
 #![no_std]
 #![no_main]
 #![feature(asm)]
-#![feature(never_type)]
 #![feature(custom_test_frameworks)]
-#![feature(const_raw_ptr_to_usize_cast)]
 #![test_runner(crate::utest::runner)]
 #![reexport_test_harness_main = "utests_launch"]
-#![allow(dead_code)] // FIXME: Eww
 
 cfg_if! {
     if #[cfg(test)] {
@@ -19,7 +16,6 @@ cfg_if! {
 mod arch;
 mod panic;
 mod serial;
-mod spin_lock;
 
 use cfg_if::cfg_if;
 

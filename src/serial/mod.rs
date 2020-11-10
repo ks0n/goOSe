@@ -32,7 +32,7 @@ pub struct Serial {
 
 impl Serial {
     pub fn init(port: usize) -> Serial {
-        let new_s = Serial { port: port };
+        let new_s = Serial { port };
 
         arch::outb(port + 3, 0b01000000);
 
@@ -45,9 +45,9 @@ impl Serial {
 
     fn _write_str(&self, data: &str) {
         for byte in data.bytes() {
-            if byte == '\n' as u8 {
-                arch::outb(self.port, '\r' as u8);
-                arch::outb(self.port, '\n' as u8);
+            if byte == b'\n' {
+                arch::outb(self.port, b'\r');
+                arch::outb(self.port, b'\n');
             } else {
                 arch::outb(self.port, byte);
             }
