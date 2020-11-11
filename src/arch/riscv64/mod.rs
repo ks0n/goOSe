@@ -1,5 +1,4 @@
-//! RISCV64 module. Implements abstractions necessary to compile and use goOSe on
-//! RISCV64
+//! RISCV64 abstractions layer
 
 use super::*;
 use crate::kmain;
