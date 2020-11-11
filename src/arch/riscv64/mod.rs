@@ -12,6 +12,7 @@ cfg_if! {
     }
 }
 
+/// Entry point of the kernel. Setup the stack address, call ['init'] and call ['kmain'].
 #[no_mangle]
 unsafe extern "C" fn kstart() -> ! {
     #[cfg(target_arch = "riscv64")]
@@ -23,12 +24,14 @@ unsafe extern "C" fn kstart() -> ! {
     kmain();
 }
 
+/// Initialize proper rust execution environement.
 #[no_mangle]
 fn init() {
     println!("\nRISCV64 Init"); // Separation from OpenSBI boot info
     clear_bss();
 }
 
+/// Clear the BSS. Should already be done by some bootloaders but just in case.
 fn clear_bss() {
     let _bss_start = unsafe { (&BSS_START as *const ()) as usize };
     let _bss_end = unsafe { (&BSS_END as *const ()) as usize };
@@ -43,6 +46,8 @@ fn clear_bss() {
     println!("BSS cleared ({:#X} -> {:#X})", _bss_start, _bss_end);
 }
 
+/// Some architecture (x86...) have a specific instruction to write on some specific address (IO
+/// ports). RISCV don't so this is just a stub for writing at a specified address.
 pub fn outb(addr: usize, byte: u8) {
     let addr = addr as *mut u8;
     unsafe {

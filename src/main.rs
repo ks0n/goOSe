@@ -1,3 +1,5 @@
+//! GoOSe aims to be a generic OS for embedded devices
+
 #![no_std]
 #![no_main]
 #![feature(asm)]
@@ -22,6 +24,8 @@ use cfg_if::cfg_if;
 
 static GREET: &str = "Talk to me, Goose !";
 
+/// After all architecture specific initialization for correct rust execution is done, this is "real"
+/// kernel entry point.
 pub fn kmain() -> ! {
     #[cfg(test)]
     utests_launch();
@@ -35,6 +39,7 @@ pub fn kmain() -> ! {
     loop {}
 }
 
+/// Print some infos about our diferent sections.
 fn print_sections_info() {
     // println!(
     //     "START: {:p} -> {:p}",
