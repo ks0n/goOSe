@@ -1,32 +1,24 @@
+//! The serial modules communicates over the architecture's serial port. It is defined
+//! in the arch module, and is architecture dependent. Serial is used for basic text
+//! input and output.
+
 use core::fmt;
 
 use crate::arch;
 
-/*
-const THR_OFF: u16 = 0x0;
-const RBR_OFF: u16 = 0x0;
-*/
 const DLL_OFF: u16 = 0x0;
 const DLH_OFF: u16 = 0x1;
-/*
-const IER_OFF: u16 = 0x1;
-const IIR_OFF: u16 = 0x2;
-const FCR_OFF: u16 = 0x2;
-const LCR_OFF: u16 = 0x3;
-const MCR_OFF: u16 = 0x4;
-const LSR_OFF: u16 = 0x5;
-const MSR_OFF: u16 = 0x6;
-const SR_OFF: u16 = 0x7;
-*/
 
 // FIXME: Remove use of static mut
 static mut SERIAL_PORT: Serial = Serial { port: arch::UART0 };
 
+/// Serial struct used to handle communication over a specific port
 pub struct Serial {
     port: usize,
 }
 
 impl Serial {
+    /// Initialize Serial communication over the given prot
     pub fn init(port: usize) -> Serial {
         let new_s = Serial { port };
 
