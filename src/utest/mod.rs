@@ -1,5 +1,5 @@
-/// The `Unit Test` module provides two macros: `kassert` and `kassert_eq`, which can
-/// be used like `assert` and `assert_eq` in classic Rust code.
+//! The `Unit Test` module provides two macros: `kassert` and `kassert_eq`, which can
+//! be used like `assert` and `assert_eq` in classic Rust code.
 
 use crate::arch;
 use crate::print;
@@ -30,6 +30,7 @@ macro_rules! kassert {
     }};
 }
 
+#[doc(hidden)]
 pub fn runner(tests: &[&dyn Fn()]) {
     println!("Running goOSe tests... Amount: {}\n", tests.len());
 
@@ -40,6 +41,7 @@ pub fn runner(tests: &[&dyn Fn()]) {
     end_utests();
 }
 
+#[doc(hidden)]
 pub fn uassert_eq<T: PartialEq + core::fmt::Debug>(lhs: T, rhs: T, test_name: &str) {
     print!("{}... ", test_name);
     assert_eq!(lhs, rhs);
