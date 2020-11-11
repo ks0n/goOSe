@@ -20,7 +20,7 @@ const SR_OFF: u16 = 0x7;
 */
 
 // FIXME: Remove use of static mut
-static SERIAL_PORT: Serial = Serial { port: arch::UART0 };
+static mut SERIAL_PORT: Serial = Serial { port: arch::UART0 };
 
 pub struct Serial {
     port: usize,
