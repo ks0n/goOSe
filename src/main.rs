@@ -22,10 +22,11 @@ mod serial;
 
 use cfg_if::cfg_if;
 
+#[doc(hidden)]
 static GREET: &str = "Talk to me, Goose !";
 
-/// After all architecture specific initialization for correct rust execution is done, this is "real"
-/// kernel entry point.
+/// After all architecture specific initialization for correct rust execution is done,
+/// this is the "real" kernel entry point.
 pub fn kmain() -> ! {
     #[cfg(test)]
     utests_launch();
