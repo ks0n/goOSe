@@ -1,6 +1,9 @@
+//! GoOSe aims to be a generic OS for embedded devices
+
 #![no_std]
 #![no_main]
 #![feature(asm)]
+#![warn(missing_docs)]
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::utest::runner)]
 #![reexport_test_harness_main = "utests_launch"]
@@ -19,8 +22,11 @@ mod serial;
 
 use cfg_if::cfg_if;
 
+#[doc(hidden)]
 static GREET: &str = "Talk to me, Goose !";
 
+/// After all architecture specific initialization for correct rust execution is done,
+/// this is the "real" kernel entry point.
 pub fn kmain() -> ! {
     #[cfg(test)]
     utests_launch();
@@ -34,6 +40,7 @@ pub fn kmain() -> ! {
     loop {}
 }
 
+/// Print some infos about our diferent sections.
 fn print_sections_info() {
     // println!(
     //     "START: {:p} -> {:p}",
