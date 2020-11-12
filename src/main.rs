@@ -19,6 +19,7 @@ cfg_if! {
 mod arch;
 mod panic;
 mod serial;
+mod utils;
 
 use cfg_if::cfg_if;
 
