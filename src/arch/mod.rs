@@ -1,4 +1,4 @@
-//! This module implements "platform agnosticity". No matter what platform you're trying
+//! This module implements a "platform agnosticity" layer. No matter what platform you're trying
 //! to get goOSe working on, all of the conditions defined here must be met. On top of
 //! that, using `use arch` in the code will automatically dispatch to the architecture
 //! you're using at compile time. The arch module uses external symbols that should
