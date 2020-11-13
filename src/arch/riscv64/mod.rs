@@ -3,7 +3,7 @@
 use super::*;
 use crate::kmain;
 use crate::println;
-use crate::utils::value_from_external_symbol;
+use crate::utils::external_symbol_address;
 use cfg_if::cfg_if;
 
 /// UART0 address
@@ -37,8 +37,8 @@ fn init() {
 
 /// Clear the BSS. Should already be done by some bootloaders but just in case.
 fn clear_bss() {
-    let _bss_start = unsafe { value_from_external_symbol(BSS_START) };
-    let _bss_end = unsafe { value_from_external_symbol(BSS_END) };
+    let _bss_start = unsafe { external_symbol_address(BSS_START) };
+    let _bss_end = unsafe { external_symbol_address(BSS_END) };
 
     for addr in _bss_start.._bss_end {
         let addr = addr as *mut u8;

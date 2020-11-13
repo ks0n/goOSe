@@ -2,6 +2,6 @@
 
 /// Convert an external symbol (defined by the linker for example) to a value usable
 /// in the code
-pub fn value_from_external_symbol(sym: ()) -> usize {
+pub fn external_symbol_address(sym: ()) -> usize {
     (&sym as *const ()) as usize
 }
