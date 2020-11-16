@@ -4,8 +4,8 @@
 use crate::arch;
 use crate::print;
 use crate::println;
-use crate::qemu_exit::QEMUExit;
 use core::panic::PanicInfo;
+use qemu_exit::QEMUExit;
 
 static UTEST_SUCESS: &str = "\x1b[32mOK\x1b[0m";
 static UTEST_FAILURE: &str = "\x1b[31mKO\x1b[0m";

@@ -6,6 +6,8 @@ use crate::println;
 use crate::utils::external_symbol_address;
 use cfg_if::cfg_if;
 
+mod interrupts;
+
 /// UART0 address
 pub static UART0: usize = 0x10000000;
 
@@ -32,7 +34,10 @@ unsafe extern "C" fn kstart() -> ! {
 #[no_mangle]
 fn init() {
     println!("\nRISCV64 Init"); // Separation from OpenSBI boot info
+
     clear_bss();
+
+    println!("Interrupts State: {:?}", interrupts::state());
 }
 
 /// Clear the BSS. Should already be done by some bootloaders but just in case.

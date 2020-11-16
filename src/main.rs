@@ -12,7 +12,6 @@ cfg_if! {
     if #[cfg(test)] {
         #[macro_use]
         mod utest;
-        extern crate qemu_exit;
     }
 }
 
