@@ -37,6 +37,7 @@ fn init() {
 
     clear_bss();
 
+    interrupts::init();
     println!("Interrupts State: {:?}", interrupts::state());
 }
 

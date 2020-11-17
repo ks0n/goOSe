@@ -3,6 +3,7 @@
 #![no_std]
 #![no_main]
 #![feature(asm)]
+#![feature(naked_functions)]
 #![warn(missing_docs)]
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::utest::runner)]
