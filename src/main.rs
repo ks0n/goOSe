@@ -3,6 +3,7 @@
 #![no_std]
 #![no_main]
 #![feature(asm)]
+#![feature(global_asm)]
 #![feature(naked_functions)]
 #![warn(missing_docs)]
 #![feature(custom_test_frameworks)]
@@ -53,6 +54,9 @@ fn print_sections_info() {
     });
     println!("DATA: {:p} -> {:p}", unsafe { &arch::DATA_START }, unsafe {
         &arch::DATA_END
+    });
+    println!("BSS: {:p} -> {:p}", unsafe { &arch::BSS_START }, unsafe {
+        &arch::BSS_END
     });
     println!(
         "STACK: {:p} -> {:p}",

@@ -6,6 +6,8 @@ use crate::println;
 use crate::utils::external_symbol_address;
 use cfg_if::cfg_if;
 
+use interrupts::InterruptsState;
+
 mod interrupts;
 
 /// UART0 address
