@@ -1,5 +1,7 @@
 //! RISCV64 abstractions layer
 
+mod interrupts;
+
 use super::*;
 use crate::kmain;
 use crate::println;
@@ -7,8 +9,6 @@ use crate::utils::external_symbol_address;
 use cfg_if::cfg_if;
 
 use interrupts::InterruptsState;
-
-mod interrupts;
 
 /// UART0 address
 pub static UART0: usize = 0x10000000;
