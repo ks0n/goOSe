@@ -39,14 +39,15 @@ fn init() {
 
     clear_bss();
 
+    trap::init();
     interrupts::init();
     println!("Interrupts State: {:?}", interrupts::state());
 }
 
 /// Clear the BSS. Should already be done by some bootloaders but just in case.
 fn clear_bss() {
-    let _bss_start = unsafe { external_symbol_address(BSS_START) };
-    let _bss_end = unsafe { external_symbol_address(BSS_END) };
+    let _bss_start = unsafe { external_symbol_address(&BSS_START) };
+    let _bss_end = unsafe { external_symbol_address(&BSS_END) };
 
     for addr in _bss_start.._bss_end {
         let addr = addr as *mut u8;
@@ -55,7 +56,7 @@ fn clear_bss() {
         }
     }
 
-    println!("BSS cleared ({:#X} -> {:#X})", _bss_start, _bss_end);
+    println!("BSS cleared ({:#x} -> {:#x})", _bss_start, _bss_end);
 }
 
 /// Some architecture (x86...) have a specific instruction to write on some specific
