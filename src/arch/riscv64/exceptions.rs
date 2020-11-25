@@ -8,15 +8,17 @@ use num_enum::TryFromPrimitive;
 #[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
 enum Exception {
     IllegalInstruction = 2,
+    #[num_enum(default)]
+    Unhandled,
 }
 
 /// Handle exceptions
 pub fn handle(id: usize, pc: usize) {
-    let exception = Exception::try_from(id).unwrap();
+    let exception = Exception::try_from(id).unwrap(); // Unwrap is safe, as we have a num_enum(default) in Exception enum
     match exception {
         Exception::IllegalInstruction => {
             panic!("Illegal instruction at {:#x}!", pc)
         }
-        _ => panic!("Exception {} not handled yet!. Occured at {:#x}", id, pc),
+        Exception::Unhandled => panic!("Exception {} not handled yet!. Occured at {:#x}", id, pc),
     }
 }
