@@ -3,11 +3,11 @@
 pub enum InterruptsState {
     /// No interrupt can be triggered
     DISABLE = 0,
-    /// Supervisor interrupts are enable
+    /// Supervisor interrupts are enabled
     ENABLE = 1,
 }
 
-/// Retrive current state of supervisor interrupts
+/// Retrieve current state of supervisor interrupts
 pub fn state() -> InterruptsState {
     match riscv::register::sstatus::read().sie() {
         false => InterruptsState::DISABLE,
