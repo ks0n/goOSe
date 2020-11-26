@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 num_enum = {version = "0.5.1", default-features = false}
-spin = {verison = "0.7.0"}#, features = [
+spin = "0.7.0"
 lazy_static = {version = "1.4.0", features = ["spin_no_std"]}
 qemu-exit = "1.0.0"
 cfg-if = "1.0.0"
