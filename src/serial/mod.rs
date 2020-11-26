@@ -10,7 +10,6 @@ use spin::Mutex;
 const DLL_OFF: u16 = 0x0;
 const DLH_OFF: u16 = 0x1;
 
-// FIXME: Remove use of static mut
 lazy_static! {
     static ref SERIAL_PORT: Mutex<Serial> = Mutex::new(Serial::init(arch::UART0));
 }
