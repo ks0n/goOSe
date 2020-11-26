@@ -2,15 +2,17 @@
 //! in the arch module, and is architecture dependent. Serial is used for basic text
 //! input and output.
 
-use core::fmt;
-
 use crate::arch;
+use core::fmt;
+use lazy_static::lazy_static;
+use spin::Mutex;
 
 const DLL_OFF: u16 = 0x0;
 const DLH_OFF: u16 = 0x1;
 
-// FIXME: Remove use of static mut
-static mut SERIAL_PORT: Serial = Serial { port: arch::UART0 };
+lazy_static! {
+    static ref SERIAL_PORT: Mutex<Serial> = Mutex::new(Serial::init(arch::UART0));
+}
 
 /// Serial struct used to handle communication over a specific port
 pub struct Serial {
@@ -68,7 +70,5 @@ pub fn print_fmt(args: fmt::Arguments) {
     use core::fmt::Write;
 
     // FIXME: Change from mut static to lazy_static! or Mutex
-    unsafe {
-        SERIAL_PORT.write_fmt(args).unwrap();
-    }
+    SERIAL_PORT.lock().write_fmt(args).unwrap();
 }
