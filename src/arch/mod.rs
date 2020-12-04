@@ -24,6 +24,8 @@ extern "Rust" {
     pub static DATA_END: ();
     pub static BSS_START: ();
     pub static BSS_END: ();
+    pub static HEAP_START: ();
+    pub static HEAP_END: ();
     pub static STACK_START: ();
     pub static STACK_END: ();
 }

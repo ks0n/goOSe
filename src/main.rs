@@ -7,6 +7,7 @@
 #![feature(naked_functions)]
 #![warn(missing_docs)]
 #![feature(custom_test_frameworks)]
+#![feature(default_alloc_error_handler)]
 #![test_runner(crate::utest::runner)]
 #![reexport_test_harness_main = "utests_launch"]
 
@@ -17,15 +18,16 @@ cfg_if! {
     }
 }
 
+extern crate alloc;
+
+mod allocator;
 mod arch;
 mod panic;
 mod serial;
 mod utils;
 
+use alloc::vec::Vec;
 use cfg_if::cfg_if;
-
-#[doc(hidden)]
-static GREET: &str = "Talk to me, Goose !";
 
 /// After all architecture specific initialization for correct rust execution is done,
 /// this is the "real" kernel entry point.
@@ -37,7 +39,17 @@ pub fn kmain() -> ! {
 
     print_sections_info();
 
-    println!("{}", GREET);
+    allocator::init();
+    println!("Allocator initialized");
+
+    let mut vec: Vec<usize> = Vec::new();
+    for i in 0..5 {
+        vec.push(i as usize);
+    }
+
+    for i in 0..vec.len() {
+        println!("vec[{}] = {}", i, vec[i]);
+    }
 
     loop {}
 }
@@ -57,6 +69,9 @@ fn print_sections_info() {
     });
     println!("BSS: {:p} -> {:p}", unsafe { &arch::BSS_START }, unsafe {
         &arch::BSS_END
+    });
+    println!("HEAP: {:p} -> {:p}", unsafe { &arch::HEAP_START }, unsafe {
+        &arch::HEAP_END
     });
     println!(
         "STACK: {:p} -> {:p}",
