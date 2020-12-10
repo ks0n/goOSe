@@ -22,7 +22,7 @@ jobs:
 
       - name: Setup environment
         run: |
-          export TARGET=${{ matrix.target }}
+          echo TARGET=${{ matrix.target }} >> $GITHUB_ENV
 
       - name: Rustup setup
         uses: actions-rs/toolchain@v1
