@@ -16,6 +16,7 @@ pub fn init() {
     }
 }
 
+#[cfg(test)]
 mod test {
     use alloc::vec::Vec;
 
