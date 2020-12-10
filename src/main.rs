@@ -26,7 +26,6 @@ mod panic;
 mod serial;
 mod utils;
 
-use alloc::vec::Vec;
 use cfg_if::cfg_if;
 
 /// After all architecture specific initialization for correct rust execution is done,
@@ -41,15 +40,6 @@ pub fn kmain() -> ! {
 
     allocator::init();
     println!("Allocator initialized");
-
-    let mut vec: Vec<usize> = Vec::new();
-    for i in 0..5 {
-        vec.push(i as usize);
-    }
-
-    for i in 0..vec.len() {
-        println!("vec[{}] = {}", i, vec[i]);
-    }
 
     loop {}
 }

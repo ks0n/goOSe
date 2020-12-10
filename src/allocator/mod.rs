@@ -16,17 +16,19 @@ pub fn init() {
     }
 }
 
-// mod test {
-//     use alloc::vec::Vec;
-//
-//     #[test_case]
-//     fn simple_alloc() {
-//         crate::allocator::init();
-//         let mut vec: Vec<usize> = Vec::new();
-//         for i in 0..5 {
-//             vec.push(i as usize);
-//         }
-//
-//         kassert!(true, "Simple allocation");
-//     }
-// }
+mod test {
+    use alloc::vec::Vec;
+
+    #[test_case]
+    fn simple_alloc() {
+        crate::allocator::init();
+        let mut vec: Vec<usize> = Vec::new();
+        for i in 0..5 {
+            vec.push(i as usize);
+        }
+
+        kassert!(true, "Simple allocation");
+    }
+
+    // TODO: Find a way to test out of memory case
+}
