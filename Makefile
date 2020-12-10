@@ -1,10 +1,13 @@
+TARGET ?= 'NOTARGETSELECTED'
+
+
 check:
-	cargo check -Zbuild-std=panic_abort
+	cargo check --target $(TARGET) -Zbuild-std=core,alloc 
 build:
-	cargo build -Zbuild-std=panic_abort
+	cargo build --target $(TARGET) -Zbuild-std=core,alloc
 run:
-	cargo run -Zbuild-std=panic_abort
+	cargo run --target $(TARGET) -Zbuild-std=core,alloc
 test:
-	cargo test -Zbuild-std=panic_abort
+	cargo test --target $(TARGET) -Zbuild-std=core,alloc
 clean:
 	cargo clean
