@@ -28,6 +28,10 @@ SECTIONS
     }
 
     . = ALIGN(4096);
+    HEAP_START = .;
+    HEAP_END = HEAP_START + 1M;
+
+    . = ALIGN(4096);
     STACK_END = .;
     STACK_START = STACK_END + 1M;
 

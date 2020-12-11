@@ -17,7 +17,6 @@ extern "C" {
     fn stvec_base();
 }
 
-#[naked]
 #[no_mangle]
 /// This function will never get called. It's only a wrapper around stvec_base which is aligned to
 /// 4 as needed for the base field in stvec register. As rust does not provide a way to align a function
