@@ -3,19 +3,17 @@
 goOSe is a minimal Kernel written in Rust. The aim of this project is to end up
 with a functional, albeit simple kernel.
 
-# Design
+## Design
 
 goOSe is focused on modularity. Each feature should be a submodule in the
 `src` directory, or its own crate.
 
-# Objectives
+## Objectives
 
 goOSe aims to become a tiny micro kernel. For more information, have a look at
 the [roadmap](ROADMAP.md)
 
-# Cargo dependencies
-
-* `bootimage`
+## Dependencies
 
 Enter in the provided nix-shell:
 `nix-shell goose.nix`
@@ -24,17 +22,17 @@ To specifiy a different shell like `zsh`, `nix-shell goose.nix --command zsh`
 
 This will install the required, non-cargo dependencies, such as `qemu`, locally.
 
-# Building
+## Building
 
-To build, use `cargo build`.
+To build, use `make build`.
 
-To run in qemu, use `cargo run`.
+To run in qemu, use `make run`.
 
-To run the tests, use `cargo test`.
+To run the tests, use `make test`.
 
-# Contributing
+## Contributing
 
-## Adding unit tests
+### Adding unit tests
 
 Adding unit tests is done through the `kassert*` macros. Here's an example:
 
@@ -50,9 +48,10 @@ fn new_test() {
 }
 ```
 
-# Origins
+## Origins
 
 * [Philipp Opperman's Blog](https://os.phil-opp.com/)
+* [The Adventures of OS: RISC-V OS using Rust](https://osblog.stephenmarz.com/index.html)
 * [LSE's K Project](https://k.lse.epita.fr)
 
 ## License and copyright
