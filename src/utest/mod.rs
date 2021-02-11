@@ -51,6 +51,6 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 #[test_case]
-fn test_slef_check() {
+fn test_self_check() {
     assert!(true);
 }
