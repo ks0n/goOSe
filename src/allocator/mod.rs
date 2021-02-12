@@ -27,8 +27,6 @@ mod test {
         for i in 0..5 {
             vec.push(i as usize);
         }
-
-        kassert!(true, "Simple allocation");
     }
 
     // TODO: Find a way to test out of memory case
