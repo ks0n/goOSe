@@ -1,12 +1,3 @@
 [build]
 target = "riscv64gc-unknown-none-elf"
-
-[unstable]
-build-std = ["core", "compiler_builtins"]
-build-std-features = ["compiler-builtins-mem"]
-
-[target.'cfg(target_arch = "riscv64")']
-rustflags = ["-C", "link-args=-Tsrc/arch/riscv64/link.lds"]
-# If nothing boots, raise -m value
-runner = 'qemu-system-riscv64 -M virt -m 35M -bios tools/fw_jump.elf -serial stdio -nographic -monitor none -kernel '
-
+rustflags = ["-C", "link-arg=-Tboards/virt.ld"]
