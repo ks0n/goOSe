@@ -1,0 +1,2 @@
+target = "riscv64gc-unknown-none-elf"
+linker_script = "virt.ld"
