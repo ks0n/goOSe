@@ -14,15 +14,14 @@ impl Ns16550 {
 
     pub fn write(&self, data: &str) {
         for byte in data.bytes() {
-            self.write_byte(byte);
+            self.write_transmitter_holding_reg(byte);
         }
     }
 
-    fn write_byte(&self, byte: u8) {
-        let addr = self.base_register_address as *mut u8;
-        unsafe {
-            *addr = byte;
-        }
+    fn write_transmitter_holding_reg(&self, byte: u8) {
+        // Transmitter Holding Register: +0 offset
+        let addr = (self.base_register_address + 0) as *mut u8;
+
         unsafe { core::ptr::write_volatile(addr, byte) }
     }
 }
