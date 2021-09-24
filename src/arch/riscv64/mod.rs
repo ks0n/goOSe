@@ -1,7 +1,5 @@
 use super::Architecture;
 
-extern "C" {}
-
 pub struct Riscv64 {}
 
 impl Riscv64 {
