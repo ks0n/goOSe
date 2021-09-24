@@ -1,5 +1,7 @@
 use super::Architecture;
 
+extern "C" {}
+
 pub struct Riscv64 {}
 
 impl Riscv64 {
@@ -8,4 +10,10 @@ impl Riscv64 {
     }
 }
 
-impl Architecture for Riscv64 {}
+impl Architecture for Riscv64 {
+    #[naked]
+    #[no_mangle]
+    unsafe extern "C" fn _start() -> ! {
+        asm!("la sp, STACK_START", "call k_main", options(noreturn));
+    }
+}

@@ -13,4 +13,6 @@ pub fn new_arch() -> impl Architecture {
     }
 }
 
-pub trait Architecture {}
+pub trait Architecture {
+    unsafe extern "C" fn _start() -> !;
+}
