@@ -4,18 +4,16 @@
 #![feature(naked_functions)]
 
 mod arch;
-mod serial;
+mod drivers;
 
 #[allow(unused_imports)]
 use panic_halt;
-
-use serial::Serial;
 
 #[no_mangle]
 fn k_main() -> ! {
     let _arch = arch::new_arch();
 
-    let serial = Serial::new(0x10000000);
+    let serial = drivers::ns16550::Ns16550::new(drivers::ns16550::QEMU_VIRT_BASE_ADDRESS);
     serial.write("GoOSe is booting\n\r");
 
     loop {}
