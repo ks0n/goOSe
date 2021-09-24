@@ -8,7 +8,7 @@ pub fn new_arch() -> impl Architecture {
     #[allow(unreachable_code)]
     {
         // Block is needed as `unreachable!` will expand to multiple lines
-        unreachable!("Architecture not supported! Did you run `gen_cargo.sh`");
+        unreachable!("Architecture not supported! Did you run `gen_cargo.sh`?");
     }
 }
 
