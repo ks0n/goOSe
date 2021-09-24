@@ -16,4 +16,8 @@ SECTIONS
     .rodata : {
         *(.rodata*);
     }
+
+    . = ALIGN(4096);
+    STACK_END = .;
+    STACK_START = STACK_END + 1M;
 }
