@@ -23,5 +23,6 @@ impl Ns16550 {
         unsafe {
             *addr = byte;
         }
+        unsafe { core::ptr::write_volatile(addr, byte) }
     }
 }
