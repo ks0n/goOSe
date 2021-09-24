@@ -29,5 +29,5 @@ if [ ! -e "$board_conf" ]; then
     exit 1
 fi
 
-mkdir -p .config
+mkdir -p .cargo
 ln -srf "$board_conf" .cargo/config
