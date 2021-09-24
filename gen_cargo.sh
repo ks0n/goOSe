@@ -6,9 +6,9 @@ BOARDS_DIR='boards'
 
 usage() {
     echo "Available boards:"
-    for board in "$(ls $BOARDS_DIR/*.conf)"
+    for board in "$BOARDS_DIR"/*.conf
     do
-        board="${board##$BOARDS_DIR/}" # Remove prefix
+        board="${board##"$BOARDS_DIR"/}" # Remove prefix
         board="${board%%.conf}" # Remove suffix
         echo -e "\t$board"
     done
@@ -24,7 +24,7 @@ fi
 board="$1"
 board_conf="$BOARDS_DIR/$board.conf"
 
-if [ ! -e $board_conf ]; then
+if [ ! -e "$board_conf" ]; then
     echo "Cannot find board: '$board' (looked for configuration file: $board_conf)"
     exit 1
 fi
