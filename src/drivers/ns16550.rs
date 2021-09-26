@@ -9,7 +9,9 @@ pub struct Ns16550 {
 
 impl Ns16550 {
     pub fn new(base_register_address: usize) -> Self {
-        Self { base_register_address }
+        Self {
+            base_register_address,
+        }
     }
 
     pub fn write(&self, data: &str) {
