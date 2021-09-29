@@ -12,17 +12,6 @@ use panic_halt;
 
 use arch::Architecture;
 
-unsafe fn enable_interrupt() {
-    // let trap = (trap_handler as fn()) as usize;
-    // stvec::write(trap, mtvec::TrapMode::Direct);
-    // sie::set_sext();
-    // sie::set_stimer();
-    // sstatus::set_sie();
-    // sie::set_ssoft();
-
-    asm!("csrw sip, {}", in(reg) 0x2);
-}
-
 #[no_mangle]
 fn k_main() -> ! {
     let mut arch = arch::new_arch();
@@ -32,16 +21,16 @@ fn k_main() -> ! {
 
     arch.init_interrupts();
 
-    // unsafe {
-    //     enable_interrupt();
-    // }
-    // let mut plic = drivers::plic::Plic::new(drivers::plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
-    // plic.set_threshold(0);
-    // plic.enable_interrupt(10);
-    // plic.set_priority(10, 1);
+    serial.enable_data_ready_interrupt();
+
+    let mut plic = drivers::plic::Plic::new(drivers::plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
+    plic.set_priority(10, 1);
+    plic.enable_interrupt(10);
+    plic.set_threshold(0);
 
     loop {
-        // let id = mhartid::read();
-        // plic.enable_interrupt(id as u16);
+        unsafe {
+            asm!("wfi");
+        }
     }
 }
