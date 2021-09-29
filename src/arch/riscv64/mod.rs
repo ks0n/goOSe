@@ -22,9 +22,9 @@ impl Riscv64 {
         }
     }
 
-    fn set_sip_ssip(&self) {
+    fn set_sie_seie(&self) {
         unsafe {
-            asm!("csrrs zero, sip, {}", in(reg)1 << 1);
+            asm!("csrrs zero, sie, {}", in(reg)1 << 9);
         }
     }
 
@@ -51,6 +51,7 @@ impl Architecture for Riscv64 {
     fn init_interrupts(&mut self) {
         self.set_sstatus_sie();
         self.set_sie_ssie();
+        self.set_sie_seie();
         self.set_stvec(trap_handler as u64);
 
         self.set_higher_trap_handler(|| {
@@ -62,8 +63,6 @@ impl Architecture for Riscv64 {
                 asm!("wfi");
             }
         });
-
-        self.set_sip_ssip();
     }
 }
 

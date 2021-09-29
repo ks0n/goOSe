@@ -20,13 +20,12 @@ fn k_main() -> ! {
 
     arch.init_interrupts();
 
-    // unsafe {
-    //     enable_interrupt();
-    // }
-    // let mut plic = drivers::plic::Plic::new(drivers::plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
-    // plic.set_threshold(0);
-    // plic.enable_interrupt(10);
-    // plic.set_priority(10, 1);
+    serial.enable_data_ready_interrupt();
+
+    let mut plic = drivers::plic::Plic::new(drivers::plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
+    plic.set_priority(10, 1);
+    plic.enable_interrupt(10);
+    plic.set_threshold(0);
 
     loop {
         unsafe {
