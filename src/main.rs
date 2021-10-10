@@ -30,7 +30,10 @@ fn k_main() -> ! {
 
     loop {
         unsafe {
-            asm!("wfi");
+            // Let's cause a page fault and see what happens. This should trap
+            // to trap_handler
+            let v = 0x0 as *mut u64;
+            v.write_volatile(0);
         }
     }
 }
