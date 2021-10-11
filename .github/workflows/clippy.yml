@@ -1,0 +1,26 @@
+name: Clippy
+
+on: pull_request
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      # For now goOSe is RISC-V only
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            target: riscv64gc-unknown-none-elf
+            components: clippy
+            override: true
+
+      - name: Run gen_cargo.sh
+        run: ./gen_cargo.sh riscv64_qemuvirt
+
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+
