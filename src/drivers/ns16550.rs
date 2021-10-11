@@ -2,6 +2,7 @@
 /// http://caro.su/msx/ocm_de1/16550.pdf
 
 pub const QEMU_VIRT_BASE_ADDRESS: usize = 0x10000000;
+pub const QEMU_VIRT_NS16550_INTERRUPT_NUMBER: u16 = 10;
 
 const TRANSMITTER_HOLDING_REGISTER: usize = 0;
 const INTERRUPT_ENABLE_REGISTER: usize = 1;
