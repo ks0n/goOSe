@@ -6,7 +6,7 @@ use cfg_if::cfg_if;
 pub fn new_arch() -> impl Architecture {
     cfg_if! {
         if #[cfg(target_arch = "riscv64")] {
-            return riscv64::Riscv64::new();
+            riscv64::Riscv64::new()
         } else {
             core::compile_error!("Architecture not supported! Did you run `gen_cargo.sh`?");
         }
