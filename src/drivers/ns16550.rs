@@ -9,7 +9,9 @@ pub struct Ns16550 {
 
 impl Ns16550 {
     pub fn new(base_register_address: usize) -> Self {
-        Self { base_register_address }
+        Self {
+            base_register_address,
+        }
     }
 
     pub fn write(&self, data: &str) {
@@ -20,7 +22,7 @@ impl Ns16550 {
 
     fn write_transmitter_holding_reg(&self, byte: u8) {
         // Transmitter Holding Register: +0 offset
-        let addr = (self.base_register_address + 0) as *mut u8;
+        let addr = (self.base_register_address) as *mut u8;
 
         unsafe { core::ptr::write_volatile(addr, byte) }
     }
