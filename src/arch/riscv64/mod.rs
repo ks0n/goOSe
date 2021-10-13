@@ -28,7 +28,7 @@ impl Riscv64 {
         }
     }
 
-    fn set_stvec(&self, addr: u64) {
+    fn set_stvec(&self, addr: usize) {
         unsafe {
             asm!("csrw stvec, {}", in(reg)(addr));
         }
@@ -52,7 +52,7 @@ impl Architecture for Riscv64 {
         self.set_sstatus_sie();
         self.set_sie_ssie();
         self.set_sie_seie();
-        self.set_stvec(trap_handler as u64);
+        self.set_stvec(trap_handler as usize);
 
         self.set_higher_trap_handler(|| {
             // well fuck we can't do anything without a context (like print a message on serial,
@@ -69,7 +69,7 @@ impl Architecture for Riscv64 {
 #[naked]
 #[no_mangle]
 #[repr(align(4))]
-unsafe extern "C" fn trap_handler() -> () {
+unsafe extern "C" fn trap_handler() {
     asm!(
         "
         ld t0, g_higher_trap_handler
