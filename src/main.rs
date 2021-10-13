@@ -6,8 +6,7 @@
 mod arch;
 mod drivers;
 
-#[allow(unused_imports)]
-use panic_halt;
+extern crate panic_halt;
 
 #[no_mangle]
 fn k_main() -> ! {
@@ -16,5 +15,9 @@ fn k_main() -> ! {
     let serial = drivers::ns16550::Ns16550::new(drivers::ns16550::QEMU_VIRT_BASE_ADDRESS);
     serial.write("GoOSe is booting\n\r");
 
-    loop {}
+    loop {
+        unsafe {
+            asm!("wfi");
+        }
+    }
 }
