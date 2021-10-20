@@ -10,6 +10,7 @@ mod drivers;
 extern crate panic_halt;
 
 use drivers::ns16550::*;
+use drivers::plic;
 
 use arch::Architecture;
 
@@ -24,9 +25,9 @@ fn k_main() -> ! {
 
     serial.enable_data_ready_interrupt();
 
-    let mut plic = drivers::plic::Plic::new(drivers::plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
-
     // Enable Serial interrupts
+    plic::init(plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
+    let plic = plic::get();
     if let Err(e) = plic.set_priority(QEMU_VIRT_NS16550_INTERRUPT_NUMBER, 1) {
         serial.write(e);
         serial.write("\n\r");
