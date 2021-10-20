@@ -15,4 +15,6 @@ pub fn new_arch() -> impl Architecture {
 
 pub trait Architecture {
     unsafe extern "C" fn _start() -> !;
+
+    fn init_interrupts(&mut self);
 }
