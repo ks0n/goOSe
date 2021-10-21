@@ -16,5 +16,8 @@ Cargo.lock
 # Generated .cargo/config
 .cargo/config
 
+# Generated memory.x for ARM32 platforms
+memory.x
+
 # Ignore tags
 tags
