@@ -16,12 +16,14 @@ static mut PLIC: Option<Plic> = None;
 
 pub struct Plic {
     base_register_address: usize,
+    source_handler: [fn(); PLIC_NUMBER_SOURCES as usize],
 }
 
 impl Plic {
-    pub const fn new(base_register_address: usize) -> Plic {
+    pub fn new(base_register_address: usize) -> Plic {
         Self {
             base_register_address,
+            source_handler: [not_registerd; PLIC_NUMBER_SOURCES as usize],
         }
     }
 
@@ -81,6 +83,10 @@ impl Plic {
             addr.write_volatile(source);
         }
     }
+
+    pub fn register_handler(&mut self, id: u16, handler: fn()) {
+        self.source_handler[id as usize] = handler;
+    }
 }
 
 pub fn init(base_register_address: usize) {
@@ -89,21 +95,24 @@ pub fn init(base_register_address: usize) {
     }
 }
 
-pub fn get() -> &'static Plic {
-    let plic = unsafe { &PLIC };
+pub fn get() -> &'static mut Plic {
+    let plic = unsafe { &mut PLIC };
 
-    match plic.as_ref() {
+    match plic.as_mut() {
         Some(plic_ref) => plic_ref,
         None => unreachable!("PLIC should have been initialized at this point"),
     }
 }
+
+fn not_registerd() {}
 
 #[no_mangle]
 pub extern "C" fn plic_handler() {
     let plic = get();
 
     let source = plic.claim();
-    if source == 10 {
-        plic.complete(source);
-    }
+
+    plic.source_handler[source as usize]();
+
+    plic.complete(source);
 }
