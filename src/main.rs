@@ -17,6 +17,8 @@ use arch::Architecture;
 fn k_main() -> ! {
     let mut arch = arch::new_arch();
 
+    drivers::drivers_init();
+
     let serial = Ns16550::new(QEMU_VIRT_BASE_ADDRESS);
     serial.write("GoOSe is booting\n\r");
 
