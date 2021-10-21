@@ -23,6 +23,7 @@ fi
 
 board="$1"
 board_conf="$BOARDS_DIR/$board.conf"
+board_linker_script="$BOARDS_DIR/$board.ld"
 
 if [ ! -e "$board_conf" ]; then
     echo "Cannot find board: '$board' (looked for configuration file: $board_conf)"
@@ -31,3 +32,4 @@ fi
 
 mkdir -p .cargo
 ln -srf "$board_conf" .cargo/config
+ln -srf "$board_linker_script" memory.x
