@@ -1,4 +1,5 @@
 # goose
+
 A minimal Kernel written in Rust
 
 # Building
@@ -10,3 +11,16 @@ A minimal Kernel written in Rust
 - Each platform configuration might contains a custom runner setup, meaning that
   depending on your use-case `cargo run` will be able to launch an emulator or
   flash a connected microcontroller.
+
+## Roadmap
+
+- [ ] Virtual Memory Manager
+    - [ ] Allocator API
+    - [ ] Virtual Memory handler/MMU usage
+- [ ] Basic in-kernel filesystem
+- [ ] Device-tree handling
+- [ ] ELF loader
+- [ ] IPC implementation
+- [ ] Drivers
+    - [ ] Driver API
+    - [ ] Kernel API
