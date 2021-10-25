@@ -19,7 +19,7 @@ A minimal Kernel written in Rust
     - [ ] Virtual Memory handler/MMU usage
 - [ ] Basic in-kernel filesystem
 - [ ] Device-tree handling
-- [ ] ELF loader
+- [ ] In-kernel ELF loader
 - [ ] IPC implementation
 - [ ] Drivers
     - [ ] Driver API
