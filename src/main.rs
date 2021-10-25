@@ -10,6 +10,7 @@
 mod arch;
 mod drivers;
 mod kernel_serial;
+mod mm;
 
 #[cfg(test)]
 mod kernel_tests;
