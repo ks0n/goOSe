@@ -2,7 +2,7 @@ mod paging;
 mod simple_page_allocator;
 
 use crate::utils;
-pub use paging::{PAddr, PageTable, VAddr};
+pub use paging::{PAddr, PageTable, VAddr, load_pt};
 pub use simple_page_allocator::SimplePageAllocator;
 
 // use crate::arch::ArchitectureMemory;
@@ -15,6 +15,18 @@ extern "C" {
 
     pub static HEAP_START: *mut u8;
     pub static HEAP_END: *const u8;
+}
+
+pub fn map_address_space(root: &mut PageTable, allocator: &mut SimplePageAllocator) {
+    let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
+    let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
+    let page_size = allocator.page_size();
+    let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
+
+    for addr in (kernel_start..kernel_end_align).step_by(page_size) {
+        let addr = addr as u64;
+        root.map(allocator, PAddr::from_u64(addr), VAddr::from_u64(addr));
+    }
 }
 
 // #[derive(Copy, Clone)]
