@@ -74,10 +74,13 @@ impl<'a> SimplePageAllocator<'a> {
 
         let metadata_size = core::mem::size_of_val(metadata);
 
+        let heap = unsafe { start.add(metadata_size) };
+        let heap = unsafe { heap.add(heap.align_offset(4096)) };
+
         Self {
             metadata,
             page_size,
-            heap: unsafe { start.add(metadata_size) },
+            heap,
         }
     }
 
