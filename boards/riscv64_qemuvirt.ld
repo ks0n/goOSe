@@ -4,6 +4,7 @@ SECTIONS
 {
     . = 0x80200000;
 
+    KERNEL_START = . ;
     .text : {
         *(.text._start); # _start should allways be at the top of all sections
         *(.text*);
@@ -16,6 +17,7 @@ SECTIONS
     .rodata : {
         *(.rodata*);
     }
+    KERNEL_END = . ;
 
     . = ALIGN(4096);
     STACK_END = .;

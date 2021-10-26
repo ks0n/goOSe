@@ -43,6 +43,11 @@ fn k_main() -> ! {
     }
     plic.set_threshold(0);
 
+    let pt = mm::PageTable::new(&mut spa);
+
+    mm::map_address_space(pt, &mut spa);
+    mm::load_pt(pt);
+
     loop {
         unsafe {
             asm!("wfi");

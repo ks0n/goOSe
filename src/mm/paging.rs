@@ -69,14 +69,6 @@ impl PAddr {
             self.addr &= !mask; // clear all the bits above the 55th
         }
     }
-
-    fn addr(&self) -> u64 {
-        let addr = self.ppn(2);
-        let addr = addr << 8 | self.ppn(1);
-        let addr = addr << 8 | self.ppn(0);
-
-        addr << 12
-    }
 }
 
 #[repr(u64)]
@@ -106,6 +98,10 @@ impl PageTableEntry {
         self.v() == 1
     }
 
+    fn set_valid(&mut self) {
+        self.set_v(1)
+    }
+
     fn set_paddr(&mut self, paddr: &PAddr) {
         self.set_ppn2(paddr.ppn(2) as u32);
         self.set_ppn1(paddr.ppn(1) as u16);
@@ -128,21 +124,6 @@ impl PageTableEntry {
             * 4096u64;
         unsafe { (addr as *mut PageTable).as_mut().unwrap() }
     }
-}
-
-#[repr(u8)]
-pub enum SatpMode {
-    Bare = 0,
-    Sv39 = 8,
-    Sv48 = 9,
-    Sv57 = 10,
-    Sv64 = 11,
-}
-
-pub struct Satp {
-    ppn: B44,
-    asid: B16,
-    mode: B4,
 }
 
 pub struct PageTable {
@@ -176,12 +157,14 @@ impl PageTable {
         if level == 0 {
             pte.set_paddr(&paddr);
             pte.set_rwx();
+            pte.set_valid();
             return;
         }
 
         if !pte.is_valid() {
             let new_page_table = PageTable::new(allocator);
             pte.set_target(new_page_table as *mut PageTable);
+            pte.set_valid()
         }
 
         pte.get_target().map_inner(allocator, paddr, vaddr, level - 1);
@@ -194,5 +177,36 @@ impl PageTable {
         vaddr: VAddr,
     ) {
         self.map_inner(allocator, paddr, vaddr, 2)
+    }
+}
+#[repr(u8)]
+pub enum SatpMode {
+    Bare = 0,
+    Sv39 = 8,
+    Sv48 = 9,
+    Sv57 = 10,
+    Sv64 = 11,
+}
+
+#[repr(u64)]
+#[bitfield]
+pub struct Satp {
+    ppn: B44,
+    asid: B16,
+    mode: B4,
+}
+
+pub fn load_pt(pt: &PageTable) {
+    let pt_addr = pt as *const PageTable as usize;
+    let ppn = pt_addr >> 12;
+
+    let satp = Satp::new()
+        .with_ppn(ppn as u64)
+        .with_asid(0)
+        .with_mode(SatpMode::Sv39 as u8);
+
+    unsafe {
+        asm!("csrw satp, {}", in(reg)u64::from(satp));
+        asm!("sfence.vma");
     }
 }
