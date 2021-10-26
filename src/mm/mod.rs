@@ -1,6 +1,8 @@
+mod paging;
 mod simple_page_allocator;
 
 pub use simple_page_allocator::SimplePageAllocator;
+pub use paging::{PAddr, VAddr, PageTable};
 
 // use crate::arch::ArchitectureMemory;
 
