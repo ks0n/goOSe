@@ -2,54 +2,80 @@ use super::SimplePageAllocator;
 use modular_bitfield::{bitfield, prelude::*};
 
 #[repr(C)]
-#[bitfield]
 pub struct VAddr {
-    page_offset: B12,
-    vpn0: B9,
-    vpn1: B9,
-    vpn2: B9,
-    unused: B25,
+    addr: u64,
 }
 
 impl VAddr {
-    fn try_from_addr(addr: u64) -> VAddr {
-        let mut vaddr = VAddr::from_bytes(addr.to_le_bytes());
+    pub fn from_u64(addr: u64) -> VAddr {
+        let mut vaddr = Self { addr };
 
-        let bit38 = vaddr.vpn2() >> 8;
+        let bit38 = (vaddr.vpn(2) >> 8) != 0;
 
-        if bit38 == 1 {
-            vaddr.set_unused(!0);
-        } else {
-            vaddr.set_unused(0);
-        }
+        vaddr.extend_38th_bit(bit38);
 
         vaddr
     }
 
-    pub fn get_vpn(&self, nb: usize) -> u16 {
-        match nb {
-            0 => self.vpn0(),
-            1 => self.vpn1(),
-            2 => self.vpn2(),
-            _ => unreachable!(),
+    pub fn vpn(&self, nb: usize) -> u16 {
+        let vpn = self.addr >> 12;
+
+        ((vpn >> (nb * 9)) & 0x1ff ) as u16
+    }
+
+    fn extend_38th_bit(&mut self, bit: bool) {
+        let mask = ((!1u64) >> 38) << 38;
+
+        if bit {
+            self.addr |= mask; // set all the bits above the 38th
+        } else {
+            self.addr &= !mask; // clear all the bits above the 38th
         }
     }
 }
 
 #[repr(C)]
-#[bitfield]
 pub struct PAddr {
-    page_offset: B12,
-    ppn0: B9,
-    ppn1: B9,
-    ppn2: B26,
-    unused: B8,
+    addr: u64,
 }
 
 impl PAddr {
+    pub fn from_u64(addr: u64) -> Self {
+        let mut paddr = Self { addr };
+
+        let bit55 = (paddr.ppn(2) >> 8) != 0;
+
+        paddr.extend_55th_bit(bit55);
+
+        paddr
+    }
+
+    fn ppn(&self, nb: usize) -> u64 {
+        let ppn = self.addr >> 12;
+
+        if nb == 2 {
+            (ppn >> (nb * 9)) & 0x3fffff
+        } else {
+            (ppn >> (nb * 9)) & 0x1ff
+        }.into()
+    }
+
+    fn extend_55th_bit(&mut self, bit: bool) {
+        let mask = ((!0u64) >> 55) << 55;
+
+        if bit {
+            self.addr |= mask; // set all the bits above the 55th
+        } else {
+            self.addr &= !mask; // clear all the bits above the 55th
+        }
+    }
+
     fn addr(&self) -> u64 {
-        ((self.ppn2() as u64) << 18 | (self.ppn1() as u64) << 9 | self.ppn0() as u64)
-            * 4096u64
+        let addr = self.ppn(2);
+        let addr = addr << 8 | self.ppn(1);
+        let addr = addr << 8 | self.ppn(0);
+
+        addr << 12
     }
 }
 
@@ -80,10 +106,21 @@ impl PageTableEntry {
         self.v() == 1
     }
 
-    fn set_target(&mut self, target: u64) {
-        self.set_ppn2(((target / 4096u64) >> 18) as u32);
-        self.set_ppn1(((target / 4096u64) >> 9) as u16);
-        self.set_ppn0((target / 4096u64) as u16);
+    fn set_paddr(&mut self, paddr: &PAddr) {
+        self.set_ppn2(paddr.ppn(2) as u32);
+        self.set_ppn1(paddr.ppn(1) as u16);
+        self.set_ppn0(paddr.ppn(0) as u16);
+    }
+
+    fn set_target(&mut self, pt: *mut PageTable) {
+        let addr = pt as u64;
+        self.set_paddr(&PAddr::from_u64(addr))
+    }
+
+    fn set_rwx(&mut self) {
+        self.set_r(1);
+        self.set_w(1);
+        self.set_x(1);
     }
 
     fn get_target(&mut self) -> &mut PageTable {
@@ -132,20 +169,22 @@ impl PageTable {
         vaddr: VAddr,
         level: usize,
     ) {
-        let vpn = vaddr.get_vpn(level);
+        let vpn = vaddr.vpn(level);
 
-        let entry = &mut self.entries[vpn as usize];
+        let pte = &mut self.entries[vpn as usize];
 
         if level == 0 {
-            entry.set_target(paddr.addr());
+            pte.set_paddr(&paddr);
+            pte.set_rwx();
+            return;
         }
 
-        if !entry.is_valid() {
+        if !pte.is_valid() {
             let new_page_table = PageTable::new(allocator);
-            entry.set_target(new_page_table as *mut PageTable as u64);
+            pte.set_target(new_page_table as *mut PageTable);
         }
 
-        entry.get_target().map_inner(allocator, paddr, vaddr, level - 1);
+        pte.get_target().map_inner(allocator, paddr, vaddr, level - 1);
     }
 
     pub fn map(
