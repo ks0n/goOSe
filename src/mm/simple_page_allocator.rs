@@ -1,4 +1,5 @@
 use crate::mm;
+use crate::utils;
 
 #[derive(Debug)]
 pub enum AllocError {
@@ -56,10 +57,6 @@ pub struct SimplePageAllocator<'a> {
     heap: *mut u8,
 }
 
-fn external_symbol_value<T>(sym: &T) -> usize {
-    (sym as *const T) as usize
-}
-
 impl<'a> SimplePageAllocator<'a> {
     fn new(start: *mut u8, size: usize, page_size: usize) -> Self {
         let possible_num_pages = size / page_size;
@@ -87,8 +84,8 @@ impl<'a> SimplePageAllocator<'a> {
     pub fn from_heap() -> Self {
         let (heap_start, heap_end) = unsafe {
             (
-                external_symbol_value(&mm::HEAP_START),
-                external_symbol_value(&mm::HEAP_END),
+                utils::external_symbol_value(&mm::HEAP_START),
+                utils::external_symbol_value(&mm::HEAP_END),
             )
         };
         let heap_size = heap_end - heap_start;
