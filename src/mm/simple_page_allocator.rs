@@ -1,50 +1,52 @@
 use crate::mm;
 
-#[repr(u8)]
-#[derive(PartialEq)]
-enum PageFlags {
-    Empty = 0,
-    Used = 1,
-    /// When you have a contiguous allocation of multiple pages, Last is used to indicate the Last page of the allocation.
-    Last = 2,
-}
-
+#[derive(Debug)]
 pub enum AllocError {
     OutOfMemory,
     InvalidFree,
 }
 
+#[derive(PartialEq)]
+enum PageUsage {
+    Empty,
+    Used,
+}
+
+// TODO: We can optimize this by just keeping an u8 flag or a repr(u8) enum
 struct Page {
-    flags: u8, // flags is used as a bitfield of PageFlag
+    used: PageUsage,
+    /// When you have a contiguous allocation of multiple pages, Last is used to indicate the Last page of the allocation.
+    is_last: bool,
 }
 
 impl Page {
     pub fn is_empty(&self) -> bool {
-        self.flags & PageFlags::Empty as u8 != 0
+        self.used == PageUsage::Empty
     }
 
     pub fn is_used(&self) -> bool {
-        self.flags & PageFlags::Used as u8 != 0
+        self.used == PageUsage::Used
     }
 
     pub fn is_last(&self) -> bool {
-        self.flags & PageFlags::Last as u8 != 0
+        self.is_last
     }
 
     pub fn set_empty(&mut self) {
-        self.flags |= PageFlags::Empty as u8;
+        self.used = PageUsage::Empty;
     }
 
     pub fn set_used(&mut self) {
-        self.flags |= PageFlags::Used as u8;
+        self.used = PageUsage::Used;
     }
 
     pub fn set_last(&mut self) {
-        self.flags |= PageFlags::Last as u8;
+        self.is_last = true;
     }
 
     pub fn clear(&mut self) {
-        self.flags = 0;
+        self.used = PageUsage::Empty;
+        self.is_last = false;
     }
 }
 
@@ -101,8 +103,11 @@ impl<'a> SimplePageAllocator<'a> {
                 let mut consecutive_pages = 1;
                 while j < self.metadata.len() {
                     if consecutive_pages == page_count {
-                        self.metadata[i..j].iter_mut().for_each(|page| page.set_used());
-                        self.metadata[j - 1].set_last();
+                        self.metadata[i].set_used();
+                        self.metadata[i..j]
+                            .iter_mut()
+                            .for_each(|page| page.set_used());
+                        self.metadata[j].set_last();
 
                         return unsafe { Ok(self.heap.add(i * self.page_size)) };
                     }
@@ -114,9 +119,8 @@ impl<'a> SimplePageAllocator<'a> {
                     consecutive_pages += 1;
                     j += 1;
                 }
-
-                i += 1;
             }
+            i += 1;
         }
 
         Err(AllocError::OutOfMemory)
