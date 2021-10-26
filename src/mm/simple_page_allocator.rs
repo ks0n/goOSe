@@ -3,14 +3,15 @@ use crate::mm;
 #[repr(u8)]
 #[derive(PartialEq)]
 enum PageFlags {
-    Empty,
-    Used,
+    Empty = 0,
+    Used = 1,
     /// When you have a contiguous allocation of multiple pages, Last is used to indicate the Last page of the allocation.
-    Last,
+    Last = 2,
 }
 
 pub enum AllocError {
     OutOfMemory,
+    InvalidFree,
 }
 
 struct Page {
@@ -24,6 +25,14 @@ impl Page {
 
     pub fn is_used(&self) -> bool {
         self.flags & PageFlags::Used as u8 != 0
+    }
+
+    pub fn is_last(&self) -> bool {
+        self.flags & PageFlags::Last as u8 != 0
+    }
+
+    pub fn set_empty(&mut self) {
+        self.flags |= PageFlags::Empty as u8;
     }
 
     pub fn set_used(&mut self) {
@@ -111,5 +120,26 @@ impl<'a> SimplePageAllocator<'a> {
         }
 
         Err(AllocError::OutOfMemory)
+    }
+
+    pub fn dealloc_pages(&mut self, ptr: *mut u8) -> Result<(), AllocError> {
+        // FIXME: Make sure that the pointer is aligned
+        let start = (ptr as usize - self.heap as usize) / self.page_size;
+
+        for page in self.metadata[start..].iter_mut() {
+            if !page.is_used() {
+                return Err(AllocError::InvalidFree);
+            }
+
+            page.set_empty();
+
+            if page.is_last() {
+                page.clear();
+                page.set_empty();
+                break;
+            }
+        }
+
+        Ok(())
     }
 }
