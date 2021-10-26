@@ -11,6 +11,7 @@ mod arch;
 mod drivers;
 mod kernel_serial;
 mod mm;
+mod utils;
 
 #[cfg(test)]
 mod kernel_tests;
