@@ -146,4 +146,8 @@ impl<'a> SimplePageAllocator<'a> {
 
         Ok(())
     }
+
+    pub fn page_size(&self) -> usize {
+        self.page_size
+    }
 }
