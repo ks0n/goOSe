@@ -1,7 +1,6 @@
 /// The only role of the ARM32 module is to provide the startup function, which is
 /// already implemented in the `cortex_m` crate. Later on, the [`Arm32`] crate may
 /// keep references or instances of different devices available on the various platforms
-
 use crate::Architecture;
 
 use cortex_m_rt::entry;

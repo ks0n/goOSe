@@ -1,7 +1,7 @@
-#[cfg(target_arch = "riscv64")]
-mod riscv64;
 #[cfg(target_arch = "arm")]
 mod arm32;
+#[cfg(target_arch = "riscv64")]
+mod riscv64;
 
 use cfg_if::cfg_if;
 

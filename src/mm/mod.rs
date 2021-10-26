@@ -11,7 +11,7 @@ extern "C" {
     pub static KERNEL_END: usize;
 
     pub static HEAP_START: *mut u8;
-    pub static HEAP_END: * const u8;
+    pub static HEAP_END: *const u8;
 }
 
 // #[derive(Copy, Clone)]
@@ -19,7 +19,6 @@ extern "C" {
 //     addr: usize,
 //     size: usize,
 // }
-
 
 // pub struct MemoryManager<T: ArchitectureMemory> {
 //     mem: T,
@@ -40,8 +39,6 @@ extern "C" {
 //             core::slice::from_raw_parts_mut(heap_start as *mut Vma, vma_count)
 //         };
 //         let vmas = FixedVec::new(heap_slice);
-
-
 
 //         vma.push(initial_vma).unwrap();
 
