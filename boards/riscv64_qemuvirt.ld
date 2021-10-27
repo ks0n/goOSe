@@ -17,13 +17,16 @@ SECTIONS
     .rodata : {
         *(.rodata*);
     }
+
+    . = ALIGN(4096);
+    STACK_END = . ;
+    . = . + 1M;
+    STACK_START = . ;
+
+    . = ALIGN(4096);
+    HEAP_START = . ;
+    . = . + 4M;
+    HEAP_END = . ;
+
     KERNEL_END = . ;
-
-    . = ALIGN(4096);
-    STACK_END = .;
-    STACK_START = STACK_END + 1M;
-
-    . = ALIGN(4096);
-    HEAP_START = .;
-    HEAP_END = HEAP_START + 4M;
 }
