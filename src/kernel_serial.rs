@@ -9,32 +9,19 @@ fn check_init() {
         match &KERNEL_SERIAL {
             None => {
                 KERNEL_SERIAL = Some(Ns16550::new(QEMU_VIRT_BASE_ADDRESS));
-                KERNEL_SERIAL.as_ref().unwrap().enable_data_ready_interrupt();
-            },
-            Some(_) => {},
+            }
+            Some(_) => {}
         }
     }
 }
 
 fn get() -> &'static Ns16550 {
     check_init();
-    unsafe {
-        KERNEL_SERIAL.as_ref().unwrap()
-    }
+    unsafe { KERNEL_SERIAL.as_ref().unwrap() }
 }
 
 fn write(data: &str) {
     get().write(data);
-}
-
-fn read() -> u8 {
-    get().read()
-}
-
-pub fn interrupt_handler() {
-    let byte = read();
-    let arr = [byte; 1];
-    write(core::str::from_utf8(&arr).unwrap());
 }
 
 struct KernelSerialWriter;
@@ -64,6 +51,16 @@ macro_rules! kprintln {
 
 #[macro_export]
 macro_rules! dbg {
-    () => ($crate::kprintln!("[{}:{}]", core::file!(), core::line!()));
-    ($expr:expr) => ($crate::kprintln!("[{}:{}] {} = {:#?}", core::file!(), core::line!(), core::stringify!($expr), &$expr))
+    () => {
+        $crate::kprintln!("[{}:{}]", core::file!(), core::line!())
+    };
+    ($expr:expr) => {
+        $crate::kprintln!(
+            "[{}:{}] {} = {:#?}",
+            core::file!(),
+            core::line!(),
+            core::stringify!($expr),
+            &$expr
+        )
+    };
 }

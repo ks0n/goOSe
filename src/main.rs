@@ -33,7 +33,6 @@ fn k_main() -> ! {
         kprintln!("{}", e);
     }
     plic.set_threshold(0);
-    plic.register_handler(10, kernel_serial::interrupt_handler);
 
     loop {
         unsafe {
