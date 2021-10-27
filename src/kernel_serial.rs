@@ -59,5 +59,11 @@ macro_rules! kprint {
 #[macro_export]
 macro_rules! kprintln {
     () => ($crate::kprint!("\r\n"));
-    ($($args:tt)*) => ($crate::kprint!("{}\r\n", $($args)*))
+    ($($args:tt)*) => ($crate::kprint!("{}\r\n", format_args!($($args)*)))
+}
+
+#[macro_export]
+macro_rules! dbg {
+    () => ($crate::kprintln!("[{}:{}]", core::file!(), core::line!()));
+    ($expr:expr) => ($crate::kprintln!("[{}:{}] {} = {:#?}", core::file!(), core::line!(), core::stringify!($expr), &$expr))
 }
