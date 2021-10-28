@@ -2,7 +2,7 @@ mod paging;
 mod simple_page_allocator;
 
 use crate::utils;
-pub use paging::{PAddr, PageTable, VAddr, load_pt};
+pub use paging::{load_pt, PAddr, PageTable, VAddr};
 pub use simple_page_allocator::SimplePageAllocator;
 
 // use crate::arch::ArchitectureMemory;
@@ -27,6 +27,13 @@ pub fn map_address_space(root: &mut PageTable, allocator: &mut SimplePageAllocat
         let addr = addr as u64;
         root.map(allocator, PAddr::from_u64(addr), VAddr::from_u64(addr));
     }
+
+    let serial_page = unsafe { crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS };
+    root.map(
+        allocator,
+        PAddr::from_u64(serial_page as u64),
+        VAddr::from_u64(serial_page as u64),
+    );
 }
 
 // #[derive(Copy, Clone)]
