@@ -3,12 +3,16 @@
 #![feature(asm)]
 #![feature(fn_align)]
 #![feature(naked_functions)]
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::kernel_tests::runner)]
+#![reexport_test_harness_main = "ktests_launch"]
 
 mod arch;
 mod drivers;
 mod kernel_serial;
 
-extern crate panic_halt;
+#[cfg(test)]
+mod kernel_tests;
 
 use drivers::ns16550::*;
 use drivers::plic;
@@ -17,6 +21,9 @@ use arch::Architecture;
 
 #[no_mangle]
 fn k_main() -> ! {
+    #[cfg(test)]
+    ktests_launch();
+
     let mut arch = arch::new_arch();
 
     kprintln!("GoOSe is booting");
