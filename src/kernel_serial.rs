@@ -38,6 +38,16 @@ pub fn print_fmt(args: fmt::Arguments) {
     KernelSerialWriter.write_fmt(args).unwrap()
 }
 
+#[panic_handler]
+#[cfg(not(test))]
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    crate::kprintln!("\x1b[31mkernel panic\x1b[0m: {}", info);
+
+    loop {
+        unsafe { asm!("wfi") }
+    }
+}
+
 #[macro_export]
 macro_rules! kprint {
     ($($args:tt)*) => ($crate::kernel_serial::print_fmt(format_args!($($args)*)))
