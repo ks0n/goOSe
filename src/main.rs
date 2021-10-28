@@ -48,6 +48,8 @@ fn k_main() -> ! {
     mm::map_address_space(pt, &mut spa);
     mm::load_pt(pt);
 
+    serial_write("Virtual memory enabled!\n\r");
+
     loop {
         unsafe {
             asm!("wfi");
