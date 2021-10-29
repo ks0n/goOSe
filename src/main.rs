@@ -43,10 +43,8 @@ fn k_main() -> ! {
     }
     plic.set_threshold(0);
 
-    let pt = mm::PageTable::new(&mut spa);
-
-    mm::map_address_space(pt, &mut spa);
-    mm::load_pt(pt);
+    let memory = mm::MemoryManager::new::<arch::MemoryImpl>();
+    memory.map_address_space();
 
     serial_write("Virtual memory enabled!\n\r");
 
