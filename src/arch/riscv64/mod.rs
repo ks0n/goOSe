@@ -1,6 +1,8 @@
 use super::Architecture;
 use crate::drivers::plic::plic_handler;
 
+pub mod sv39;
+
 #[no_mangle]
 static mut g_higher_trap_handler: *const () = 0 as *const ();
 

@@ -1,6 +1,3 @@
-use crate::mm;
-use crate::utils;
-
 #[derive(Debug)]
 pub enum AllocError {
     OutOfMemory,
@@ -81,17 +78,10 @@ impl<'a> SimplePageAllocator<'a> {
         }
     }
 
-    pub fn from_heap() -> Self {
-        let (heap_start, heap_end) = unsafe {
-            (
-                utils::external_symbol_value(&mm::HEAP_START),
-                utils::external_symbol_value(&mm::HEAP_END),
-            )
-        };
+    pub fn from_heap(heap_start: usize, heap_end: usize, page_size: usize) -> Self {
         let heap_size = heap_end - heap_start;
 
-        // TODO: don't hardcode the 4096, get it from MemoryManager or something (it doesn't really exist as I have removed it for now
-        Self::new(heap_start as *mut u8, heap_size, 4096)
+        Self::new(heap_start as *mut u8, heap_size, page_size)
     }
 
     // FIXME: Unit test this
