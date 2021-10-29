@@ -5,7 +5,7 @@ pub mod ns16550;
 pub mod plic;
 
 trait Driver {
-    fn probe(compat: &str) -> bool {}
+    fn probe(compat: &str) -> bool;
 }
 
 pub static DRIVERS_PROBE: &[fn(&str) -> bool] = &[ns16550::Ns16550::probe];
