@@ -113,10 +113,10 @@ impl PageTableEntry {
         self.set_paddr(&PAddr::from_u64(addr))
     }
 
-    fn set_rwx(&mut self) {
-        self.set_r(1);
-        self.set_w(1);
-        self.set_x(1);
+    fn set_perms(&mut self, perms: Permissions) {
+        self.set_r(perms.contains(Permissions::Read) as u8)
+        self.set_w(perms.contains(Permissions::Write) as u8)
+        self.set_x(perms.contains(Permissions::Execute) as u8)
     }
 
     fn get_target(&mut self) -> &mut PageTable {
@@ -148,6 +148,7 @@ impl PageTable {
         allocator: &mut SimplePageAllocator,
         paddr: PAddr,
         vaddr: VAddr,
+        perms: Permissions,
         level: usize,
     ) {
         let vpn = vaddr.vpn(level);
@@ -156,7 +157,7 @@ impl PageTable {
 
         if level == 0 {
             pte.set_paddr(&paddr);
-            pte.set_rwx();
+            pte.set_perms(perms)
             pte.set_valid();
             return;
         }
@@ -175,8 +176,10 @@ impl PageTable {
         allocator: &mut SimplePageAllocator,
         paddr: PAddr,
         vaddr: VAddr,
+        perms: Permissions,
+
     ) {
-        self.map_inner(allocator, paddr, vaddr, 2)
+        self.map_inner(allocator, paddr, vaddr, perms, 2)
     }
 }
 #[repr(u8)]

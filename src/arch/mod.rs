@@ -32,6 +32,6 @@ pub trait Architecture {
 pub trait ArchitectureMemory {
     fn new<'alloc>(allocator: &mut mm::SimplePageAllocator<'alloc>) -> &'alloc mut Self;
     fn get_page_size() -> usize;
-    fn map(&mut self, to: usize, from: usize, perms: mm::Permissions);
+    fn map(&mut self, allocator: &mut mm::SimplePageAllocator, to: usize, from: usize, perms: mm::Permissions);
     fn reload(&mut self);
 }

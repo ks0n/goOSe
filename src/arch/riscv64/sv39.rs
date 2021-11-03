@@ -1,6 +1,9 @@
 use modular_bitfield::{bitfield, prelude::*};
 use crate::mm;
 use crate::arch;
+use crate::arch::ArchitectureMemory;
+use core::convert::TryInto;
+
 
 #[repr(C)]
 pub struct VAddr {
@@ -76,17 +79,26 @@ impl PAddr {
 #[bitfield]
 struct PageTableEntry {
     v: B1,
+    #[skip(getters)]
     r: B1,
+    #[skip(getters)]
     w: B1,
+    #[skip(getters)]
     x: B1,
+    #[skip]
     u: B1,
+    #[skip]
     g: B1,
+    #[skip]
     a: B1,
+    #[skip]
     d: B1,
+    #[skip]
     rsw: B2,
     ppn0: B9,
     ppn1: B9,
     ppn2: B26,
+    #[skip]
     reserved: B10,
 }
 
@@ -115,9 +127,9 @@ impl PageTableEntry {
     }
 
     fn set_perms(&mut self, perms: mm::Permissions) {
-        self.set_r(perms.contains(mm::Permissions::Read) as u8);
-        self.set_w(perms.contains(mm::Permissions::Write) as u8);
-        self.set_x(perms.contains(mm::Permissions::Execute) as u8);
+        self.set_r(perms.contains(mm::Permissions::READ) as u8);
+        self.set_w(perms.contains(mm::Permissions::WRITE) as u8);
+        self.set_x(perms.contains(mm::Permissions::EXECUTE) as u8);
     }
 
     fn get_target(&mut self) -> &mut PageTable {
@@ -157,13 +169,13 @@ impl PageTable {
             pte.set_valid()
         }
 
-        pte.get_target().map_inner(allocator, paddr, vaddr, level - 1);
+        pte.get_target().map_inner(allocator, paddr, vaddr, perms, level - 1);
     }
 
 }
 
 impl arch::ArchitectureMemory for PageTable {
-    fn new<'alloc>(allocator: &mut mm::SimplePageAllocator<'alloc>) -> &'alloc mut PageTable {
+    fn new<'alloc>(allocator: &mut mm::SimplePageAllocator<'alloc>) -> &'alloc mut Self {
         // FIXME: No unwrap here
         let page = allocator.alloc_pages(1).unwrap();
         let page_table = page as *mut PageTable;
@@ -187,7 +199,7 @@ impl arch::ArchitectureMemory for PageTable {
         perms: mm::Permissions,
 
     ) {
-        self.map_inner(allocator, PAddr::from_u64(to), VAddr::from_u64(from), perms, 2)
+        self.map_inner(allocator, PAddr::from_u64(to.try_into().unwrap()), VAddr::from_u64(from.try_into().unwrap()), perms, 2)
     }
 
     fn reload(&mut self) {
@@ -197,18 +209,21 @@ impl arch::ArchitectureMemory for PageTable {
 
 #[repr(u8)]
 pub enum SatpMode {
-    Bare = 0,
+    _Bare = 0,
     Sv39 = 8,
-    Sv48 = 9,
-    Sv57 = 10,
-    Sv64 = 11,
+    _Sv48 = 9,
+    _Sv57 = 10,
+    _Sv64 = 11,
 }
 
 #[repr(u64)]
 #[bitfield]
 pub struct Satp {
+    #[skip(getters)]
     ppn: B44,
+    #[skip(getters)]
     asid: B16,
+    #[skip(getters)]
     mode: B4,
 }
 
