@@ -22,14 +22,17 @@ impl Page {
         self.used == PageUsage::Empty
     }
 
+    #[allow(dead_code)]
     pub fn is_used(&self) -> bool {
         self.used == PageUsage::Used
     }
 
+    #[allow(dead_code)]
     pub fn is_last(&self) -> bool {
         self.is_last
     }
 
+    #[allow(dead_code)]
     pub fn set_empty(&mut self) {
         self.used = PageUsage::Empty;
     }
@@ -116,6 +119,7 @@ impl<'a> SimplePageAllocator<'a> {
         Err(AllocError::OutOfMemory)
     }
 
+    #[allow(dead_code)]
     pub fn dealloc_pages(&mut self, ptr: *mut u8) -> Result<(), AllocError> {
         // FIXME: Make sure that the pointer is aligned
         let start = (ptr as usize - self.heap as usize) / self.page_size;

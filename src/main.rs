@@ -43,7 +43,7 @@ fn k_main() -> ! {
     }
     plic.set_threshold(0);
 
-    let memory = mm::MemoryManager::new::<arch::MemoryImpl>();
+    let mut memory = mm::MemoryManager::<arch::MemoryImpl>::new();
     memory.map_address_space();
 
     serial_write("Virtual memory enabled!\n\r");
