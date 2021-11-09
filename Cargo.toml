@@ -8,6 +8,8 @@ edition = "2018"
 
 [dependencies]
 cfg-if = "^1.0"
+
+[dev-dependencies]
 qemu-exit = "2.0"
 
 [target.thumbv7em-none-eabihf.dependencies]
