@@ -61,7 +61,6 @@ impl PAddr {
         } else {
             (ppn >> (nb * 9)) & 0x1ff
         }
-        .into()
     }
 
     fn extend_55th_bit(&mut self, bit: bool) {
