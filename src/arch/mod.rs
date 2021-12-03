@@ -9,7 +9,6 @@ use crate::mm;
 
 #[cfg(target_arch = "riscv64")]
 pub type MemoryImpl = riscv64::sv39::PageTable;
-// pub use riscv64::Sv39::PageTable as MemoryImpl;
 
 pub fn new_arch() -> impl Architecture {
     cfg_if! {
@@ -32,6 +31,12 @@ pub trait Architecture {
 pub trait ArchitectureMemory {
     fn new<'alloc>(allocator: &mut mm::SimplePageAllocator<'alloc>) -> &'alloc mut Self;
     fn get_page_size() -> usize;
-    fn map(&mut self, allocator: &mut mm::SimplePageAllocator, to: usize, from: usize, perms: mm::Permissions);
+    fn map(
+        &mut self,
+        allocator: &mut mm::SimplePageAllocator,
+        to: usize,
+        from: usize,
+        perms: mm::Permissions,
+    );
     fn reload(&mut self);
 }

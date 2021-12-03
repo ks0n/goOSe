@@ -7,9 +7,6 @@ use crate::arch;
 use crate::utils;
 use bitflags::bitflags;
 
-
-// use crate::arch::ArchitectureMemory;
-
 extern "C" {
     pub static KERNEL_START: usize;
     pub static KERNEL_END: usize;
@@ -40,10 +37,14 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
             )
         };
 
-        let mut page_allocator = SimplePageAllocator::from_heap(heap_start, heap_end, T::get_page_size());
+        let mut page_allocator =
+            SimplePageAllocator::from_heap(heap_start, heap_end, T::get_page_size());
         let arch = T::new(&mut page_allocator);
 
-        Self { page_allocator, arch }
+        Self {
+            page_allocator,
+            arch,
+        }
     }
 
     fn map(&mut self, to: usize, from: usize, perms: Permissions) {
@@ -62,10 +63,6 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
         }
 
         let serial_page = crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS;
-        self.map(
-            serial_page,
-            serial_page,
-            rwx
-        );
+        self.map(serial_page, serial_page, rwx);
     }
 }
