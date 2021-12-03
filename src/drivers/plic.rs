@@ -84,7 +84,7 @@ impl Plic {
         }
     }
 
-    pub fn register_handler(&mut self, id: u16, handler: fn()) {
+    pub fn _register_handler(&mut self, id: u16, handler: fn()) {
         self.source_handler[id as usize] = handler;
     }
 }
