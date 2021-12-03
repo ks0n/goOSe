@@ -5,7 +5,7 @@ pub const QEMU_VIRT_BASE_ADDRESS: usize = 0x10000000;
 pub const QEMU_VIRT_NS16550_INTERRUPT_NUMBER: u16 = 10;
 
 const TRANSMITTER_HOLDING_REGISTER: usize = 0;
-const INTERRUPT_ENABLE_REGISTER: usize = 1;
+const _INTERRUPT_ENABLE_REGISTER: usize = 1;
 
 pub struct Ns16550 {
     base_register_address: usize,
@@ -24,14 +24,14 @@ impl Ns16550 {
         }
     }
 
-    pub fn read(&self) -> u8 {
-        self.read_transmitter_holding_reg()
+    pub fn _read(&self) -> u8 {
+        self._read_transmitter_holding_reg()
     }
 
-    pub fn enable_data_ready_interrupt(&self) {
+    pub fn _enable_data_ready_interrupt(&self) {
         // Data ready is the first bit of the Interrupt Enable Register
         unsafe {
-            let addr = (self.base_register_address as *mut u8).add(INTERRUPT_ENABLE_REGISTER);
+            let addr = (self.base_register_address as *mut u8).add(_INTERRUPT_ENABLE_REGISTER);
             addr.write_volatile(1 << 0)
         }
     }
@@ -43,7 +43,7 @@ impl Ns16550 {
         }
     }
 
-    fn read_transmitter_holding_reg(&self) -> u8 {
+    fn _read_transmitter_holding_reg(&self) -> u8 {
         unsafe {
             let addr = (self.base_register_address as *mut u8).add(TRANSMITTER_HOLDING_REGISTER);
             addr.read_volatile()

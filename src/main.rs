@@ -46,7 +46,7 @@ fn k_main() -> ! {
     let mut memory = mm::MemoryManager::<arch::MemoryImpl>::new();
     memory.map_address_space();
 
-    serial_write("Virtual memory enabled!\n\r");
+    kprintln!("Virtual memory enabled!");
 
     loop {
         unsafe {
