@@ -1,9 +1,8 @@
-use modular_bitfield::{bitfield, prelude::*};
-use crate::mm;
 use crate::arch;
 use crate::arch::ArchitectureMemory;
+use crate::mm;
 use core::convert::TryInto;
-
+use modular_bitfield::{bitfield, prelude::*};
 
 #[repr(C)]
 pub struct VAddr {
@@ -24,7 +23,7 @@ impl VAddr {
     pub fn vpn(&self, nb: usize) -> u16 {
         let vpn = self.addr >> 12;
 
-        ((vpn >> (nb * 9)) & 0x1ff ) as u16
+        ((vpn >> (nb * 9)) & 0x1ff) as u16
     }
 
     fn extend_38th_bit(&mut self, bit: bool) {
@@ -61,7 +60,8 @@ impl PAddr {
             (ppn >> (nb * 9)) & 0x3fffff
         } else {
             (ppn >> (nb * 9)) & 0x1ff
-        }.into()
+        }
+        .into()
     }
 
     fn extend_55th_bit(&mut self, bit: bool) {
@@ -133,8 +133,8 @@ impl PageTableEntry {
     }
 
     fn get_target(&mut self) -> &mut PageTable {
-        let addr = ((self.ppn2() as u64) << 18 | (self.ppn1() as u64) << 9 | self.ppn0() as u64)
-            * 4096u64;
+        let addr =
+            ((self.ppn2() as u64) << 18 | (self.ppn1() as u64) << 9 | self.ppn0() as u64) * 4096u64;
         unsafe { (addr as *mut PageTable).as_mut().unwrap() }
     }
 }
@@ -169,9 +169,9 @@ impl PageTable {
             pte.set_valid()
         }
 
-        pte.get_target().map_inner(allocator, paddr, vaddr, perms, level - 1);
+        pte.get_target()
+            .map_inner(allocator, paddr, vaddr, perms, level - 1);
     }
-
 }
 
 impl arch::ArchitectureMemory for PageTable {
@@ -197,9 +197,14 @@ impl arch::ArchitectureMemory for PageTable {
         to: usize,
         from: usize,
         perms: mm::Permissions,
-
     ) {
-        self.map_inner(allocator, PAddr::from_u64(to.try_into().unwrap()), VAddr::from_u64(from.try_into().unwrap()), perms, 2)
+        self.map_inner(
+            allocator,
+            PAddr::from_u64(to.try_into().unwrap()),
+            VAddr::from_u64(from.try_into().unwrap()),
+            perms,
+            2,
+        )
     }
 
     fn reload(&mut self) {
