@@ -27,7 +27,12 @@ static FDT_BYTES: &[u8] = include_bytes!("../virt.dtb");
 
 fn print_node(items: &mut dtb::StructItems, level: usize) {
     loop {
-        match items.next_item().unwrap() {
+        let next_item_res = items.next_item();
+        if let Err(e) = next_item_res {
+            break;
+        }
+
+        match next_item_res.unwrap() {
             dtb::StructItem::EndNode => {
                 kprintln!("{: >width$}}}", "", width = level - 4);
 
@@ -51,7 +56,7 @@ fn print_node(items: &mut dtb::StructItems, level: usize) {
 }
 
 #[no_mangle]
-fn k_main() -> ! {
+fn k_main(hart_id: usize, dtb_ptr: usize) -> ! {
     #[cfg(test)]
     ktests_launch();
 
@@ -59,7 +64,12 @@ fn k_main() -> ! {
 
     let mut arch = arch::new_arch();
 
-    let dtb = dtb::Reader::read(FDT_BYTES).unwrap();
+    let dtb =
+    unsafe {
+        dtb::Reader::read_from_address(dtb_ptr).unwrap()
+    };
+
+    // let dtb = dtb::Reader::read(FDT_BYTES).unwrap();
     print_node(&mut dtb.struct_items(), 0);
 
     arch.init_interrupts();
