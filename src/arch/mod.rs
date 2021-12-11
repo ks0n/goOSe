@@ -9,6 +9,8 @@ use crate::mm;
 
 #[cfg(target_arch = "riscv64")]
 pub type MemoryImpl = riscv64::sv39::PageTable;
+#[cfg(target_arch = "riscv64")]
+pub type InterruptsImpl = riscv64::interrupts::Interrupts;
 
 pub fn new_arch() -> impl Architecture {
     cfg_if! {
@@ -24,8 +26,6 @@ pub fn new_arch() -> impl Architecture {
 
 pub trait Architecture {
     unsafe extern "C" fn _start() -> !;
-
-    fn init_interrupts(&mut self);
 }
 
 pub trait ArchitectureMemory {
@@ -39,4 +39,9 @@ pub trait ArchitectureMemory {
         perms: mm::Permissions,
     );
     fn reload(&mut self);
+}
+
+pub trait ArchitectureInterrupts {
+    fn new() -> Self;
+    fn init_interrupts(&self);
 }

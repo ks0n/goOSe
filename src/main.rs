@@ -9,6 +9,7 @@
 
 mod arch;
 mod drivers;
+mod interrupt_manager;
 mod kernel_serial;
 mod mm;
 mod utils;
@@ -19,18 +20,14 @@ mod kernel_tests;
 use drivers::ns16550::*;
 use drivers::plic;
 
-use arch::Architecture;
-
 #[no_mangle]
 fn k_main() -> ! {
     #[cfg(test)]
     ktests_launch();
 
-    let mut arch = arch::new_arch();
+    let _arch = arch::new_arch();
 
     kprintln!("GoOSe is booting");
-
-    arch.init_interrupts();
 
     // Enable Serial interrupts
     plic::init(plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
@@ -46,7 +43,12 @@ fn k_main() -> ! {
     let mut memory = mm::MemoryManager::<arch::MemoryImpl>::new();
     memory.map_address_space();
 
-    kprintln!("Virtual memory enabled!");
+    kprintln!("[OK] Setup virtual memory");
+
+    let interrupts = interrupt_manager::InterruptManager::<arch::InterruptsImpl>::new();
+    interrupts.init_interrupts();
+
+    kprintln!("[OK] Enable interrupts");
 
     loop {
         unsafe {
