@@ -1,5 +1,6 @@
 /// The datasheet used to write this is:
 /// http://caro.su/msx/ocm_de1/16550.pdf
+use super::Driver;
 
 pub const QEMU_VIRT_BASE_ADDRESS: usize = 0x10000000;
 pub const QEMU_VIRT_NS16550_INTERRUPT_NUMBER: u16 = 10;
@@ -48,5 +49,11 @@ impl Ns16550 {
             let addr = (self.base_register_address as *mut u8).add(TRANSMITTER_HOLDING_REGISTER);
             addr.read_volatile()
         }
+    }
+}
+
+impl Driver for Ns16550 {
+    fn probe(compat: &str) -> bool {
+        return compat == "ns16550";
     }
 }
