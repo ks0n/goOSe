@@ -23,10 +23,5 @@ SECTIONS
     . = . + 1M;
     STACK_START = . ;
 
-    . = ALIGN(4096);
-    HEAP_START = . ;
-    . = . + 4M;
-    HEAP_END = . ;
-
     KERNEL_END = . ;
 }
