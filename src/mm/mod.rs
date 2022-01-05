@@ -1,18 +1,15 @@
 mod simple_page_allocator;
+mod page_allocator;
 
 pub use simple_page_allocator::SimplePageAllocator;
 
 use crate::arch;
-
 use crate::utils;
 use bitflags::bitflags;
 
 extern "C" {
     pub static KERNEL_START: usize;
     pub static KERNEL_END: usize;
-
-    pub static HEAP_START: *mut u8;
-    pub static HEAP_END: *const u8;
 }
 
 bitflags! {
@@ -23,26 +20,45 @@ bitflags! {
     }
 }
 
+pub fn is_kernel_page(base: usize) -> bool {
+    let (kernel_start, kernel_end) = unsafe {
+        (
+            utils::external_symbol_value(&KERNEL_START),
+            utils::external_symbol_value(&KERNEL_END),
+        )
+    };
+
+    base >= kernel_start && base < kernel_end
+}
+
 pub struct MemoryManager<'alloc, T: arch::ArchitectureMemory> {
     page_allocator: SimplePageAllocator<'alloc>,
     arch: &'alloc mut T,
 }
 
 impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
-    pub fn new() -> Self {
-        let (heap_start, heap_end) = unsafe {
-            (
-                utils::external_symbol_value(&HEAP_START),
-                utils::external_symbol_value(&HEAP_END),
-            )
-        };
 
-        let mut page_allocator =
-            SimplePageAllocator::from_heap(heap_start, heap_end, T::get_page_size());
-        let arch = T::new(&mut page_allocator);
+
+    pub fn new(device_tree: &fdt::Fdt) -> Self {
+        let memory_node = device_tree.memory();
+
+
+
+
+        // for page in tamer {
+        //     kprintln!("{:X?}", page);
+        // }
+
+        // for reservation in device_tree.memory_reservations() {
+        //     kprintln!("{:?}", reservation);
+        // }
+
+        let pa = page_allocator::PageAllocator::from_memory_node(&memory_node, T::get_page_size());
+        let mut simple_page_allocator = SimplePageAllocator::from_heap(0, 0, T::get_page_size());
+        let arch = T::new(&mut simple_page_allocator);
 
         Self {
-            page_allocator,
+            page_allocator: simple_page_allocator,
             arch,
         }
     }
