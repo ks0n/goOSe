@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 pub fn set_sstatus_sie() {
     unsafe {
         asm!("csrrs zero, sstatus, {}", in(reg)1 << 1);

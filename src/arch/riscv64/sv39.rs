@@ -3,6 +3,7 @@ use crate::arch::ArchitectureMemory;
 use crate::mm;
 use core::convert::TryInto;
 use modular_bitfield::{bitfield, prelude::*};
+use core::arch::asm;
 
 #[repr(C)]
 pub struct VAddr {
