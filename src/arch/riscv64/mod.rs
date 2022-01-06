@@ -1,6 +1,7 @@
 use core::arch::asm;
 
 use super::Architecture;
+use crate::drivers::plic::plic_handler;
 
 pub mod interrupts;
 pub mod registers;
@@ -17,7 +18,7 @@ impl Riscv64 {
 impl Architecture for Riscv64 {
     #[naked]
     #[no_mangle]
-    unsafe extern "C" fn _start() -> ! {
+    unsafe extern "C" fn _start() -> () {
         asm!("la sp, STACK_START", "call k_main", options(noreturn));
     }
 }
