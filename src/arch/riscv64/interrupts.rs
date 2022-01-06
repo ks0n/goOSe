@@ -1,6 +1,7 @@
 use crate::arch::riscv64::registers;
 use crate::arch::ArchitectureInterrupts;
 use crate::drivers::plic::plic_handler;
+use core::arch::asm;
 
 #[no_mangle]
 static mut g_higher_trap_handler: *const () = 0 as *const ();

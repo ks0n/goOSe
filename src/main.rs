@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(asm)]
 #![feature(fn_align)]
 #![feature(naked_functions)]
 #![feature(custom_test_frameworks)]
@@ -19,6 +18,7 @@ mod kernel_tests;
 
 use drivers::ns16550::*;
 use drivers::plic;
+use core::arch::asm;
 
 #[no_mangle]
 fn k_main() -> ! {
