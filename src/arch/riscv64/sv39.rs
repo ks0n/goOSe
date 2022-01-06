@@ -2,6 +2,7 @@ use crate::arch;
 use crate::arch::ArchitectureMemory;
 use crate::mm;
 use core::convert::TryInto;
+use core::arch::asm;
 use modular_bitfield::{bitfield, prelude::*};
 use core::arch::asm;
 
@@ -146,7 +147,7 @@ pub struct PageTable {
 impl PageTable {
     fn map_inner(
         &mut self,
-        allocator: &mut mm::SimplePageAllocator,
+        allocator: &mut mm::PageAllocator,
         paddr: PAddr,
         vaddr: VAddr,
         perms: mm::Permissions,
@@ -175,9 +176,9 @@ impl PageTable {
 }
 
 impl arch::ArchitectureMemory for PageTable {
-    fn new<'alloc>(allocator: &mut mm::SimplePageAllocator<'alloc>) -> &'alloc mut Self {
+    fn new<'alloc>(allocator: &mut mm::PageAllocator<'alloc>) -> &'alloc mut Self {
         // FIXME: No unwrap here
-        let page = allocator.alloc_pages(1).unwrap();
+        let page = allocator.alloc(1).unwrap();
         let page_table = page as *mut PageTable;
         // FIXME: Do not unwrap either
         let page_table = unsafe { page_table.as_mut().unwrap() };
@@ -193,7 +194,7 @@ impl arch::ArchitectureMemory for PageTable {
 
     fn map(
         &mut self,
-        allocator: &mut mm::SimplePageAllocator,
+        allocator: &mut mm::PageAllocator,
         to: usize,
         from: usize,
         perms: mm::Permissions,

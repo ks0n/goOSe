@@ -21,6 +21,8 @@ use core::arch::asm;
 use drivers::ns16550::*;
 use drivers::plic;
 
+use arch::Architecture;
+
 #[no_mangle]
 fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     #[cfg(test)]
@@ -42,6 +44,7 @@ fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     plic.set_threshold(0);
 
     let device_tree = unsafe { fdt::Fdt::from_ptr(device_tree_ptr as * const u8).unwrap() };
+
     let mut memory = mm::MemoryManager::<arch::MemoryImpl>::new(&device_tree);
     memory.map_address_space();
 
