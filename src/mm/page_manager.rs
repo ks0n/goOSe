@@ -1,12 +1,7 @@
 use crate::kprintln;
 use crate::mm;
 use core::mem;
-
-#[derive(Debug)]
-pub enum AllocError {
-    OutOfMemory,
-    InvalidFree,
-}
+use super::page_alloc::{PageAllocator, AllocError};
 
 #[derive(Debug, PartialEq)]
 pub enum PageKind {
@@ -40,7 +35,7 @@ impl PhysicalPage {
         self.kind = PageKind::Used;
     }
 
-    fn is_last(&self) -> bool {
+    fn _is_last(&self) -> bool {
         self.last
     }
 
@@ -54,12 +49,12 @@ impl PhysicalPage {
 }
 
 
-pub struct PageAllocator<'a> {
+pub struct PageManager<'a> {
     metadata: &'a mut [PhysicalPage],
     page_size: usize,
 }
 
-impl<'a> PageAllocator<'a> {
+impl<'a> PageManager<'a> {
 
     fn count_pages(regions: impl Iterator<Item = fdt::standard_nodes::MemoryRegion>, page_size: usize) -> usize {
         regions
@@ -181,7 +176,10 @@ impl<'a> PageAllocator<'a> {
         self.metadata.iter()
     }
 
-    pub fn alloc(&mut self, page_count: usize) -> Result<*mut u8, AllocError> {
+}
+
+impl PageAllocator for PageManager<'_> {
+    fn alloc_pages(&mut self, page_count: usize) -> Result<*mut u8, AllocError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
 
@@ -210,7 +208,7 @@ impl<'a> PageAllocator<'a> {
         Err(AllocError::OutOfMemory)
     }
 
-    pub fn dealloc(&mut self, _ptr: *mut u8) -> Result<(), AllocError> {
-        Ok(())
+    fn dealloc_pages(&mut self, _ptr: *mut u8) -> Result<(), AllocError> {
+        Err(AllocError::InvalidFree)
     }
 }

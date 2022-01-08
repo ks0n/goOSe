@@ -1,10 +1,9 @@
-mod simple_page_allocator;
-mod page_allocator;
+mod page_manager;
+mod page_alloc;
 
-pub use simple_page_allocator::SimplePageAllocator;
-pub use page_allocator::PageAllocator;
+use page_manager::PageManager;
+pub use page_alloc::PageAllocator;
 
-use page_allocator::PhysicalPage;
 
 use crate::arch;
 use crate::utils;
@@ -47,7 +46,7 @@ pub fn is_reserved_page(base: usize, device_tree: &fdt::Fdt, page_size: usize) -
 }
 
 pub struct MemoryManager<'alloc, T: arch::ArchitectureMemory> {
-    page_allocator: PageAllocator<'alloc>,
+    page_manager: PageManager<'alloc>,
     arch: &'alloc mut T,
 }
 
@@ -55,36 +54,23 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
 
 
     pub fn new(device_tree: &fdt::Fdt) -> Self {
-        let memory_node = device_tree.memory();
-
-
-
-
-        // for page in tamer {
-        //     kprintln!("{:X?}", page);
-        // }
-
-        // for reservation in device_tree.memory_reservations() {
-        //     kprintln!("{:?}", reservation);
-        // }
-
-        let mut pa = page_allocator::PageAllocator::from_device_tree(&device_tree, T::get_page_size());
-        let arch = T::new(&mut pa);
+        let mut page_manager = page_manager::PageManager::from_device_tree(&device_tree, T::get_page_size());
+        let arch = T::new(&mut page_manager);
 
         Self {
-            page_allocator: pa,
+            page_manager,
             arch,
         }
     }
 
     fn map(&mut self, to: usize, from: usize, perms: Permissions) {
-        self.arch.map(&mut self.page_allocator, to, from, perms)
+        self.arch.map(&mut self.page_manager, to, from, perms)
     }
 
     fn map_memory_rw(&mut self) {
         let un_self = self as *mut Self;
 
-        for page in self.page_allocator.pages() {
+        for page in self.page_manager.pages() {
             unsafe {
                 (*un_self).map(page.base(), page.base(), Permissions::READ | Permissions::WRITE);
             }
@@ -94,7 +80,7 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
     fn map_kernel_rwx(&mut self) {
         let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
         let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
-        let page_size = self.page_allocator.page_size();
+        let page_size = self.page_manager.page_size();
         let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
 
         for addr in (kernel_start..kernel_end_align).step_by(page_size) {
@@ -103,14 +89,12 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
     }
 
     pub fn map_address_space(&mut self) {
-        let page_size = self.page_allocator.page_size();
-        let rw = Permissions::READ | Permissions::WRITE;
 
         self.map_memory_rw();
         self.map_kernel_rwx();
 
         let serial_page = crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS;
-        self.map(serial_page, serial_page, rw);
+        self.map(serial_page, serial_page, Permissions::READ | Permissions::WRITE);
 
         self.arch.reload();
     }
