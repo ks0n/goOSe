@@ -33,15 +33,16 @@ pub fn is_kernel_page(base: usize) -> bool {
 }
 
 // TODO: shall this be moved to arch/riscv (in the MemoryImpl) ?
-pub fn is_reserved_page(base: usize, device_tree: &fdt::Fdt, page_size: usize) -> bool {
+pub fn is_reserved_page(base: usize, device_tree: &fdt::Fdt) -> bool {
     let reserved_memory = device_tree.find_node("/reserved-memory").unwrap();
     let mut reserved_pages = reserved_memory
         .children()
         .flat_map(|child| child.reg().unwrap())
-        .map(|region| (region.starting_address as usize, region.size.unwrap_or(0)))
-        .flat_map(|(start, size)| (start..start + size).step_by(page_size));
+        .map(|region| (region.starting_address as usize, region.size.unwrap_or(0)));
 
-    reserved_pages.any(|page_start| base >= page_start && base <= (page_start + page_size))
+    reserved_pages.any(|(region_start, region_size)| {
+        base >= region_start && base <= (region_start + region_size)
+    })
 }
 
 pub struct MemoryManager<'alloc, T: arch::ArchitectureMemory> {

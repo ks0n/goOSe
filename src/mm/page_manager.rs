@@ -80,7 +80,7 @@ impl<'a> PageManager<'a> {
     ) -> PhysicalPage {
         let kind = if mm::is_kernel_page(phys_addr) {
             PageKind::Kernel
-        } else if mm::is_reserved_page(phys_addr, device_tree, page_size) {
+        } else if mm::is_reserved_page(phys_addr, device_tree) {
             PageKind::Reserved
         } else {
             PageKind::Unused
@@ -121,7 +121,7 @@ impl<'a> PageManager<'a> {
                 first_page_addr = page.base;
             }
 
-            if !page.is_unused() {
+            if page.is_used() {
                 consecutive_pages = 0;
                 continue;
             }
@@ -137,12 +137,12 @@ impl<'a> PageManager<'a> {
     }
 
     /// TLDR: Initialize a [`PageAllocator`] from the device tree.
-    /// How it works
-    /// First count how many pages we can make out on the system, how much size we will need for
+    /// How it works:
+    /// - First count how many pages we can make out on the system, how much size we will need for
     /// metadata and align that up to a page size.
-    /// Second (in [`Self::find_contiguous_unused_pages`]), look through our pages for a contiguous
+    /// - Second (in [`Self::find_contiguous_unused_pages`]), look through our pages for a contiguous
     /// space large enough to hold all our metadata.
-    /// Lastly store our metadata there, and mark pages as unused or kernel.
+    /// - Lastly store our metadata there, and mark pages as unused or kernel.
     pub fn from_device_tree(device_tree: &fdt::Fdt, page_size: usize) -> Self {
         let memory_node = device_tree.memory();
 
