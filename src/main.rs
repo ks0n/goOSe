@@ -24,7 +24,7 @@ use drivers::plic;
 use arch::Architecture;
 
 #[no_mangle]
-fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
+extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     #[cfg(test)]
     ktests_launch();
 
