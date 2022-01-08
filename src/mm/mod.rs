@@ -1,9 +1,8 @@
-mod page_manager;
 mod page_alloc;
+mod page_manager;
 
-use page_manager::PageManager;
 pub use page_alloc::PageAllocator;
-
+use page_manager::PageManager;
 
 use crate::arch;
 use crate::utils;
@@ -40,7 +39,7 @@ pub fn is_reserved_page(base: usize, device_tree: &fdt::Fdt, page_size: usize) -
         .children()
         .flat_map(|child| child.reg().unwrap())
         .map(|region| (region.starting_address as usize, region.size.unwrap_or(0)))
-        .flat_map(|(start, size)| (start..start+size).step_by(page_size));
+        .flat_map(|(start, size)| (start..start + size).step_by(page_size));
 
     reserved_pages.any(|page_start| base >= page_start && base <= (page_start + page_size))
 }
@@ -51,16 +50,12 @@ pub struct MemoryManager<'alloc, T: arch::ArchitectureMemory> {
 }
 
 impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
-
-
     pub fn new(device_tree: &fdt::Fdt) -> Self {
-        let mut page_manager = page_manager::PageManager::from_device_tree(&device_tree, T::get_page_size());
+        let mut page_manager =
+            page_manager::PageManager::from_device_tree(&device_tree, T::get_page_size());
         let arch = T::new(&mut page_manager);
 
-        Self {
-            page_manager,
-            arch,
-        }
+        Self { page_manager, arch }
     }
 
     fn map(&mut self, to: usize, from: usize, perms: Permissions) {
@@ -72,7 +67,11 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
 
         for page in self.page_manager.pages() {
             unsafe {
-                (*un_self).map(page.base(), page.base(), Permissions::READ | Permissions::WRITE);
+                (*un_self).map(
+                    page.base(),
+                    page.base(),
+                    Permissions::READ | Permissions::WRITE,
+                );
             }
         }
     }
@@ -84,17 +83,24 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
         let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
 
         for addr in (kernel_start..kernel_end_align).step_by(page_size) {
-            self.map(addr, addr, Permissions::READ | Permissions::WRITE | Permissions::EXECUTE);
+            self.map(
+                addr,
+                addr,
+                Permissions::READ | Permissions::WRITE | Permissions::EXECUTE,
+            );
         }
     }
 
     pub fn map_address_space(&mut self) {
-
         self.map_memory_rw();
         self.map_kernel_rwx();
 
         let serial_page = crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS;
-        self.map(serial_page, serial_page, Permissions::READ | Permissions::WRITE);
+        self.map(
+            serial_page,
+            serial_page,
+            Permissions::READ | Permissions::WRITE,
+        );
 
         self.arch.reload();
     }

@@ -1,8 +1,8 @@
 use crate::arch;
 use crate::arch::ArchitectureMemory;
 use crate::mm;
-use core::convert::TryInto;
 use core::arch::asm;
+use core::convert::TryInto;
 use modular_bitfield::{bitfield, prelude::*};
 use core::arch::asm;
 

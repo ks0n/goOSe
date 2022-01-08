@@ -1,5 +1,5 @@
-use core::fmt::{self, Write};
 use core::arch::asm;
+use core::fmt::{self, Write};
 
 use crate::drivers::ns16550::{Ns16550, QEMU_VIRT_BASE_ADDRESS};
 
