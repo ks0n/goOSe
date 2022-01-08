@@ -1,4 +1,4 @@
-use super::page_alloc::{AllocError, PageAllocator};
+use super::page_alloc::{AllocatorError, PageAllocator};
 use crate::kprintln;
 use crate::mm;
 use core::mem;
@@ -191,7 +191,7 @@ impl<'a> PageManager<'a> {
 }
 
 impl PageAllocator for PageManager<'_> {
-    fn alloc_pages(&mut self, page_count: usize) -> Result<*mut u8, AllocError> {
+    fn alloc_pages(&mut self, page_count: usize) -> Result<*mut u8, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
 
@@ -217,10 +217,10 @@ impl PageAllocator for PageManager<'_> {
             }
         }
 
-        Err(AllocError::OutOfMemory)
+        Err(AllocatorError::OutOfMemory)
     }
 
-    fn dealloc_pages(&mut self, _ptr: *mut u8) -> Result<(), AllocError> {
-        Err(AllocError::InvalidFree)
+    fn dealloc_pages(&mut self, _ptr: *mut u8) -> Result<(), AllocatorError> {
+        Err(AllocatorError::InvalidFree)
     }
 }
