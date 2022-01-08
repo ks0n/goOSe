@@ -1,7 +1,7 @@
+use super::page_alloc::{AllocError, PageAllocator};
 use crate::kprintln;
 use crate::mm;
 use core::mem;
-use super::page_alloc::{PageAllocator, AllocError};
 
 #[derive(Debug, PartialEq)]
 pub enum PageKind {
@@ -19,7 +19,7 @@ pub struct PhysicalPage {
     base: usize,
 
     /// Page is last of a contiguous allocation of pages.
-    last: bool, 
+    last: bool,
 }
 
 impl PhysicalPage {
@@ -48,15 +48,16 @@ impl PhysicalPage {
     }
 }
 
-
 pub struct PageManager<'a> {
     metadata: &'a mut [PhysicalPage],
     page_size: usize,
 }
 
 impl<'a> PageManager<'a> {
-
-    fn count_pages(regions: impl Iterator<Item = fdt::standard_nodes::MemoryRegion>, page_size: usize) -> usize {
+    fn count_pages(
+        regions: impl Iterator<Item = fdt::standard_nodes::MemoryRegion>,
+        page_size: usize,
+    ) -> usize {
         regions
             .map(|region| {
                 (region.starting_address, unsafe {
@@ -72,7 +73,11 @@ impl<'a> PageManager<'a> {
         ((addr) + alignment - 1) & !(alignment - 1)
     }
 
-    fn phys_addr_to_physical_page(phys_addr: usize, device_tree: &fdt::Fdt, page_size: usize) -> PhysicalPage {
+    fn phys_addr_to_physical_page(
+        phys_addr: usize,
+        device_tree: &fdt::Fdt,
+        page_size: usize,
+    ) -> PhysicalPage {
         let kind = if mm::is_kernel_page(phys_addr) {
             PageKind::Kernel
         } else if mm::is_reserved_page(phys_addr, device_tree, page_size) {
@@ -90,11 +95,15 @@ impl<'a> PageManager<'a> {
 
     /// Look for `pages_needed` contiguous unused pages, beware of pages that are in use by the
     /// kernel.
-    fn find_contiguous_unused_pages(device_tree: &fdt::Fdt,
-    pages_needed: usize, page_size: usize) -> Option<usize> {
+    fn find_contiguous_unused_pages(
+        device_tree: &fdt::Fdt,
+        pages_needed: usize,
+        page_size: usize,
+    ) -> Option<usize> {
         let memory = device_tree.memory();
 
-        let physical_pages = memory.regions()
+        let physical_pages = memory
+            .regions()
             .map(|region| {
                 (region.starting_address, unsafe {
                     region.starting_address.add(region.size.unwrap_or(0))
@@ -144,14 +153,15 @@ impl<'a> PageManager<'a> {
         kprintln!("metadata_size: {:?}", metadata_size);
         kprintln!("pages_needed: {:?}", pages_needed);
 
-        let metadata_addr = Self::find_contiguous_unused_pages(device_tree, pages_needed, page_size).unwrap();
+        let metadata_addr =
+            Self::find_contiguous_unused_pages(device_tree, pages_needed, page_size).unwrap();
         kprintln!("metadata_addr: {:X}", metadata_addr);
 
-        let metadata: &mut [PhysicalPage] = unsafe {
-            core::slice::from_raw_parts_mut(metadata_addr as *mut _, page_count)
-        };
+        let metadata: &mut [PhysicalPage] =
+            unsafe { core::slice::from_raw_parts_mut(metadata_addr as *mut _, page_count) };
 
-        let physical_pages = memory_node.regions()
+        let physical_pages = memory_node
+            .regions()
             .map(|region| {
                 (region.starting_address, unsafe {
                     region.starting_address.add(region.size.unwrap_or(0))
@@ -165,7 +175,10 @@ impl<'a> PageManager<'a> {
             metadata[i] = page;
         }
 
-        return Self { metadata, page_size }
+        return Self {
+            metadata,
+            page_size,
+        };
     }
 
     pub fn page_size(&self) -> usize {
@@ -175,7 +188,6 @@ impl<'a> PageManager<'a> {
     pub fn pages(&self) -> impl Iterator<Item = &PhysicalPage> + '_ {
         self.metadata.iter()
     }
-
 }
 
 impl PageAllocator for PageManager<'_> {
