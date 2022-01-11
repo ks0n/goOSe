@@ -2,6 +2,7 @@ use super::page_alloc::{AllocatorError, PageAllocator};
 use crate::kprintln;
 use crate::mm;
 use core::mem;
+use crate::Architecture;
 
 #[derive(Debug, PartialEq)]
 pub enum PageKind {
@@ -55,18 +56,19 @@ pub struct PageManager<'a> {
 
 impl<'a> PageManager<'a> {
     fn count_pages(
-        regions: impl Iterator<Item = fdt::standard_nodes::MemoryRegion>,
+        arch: &impl Architecture,
         page_size: usize,
     ) -> usize {
-        regions
-            .map(|region| {
-                (region.starting_address, unsafe {
-                    region.starting_address.add(region.size.unwrap_or(0))
-                })
-            })
-            .map(|(start, end)| (start as usize, end as usize))
-            .flat_map(|(start, end)| (start..end).step_by(page_size))
-            .count()
+        let mut count = 0;
+
+        arch.for_all_memory_regions(|regions| {
+            count = regions
+                .map(|(start, end)| (start as usize, end as usize))
+                .flat_map(|(start, end)| (start..end).step_by(page_size))
+                .count();
+        });
+
+        count
     }
 
     fn align_up(addr: usize, alignment: usize) -> usize {
@@ -75,12 +77,12 @@ impl<'a> PageManager<'a> {
 
     fn phys_addr_to_physical_page(
         phys_addr: usize,
-        device_tree: &fdt::Fdt,
+        arch: &impl Architecture,
         page_size: usize,
     ) -> PhysicalPage {
         let kind = if mm::is_kernel_page(phys_addr) {
             PageKind::Kernel
-        } else if mm::is_reserved_page(phys_addr, device_tree) {
+        } else if mm::is_reserved_page(phys_addr, arch) {
             PageKind::Reserved
         } else {
             PageKind::Unused
@@ -94,46 +96,43 @@ impl<'a> PageManager<'a> {
     }
 
     /// Look for `pages_needed` contiguous unused pages, beware of pages that are in use by the
-    /// kernel.
+    /// kernel or reserved by opensbi.
     fn find_contiguous_unused_pages(
-        device_tree: &fdt::Fdt,
+        arch: &impl Architecture,
         pages_needed: usize,
         page_size: usize,
     ) -> Option<usize> {
-        let memory = device_tree.memory();
+        let mut found = None;
 
-        let physical_pages = memory
-            .regions()
-            .map(|region| {
-                (region.starting_address, unsafe {
-                    region.starting_address.add(region.size.unwrap_or(0))
-                })
-            })
-            .map(|(start, end)| (start as usize, end as usize))
-            .flat_map(|(start, end)| (start..end).step_by(page_size))
-            .map(|base| Self::phys_addr_to_physical_page(base, device_tree, page_size));
+        arch.for_all_memory_regions(|regions| {
+            let physical_pages = regions
+                .flat_map(|(addr, size)| (addr..addr + size).step_by(page_size));
 
-        let mut first_page_addr: usize = 0;
-        let mut consecutive_pages: usize = 0;
+            let mut first_page_addr: usize = 0;
+            let mut consecutive_pages: usize = 0;
 
-        for page in physical_pages {
-            if consecutive_pages == 0 {
-                first_page_addr = page.base;
+            for page in physical_pages {
+                if consecutive_pages == 0 {
+                    first_page_addr = page;
+                }
+
+                if mm::is_kernel_page(page) || mm::is_reserved_page(page, arch) {
+                    consecutive_pages = 0;
+                    continue;
+                }
+
+                consecutive_pages += 1;
+
+                if consecutive_pages == pages_needed {
+                    found = Some(first_page_addr);
+                    return
+                }
             }
 
-            if page.is_used() {
-                consecutive_pages = 0;
-                continue;
-            }
+            return;
+        });
 
-            consecutive_pages += 1;
-
-            if consecutive_pages == pages_needed {
-                return Some(first_page_addr);
-            }
-        }
-
-        None
+        found
     }
 
     /// TLDR: Initialize a [`PageAllocator`] from the device tree.
@@ -143,10 +142,8 @@ impl<'a> PageManager<'a> {
     /// - Second (in [`Self::find_contiguous_unused_pages`]), look through our pages for a contiguous
     /// space large enough to hold all our metadata.
     /// - Lastly store our metadata there, and mark pages as unused or kernel.
-    pub fn from_device_tree(device_tree: &fdt::Fdt, page_size: usize) -> Self {
-        let memory_node = device_tree.memory();
-
-        let page_count = Self::count_pages(memory_node.regions(), page_size);
+    pub fn from_arch_info(arch: &impl Architecture, page_size: usize) -> Self {
+        let page_count = Self::count_pages(arch, page_size);
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();
         let pages_needed = Self::align_up(metadata_size, page_size) / page_size;
         kprintln!("total of {:?} pages", page_count);
@@ -154,31 +151,27 @@ impl<'a> PageManager<'a> {
         kprintln!("pages_needed: {:?}", pages_needed);
 
         let metadata_addr =
-            Self::find_contiguous_unused_pages(device_tree, pages_needed, page_size).unwrap();
+            Self::find_contiguous_unused_pages(arch, pages_needed, page_size).unwrap();
         kprintln!("metadata_addr: {:X}", metadata_addr);
 
         let metadata: &mut [PhysicalPage] =
             unsafe { core::slice::from_raw_parts_mut(metadata_addr as *mut _, page_count) };
 
-        let physical_pages = memory_node
-            .regions()
-            .map(|region| {
-                (region.starting_address, unsafe {
-                    region.starting_address.add(region.size.unwrap_or(0))
-                })
-            })
-            .map(|(start, end)| (start as usize, end as usize))
-            .flat_map(|(start, end)| (start..end).step_by(page_size))
-            .map(|base| Self::phys_addr_to_physical_page(base, device_tree, page_size));
+        arch.for_all_memory_regions(|regions| {
+            let physical_pages = regions
+                .flat_map(|(start, end)| (start..end).step_by(page_size))
+                .map(|base| Self::phys_addr_to_physical_page(base, arch, page_size));
 
-        for (i, page) in physical_pages.enumerate() {
-            metadata[i] = page;
-        }
+            for (i, page) in physical_pages.enumerate() {
+                metadata[i] = page;
+            }
+        });
 
-        return Self {
+
+        Self {
             metadata,
             page_size,
-        };
+        }
     }
 
     pub fn page_size(&self) -> usize {
