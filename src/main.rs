@@ -4,6 +4,8 @@
 #![feature(fn_align)]
 #![feature(naked_functions)]
 #![feature(custom_test_frameworks)]
+#![feature(associated_type_defaults)]
+#![feature(type_alias_impl_trait)]
 #![test_runner(crate::kernel_tests::runner)]
 #![reexport_test_harness_main = "ktests_launch"]
 
@@ -28,7 +30,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     #[cfg(test)]
     ktests_launch();
 
-    let _arch = arch::new_arch();
+    let mut arch = arch::new_arch(device_tree_ptr);
 
     kprintln!("GoOSe is booting");
 
@@ -43,9 +45,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     }
     plic.set_threshold(0);
 
-    let device_tree = unsafe { fdt::Fdt::from_ptr(device_tree_ptr as *const u8).unwrap() };
-
-    let mut memory = mm::MemoryManager::<arch::MemoryImpl>::new(&device_tree);
+    let mut memory = mm::MemoryManager::<arch::MemoryImpl>::new(&arch);
     memory.map_address_space();
 
     kprintln!("[OK] Setup virtual memory");
