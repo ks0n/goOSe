@@ -32,17 +32,18 @@ pub fn is_kernel_page(base: usize) -> bool {
     base >= kernel_start && base < kernel_end
 }
 
-// TODO: shall this be moved to arch/riscv (in the MemoryImpl) ?
-pub fn is_reserved_page(base: usize, device_tree: &fdt::Fdt) -> bool {
-    let reserved_memory = device_tree.find_node("/reserved-memory").unwrap();
-    let mut reserved_pages = reserved_memory
-        .children()
-        .flat_map(|child| child.reg().unwrap())
-        .map(|region| (region.starting_address as usize, region.size.unwrap_or(0)));
+pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
+    let mut is_res = false;
 
-    reserved_pages.any(|(region_start, region_size)| {
-        base >= region_start && base <= (region_start + region_size)
-    })
+    arch.for_all_reserved_memory_regions(|regions| {
+        is_res = regions
+            .map(|(start, size)| (start, size)) // this is a weird hack to fix a type error.
+            .any(|(region_start, region_size)| {
+            base >= region_start && base <= (region_start + region_size)
+        })
+    });
+
+    return is_res;
 }
 
 pub struct MemoryManager<'alloc, T: arch::ArchitectureMemory> {
@@ -51,12 +52,12 @@ pub struct MemoryManager<'alloc, T: arch::ArchitectureMemory> {
 }
 
 impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
-    pub fn new(device_tree: &fdt::Fdt) -> Self {
+    pub fn new(arch: &impl arch::Architecture) -> Self {
         let mut page_manager =
-            page_manager::PageManager::from_device_tree(&device_tree, T::get_page_size());
-        let arch = T::new(&mut page_manager);
+            page_manager::PageManager::from_arch_info(arch, T::get_page_size());
+        let arch_mem = T::new(&mut page_manager);
 
-        Self { page_manager, arch }
+        Self { page_manager, arch: arch_mem }
     }
 
     fn map(&mut self, to: usize, from: usize, perms: Permissions) {
