@@ -1,5 +1,5 @@
-/// The datasheet used to write this is:
-/// http://caro.su/msx/ocm_de1/16550.pdf
+//! Driver for the NS16550 UART chip.
+//! The datasheet used to write this is: <http://caro.su/msx/ocm_de1/16550.pdf>
 
 pub const QEMU_VIRT_BASE_ADDRESS: usize = 0x10000000;
 pub const QEMU_VIRT_NS16550_INTERRUPT_NUMBER: u16 = 10;

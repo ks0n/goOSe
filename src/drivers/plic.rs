@@ -1,5 +1,5 @@
-/// Driver fot the RISC-V Platform-Level Interrupt Controller
-/// Documentation: https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc
+//! Driver fot the RISC-V Platform-Level Interrupt Controller
+//! <https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc>
 
 pub const QEMU_VIRT_PLIC_BASE_ADDRESS: usize = 0xc000000;
 
