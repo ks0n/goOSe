@@ -1,8 +1,8 @@
 use super::page_alloc::{AllocatorError, PageAllocator};
 use crate::kprintln;
 use crate::mm;
-use core::mem;
 use crate::Architecture;
+use core::mem;
 
 #[derive(Debug, PartialEq)]
 pub enum PageKind {
@@ -55,16 +55,13 @@ pub struct PageManager<'a> {
 }
 
 impl<'a> PageManager<'a> {
-    fn count_pages(
-        arch: &impl Architecture,
-        page_size: usize,
-    ) -> usize {
+    fn count_pages(arch: &impl Architecture, page_size: usize) -> usize {
         let mut count = 0;
 
         arch.for_all_memory_regions(|regions| {
             count = regions
-                .map(|(start, end)| (start as usize, end as usize))
-                .flat_map(|(start, end)| (start..end).step_by(page_size))
+                .map(|(start, size)| (start as usize, size as usize))
+                .flat_map(|(start, size)| (start..start + size).step_by(page_size))
                 .count();
         });
 
@@ -125,7 +122,7 @@ impl<'a> PageManager<'a> {
 
                 if consecutive_pages == pages_needed {
                     found = Some(first_page_addr);
-                    return
+                    return;
                 }
             }
 
@@ -159,14 +156,13 @@ impl<'a> PageManager<'a> {
 
         arch.for_all_memory_regions(|regions| {
             let physical_pages = regions
-                .flat_map(|(start, end)| (start..end).step_by(page_size))
+                .flat_map(|(start, size)| (start..start + size).step_by(page_size))
                 .map(|base| Self::phys_addr_to_physical_page(base, arch, page_size));
 
             for (i, page) in physical_pages.enumerate() {
                 metadata[i] = page;
             }
         });
-
 
         Self {
             metadata,
