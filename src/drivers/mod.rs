@@ -1,7 +1,11 @@
-#[cfg(drv_ns16550)]
+//! This module stores all drivers strictly necessary for the kernel.
+//! As we want the kernel as small as possible, each driver is hidden behind a feature flag in
+//! order to get compiled only is the platform requires it
+
+#[doc(cfg(drv_ns16550))]
 pub mod ns16550;
 
-#[cfg(drv_plic)]
+#[doc(cfg(drv_plic))]
 pub mod plic;
 
 // TODO: - have a driver trait
