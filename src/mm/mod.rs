@@ -9,6 +9,7 @@ pub use page_alloc::{get_global_allocator, init_global_allocator, PageAllocator}
 use crate::arch;
 use crate::mm;
 use crate::utils;
+
 use bitflags::bitflags;
 
 extern "C" {
@@ -24,6 +25,7 @@ bitflags! {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct VAddr {
     addr: usize,
 }
@@ -40,6 +42,7 @@ impl core::convert::From<VAddr> for usize {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct PAddr {
     addr: usize,
 }
@@ -62,9 +65,19 @@ impl<T> core::convert::From<PAddr> for *mut T {
     }
 }
 
+impl<T> core::convert::From<&PAddr> for *mut T {
+    fn from(val: &PAddr) -> Self {
+        val.addr as *mut T
+    }
+}
+
 pub trait MemoryManager {
     fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions);
     fn reload_page_table(&mut self);
+    fn page_size(&self) -> usize;
+
+    fn align_down(&self, addr: usize) -> usize;
+    fn align_up(&self, addr: usize) -> usize;
 }
 
 pub fn is_kernel_page(base: usize) -> bool {

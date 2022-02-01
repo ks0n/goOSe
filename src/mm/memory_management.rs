@@ -1,5 +1,4 @@
 use crate::arch;
-
 use crate::mm;
 use crate::mm::{MemoryManager, PAddr, Permissions, VAddr};
 
@@ -26,5 +25,17 @@ impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
 
     fn reload_page_table(&mut self) {
         self.arch.reload();
+    }
+
+    fn page_size(&self) -> usize {
+        T::get_page_size()
+    }
+
+    fn align_down(&self, addr: usize) -> usize {
+        T::align_down(addr)
+    }
+
+    fn align_up(&self, addr: usize) -> usize {
+        T::align_up(addr)
     }
 }
