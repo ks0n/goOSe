@@ -12,6 +12,7 @@
 
 mod arch;
 mod drivers;
+mod executable;
 mod interrupt_manager;
 mod kernel_serial;
 mod mm;

@@ -162,6 +162,10 @@ impl<'a> FirstFitPageAllocator<'a> {
             page_size,
         }
     }
+
+    pub fn pages(&self) -> impl Iterator<Item = &PhysicalPage> + '_ {
+        self.metadata.iter()
+    }
 }
 
 impl PageAllocator for FirstFitPageAllocator<'_> {

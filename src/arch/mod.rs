@@ -38,7 +38,21 @@ pub trait Architecture {
 
 pub trait ArchitectureMemory {
     fn new<'alloc>(allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self;
+
     fn get_page_size() -> usize;
+
+    fn align_down(addr: usize) -> usize {
+        let page_size = Self::get_page_size();
+        let page_mask = !(page_size - 1);
+
+        addr & page_mask
+    }
+
+    fn align_up(addr: usize) -> usize {
+        let page_size = Self::get_page_size();
+        ((addr + page_size - 1) / page_size) * page_size
+    }
+
     fn map(
         &mut self,
         allocator: &mut impl mm::PageAllocator,
@@ -46,10 +60,49 @@ pub trait ArchitectureMemory {
         from: usize,
         perms: mm::Permissions,
     );
+
     fn reload(&mut self);
 }
 
 pub trait ArchitectureInterrupts {
     fn new() -> Self;
     fn init_interrupts(&self);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct ArchitectureMemoryDummy {}
+    impl ArchitectureMemory for ArchitectureMemoryDummy {
+        fn new<'alloc>(_allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self {
+            // We will never use this, we just need the compiler to be happy
+            unsafe { (0 as *mut Self).as_mut().unwrap() }
+        }
+
+        fn get_page_size() -> usize {
+            4096
+        }
+
+        fn map(
+            &mut self,
+            _allocator: &mut impl mm::PageAllocator,
+            _to: usize,
+            _from: usize,
+            _perms: mm::Permissions,
+        ) {
+        }
+
+        fn reload(&mut self) {}
+    }
+
+    #[test_case]
+    fn align_down() {
+        assert!(ArchitectureMemoryDummy::align_down(0x1042) == 0x1000);
+    }
+
+    #[test_case]
+    fn align_up() {
+        assert!(ArchitectureMemoryDummy::align_up(0x1042) == 0x2000);
+    }
 }
