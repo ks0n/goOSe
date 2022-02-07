@@ -1,6 +1,7 @@
 use crate::arch::riscv64::registers;
 use crate::arch::ArchitectureInterrupts;
 use crate::drivers::plic::plic_handler;
+use crate::kprintln;
 use core::arch::asm;
 
 #[no_mangle]
@@ -51,10 +52,11 @@ fn trap_dispatch(cause: usize) {
     if is_interrupt(cause) {
         let exception_code = cause & !(1 << 63);
         unsafe {
+            kprintln!("Interrupt '{}' triggered", exception_code);
             INTERRUPT_VECTOR[exception_code]();
         }
     } else {
-        panic!("Exception not implemented yet");
+        panic!("Exception '{}' not implemented yet", cause);
     }
 }
 
