@@ -21,6 +21,12 @@ bitflags! {
     }
 }
 
+pub trait MemoryManager {
+    fn map(&mut self, to: usize, from: usize, perms: Permissions);
+    fn reload_pt(&mut self);
+
+}
+
 pub fn is_kernel_page(base: usize) -> bool {
     let (kernel_start, kernel_end) = unsafe {
         (
@@ -46,22 +52,18 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
     return is_res;
 }
 
-pub struct MemoryManager<'alloc, T: arch::ArchitectureMemory> {
+pub struct MemoryManagement<'alloc, T: arch::ArchitectureMemory> {
     page_manager: PageManager<'alloc>,
     arch: &'alloc mut T,
 }
 
-impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
+impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
     pub fn new(arch: &impl arch::Architecture) -> Self {
         let mut page_manager =
             page_manager::PageManager::from_arch_info(arch, T::get_page_size());
         let arch_mem = T::new(&mut page_manager);
 
         Self { page_manager, arch: arch_mem }
-    }
-
-    fn map(&mut self, to: usize, from: usize, perms: Permissions) {
-        self.arch.map(&mut self.page_manager, to, from, perms)
     }
 
     fn map_memory_rw(&mut self) {
@@ -104,6 +106,16 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManager<'alloc, T> {
             Permissions::READ | Permissions::WRITE,
         );
 
+        self.arch.reload();
+    }
+}
+
+impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
+    fn map(&mut self, to: usize, from: usize, perms: Permissions) {
+        self.arch.map(&mut self.page_manager, to, from, perms)
+    }
+
+    fn reload_pt(&mut self) {
         self.arch.reload();
     }
 }

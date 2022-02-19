@@ -45,7 +45,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     }
     plic.set_threshold(0);
 
-    let mut memory = mm::MemoryManager::<arch::MemoryImpl>::new(&arch);
+    let mut memory = mm::MemoryManagement::<arch::MemoryImpl>::new(&arch);
     memory.map_address_space();
 
     kprintln!("[OK] Setup virtual memory");
