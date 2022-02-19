@@ -23,7 +23,7 @@ bitflags! {
 
 pub trait MemoryManager {
     fn map(&mut self, to: usize, from: usize, perms: Permissions);
-    fn reload_pt(&mut self);
+    fn reload_page_table(&mut self);
 
 }
 
@@ -106,7 +106,7 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
             Permissions::READ | Permissions::WRITE,
         );
 
-        self.arch.reload();
+        self.reload_page_table();
     }
 }
 
@@ -115,7 +115,7 @@ impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
         self.arch.map(&mut self.page_manager, to, from, perms)
     }
 
-    fn reload_pt(&mut self) {
+    fn reload_page_table(&mut self) {
         self.arch.reload();
     }
 }
