@@ -26,13 +26,15 @@ pub struct VAddr {
     addr: usize,
 }
 
-impl VAddr {
-    pub fn new(addr: usize) -> Self {
-        Self { addr }
+impl core::convert::From<usize> for VAddr {
+    fn from(val: usize) -> Self {
+        Self { addr: val }
     }
+}
 
-    pub fn value(&self) -> usize {
-        self.addr
+impl core::convert::From<VAddr> for usize {
+    fn from(val: VAddr) -> Self {
+        val.addr
     }
 }
 
@@ -40,13 +42,21 @@ pub struct PAddr {
     addr: usize,
 }
 
-impl PAddr {
-    pub fn new(addr: usize) -> Self {
-        Self { addr }
+impl core::convert::From<usize> for PAddr {
+    fn from(val: usize) -> Self {
+        Self { addr: val }
     }
+}
 
-    pub fn value(&self) -> usize {
-        self.addr
+impl core::convert::From<PAddr> for usize {
+    fn from(val: PAddr) -> Self {
+        val.addr
+    }
+}
+
+impl<T> core::convert::From<PAddr> for *mut T {
+    fn from(val: PAddr) -> Self {
+        val.addr as *mut T
     }
 }
 
@@ -101,8 +111,8 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
         for page in self.page_manager.pages() {
             unsafe {
                 (*un_self).map(
-                    PAddr::new(page.base()),
-                    VAddr::new(page.base()),
+                    PAddr::from(page.base()),
+                    VAddr::from(page.base()),
                     Permissions::READ | Permissions::WRITE,
                 );
             }
@@ -117,8 +127,8 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
 
         for addr in (kernel_start..kernel_end_align).step_by(page_size) {
             self.map(
-                PAddr::new(addr),
-                VAddr::new(addr),
+                PAddr::from(addr),
+                VAddr::from(addr),
                 Permissions::READ | Permissions::WRITE | Permissions::EXECUTE,
             );
         }
@@ -130,8 +140,8 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
 
         let serial_page = crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS;
         self.map(
-            PAddr::new(serial_page),
-            VAddr::new(serial_page),
+            PAddr::from(serial_page),
+            VAddr::from(serial_page),
             Permissions::READ | Permissions::WRITE,
         );
 
@@ -141,7 +151,7 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
 
 impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
     fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions) {
-        self.arch.map(&mut self.page_manager, phys.value(), virt.value(), perms)
+        self.arch.map(&mut self.page_manager, phys.into(), virt.into(), perms)
     }
 
     fn reload_page_table(&mut self) {
