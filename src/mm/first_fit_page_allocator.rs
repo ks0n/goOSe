@@ -50,12 +50,12 @@ impl PhysicalPage {
     }
 }
 
-pub struct PageManager<'a> {
+pub struct FirstFitPageAllocator<'a> {
     metadata: &'a mut [PhysicalPage],
     page_size: usize,
 }
 
-impl<'a> PageManager<'a> {
+impl<'a> FirstFitPageAllocator<'a> {
     fn count_pages(arch: &impl Architecture, page_size: usize) -> usize {
         let mut count = 0;
 
@@ -180,7 +180,7 @@ impl<'a> PageManager<'a> {
     }
 }
 
-impl PageAllocator for PageManager<'_> {
+impl PageAllocator for FirstFitPageAllocator<'_> {
     fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;

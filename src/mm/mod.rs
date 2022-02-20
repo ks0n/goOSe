@@ -1,8 +1,8 @@
 mod page_alloc;
-mod page_manager;
+mod first_fit_page_allocator;
 
 pub use page_alloc::PageAllocator;
-use page_manager::PageManager;
+use first_fit_page_allocator::FirstFitPageAllocator;
 
 use crate::arch;
 use crate::utils;
@@ -92,23 +92,23 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
 }
 
 pub struct MemoryManagement<'alloc, T: arch::ArchitectureMemory> {
-    page_manager: PageManager<'alloc>,
+    page_allocator: FirstFitPageAllocator<'alloc>,
     arch: &'alloc mut T,
 }
 
 impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
     pub fn new(arch: &impl arch::Architecture) -> Self {
-        let mut page_manager =
-            page_manager::PageManager::from_arch_info(arch, T::get_page_size());
-        let arch_mem = T::new(&mut page_manager);
+        let mut page_allocator =
+            first_fit_page_allocator::FirstFitPageAllocator::from_arch_info(arch, T::get_page_size());
+        let arch_mem = T::new(&mut page_allocator);
 
-        Self { page_manager, arch: arch_mem }
+        Self { page_allocator, arch: arch_mem }
     }
 
     fn map_memory_rw(&mut self) {
         let un_self = self as *mut Self;
 
-        for page in self.page_manager.pages() {
+        for page in self.page_allocator.pages() {
             unsafe {
                 (*un_self).map(
                     PAddr::from(page.base()),
@@ -122,7 +122,7 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
     fn map_kernel_rwx(&mut self) {
         let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
         let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
-        let page_size = self.page_manager.page_size();
+        let page_size = self.page_allocator.page_size();
         let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
 
         for addr in (kernel_start..kernel_end_align).step_by(page_size) {
@@ -151,7 +151,7 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
 
 impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
     fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions) {
-        self.arch.map(&mut self.page_manager, phys.into(), virt.into(), perms)
+        self.arch.map(&mut self.page_allocator, phys.into(), virt.into(), perms)
     }
 
     fn reload_page_table(&mut self) {
