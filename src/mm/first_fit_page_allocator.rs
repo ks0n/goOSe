@@ -76,7 +76,6 @@ impl<'a> FirstFitPageAllocator<'a> {
     fn phys_addr_to_physical_page(
         phys_addr: usize,
         arch: &impl Architecture,
-        page_size: usize,
     ) -> PhysicalPage {
         let kind = if mm::is_kernel_page(phys_addr) {
             PageKind::Kernel
@@ -158,7 +157,7 @@ impl<'a> FirstFitPageAllocator<'a> {
         arch.for_all_memory_regions(|regions| {
             let physical_pages = regions
                 .flat_map(|(start, size)| (start..start + size).step_by(page_size))
-                .map(|base| Self::phys_addr_to_physical_page(base, arch, page_size));
+                .map(|base| Self::phys_addr_to_physical_page(base, arch));
 
             for (i, page) in physical_pages.enumerate() {
                 metadata[i] = page;
