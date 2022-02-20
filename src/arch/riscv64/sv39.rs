@@ -178,7 +178,7 @@ impl arch::ArchitectureMemory for PageTable {
     fn new<'alloc>(allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self {
         // FIXME: No unwrap here
         let page = allocator.alloc_pages(1).unwrap();
-        let page_table = page as *mut PageTable;
+        let page_table: *mut PageTable = page.into();
         // FIXME: Do not unwrap either
         let page_table = unsafe { page_table.as_mut().unwrap() };
 
