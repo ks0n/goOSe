@@ -21,8 +21,37 @@ bitflags! {
     }
 }
 
+
+pub struct VAddr {
+    addr: usize,
+}
+
+impl VAddr {
+    pub fn new(addr: usize) -> Self {
+        Self { addr }
+    }
+
+    pub fn value(&self) -> usize {
+        self.addr
+    }
+}
+
+pub struct PAddr {
+    addr: usize,
+}
+
+impl PAddr {
+    pub fn new(addr: usize) -> Self {
+        Self { addr }
+    }
+
+    pub fn value(&self) -> usize {
+        self.addr
+    }
+}
+
 pub trait MemoryManager {
-    fn map(&mut self, to: usize, from: usize, perms: Permissions);
+    fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions);
     fn reload_page_table(&mut self);
 
 }
@@ -72,8 +101,8 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
         for page in self.page_manager.pages() {
             unsafe {
                 (*un_self).map(
-                    page.base(),
-                    page.base(),
+                    PAddr::new(page.base()),
+                    VAddr::new(page.base()),
                     Permissions::READ | Permissions::WRITE,
                 );
             }
@@ -88,8 +117,8 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
 
         for addr in (kernel_start..kernel_end_align).step_by(page_size) {
             self.map(
-                addr,
-                addr,
+                PAddr::new(addr),
+                VAddr::new(addr),
                 Permissions::READ | Permissions::WRITE | Permissions::EXECUTE,
             );
         }
@@ -101,8 +130,8 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
 
         let serial_page = crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS;
         self.map(
-            serial_page,
-            serial_page,
+            PAddr::new(serial_page),
+            VAddr::new(serial_page),
             Permissions::READ | Permissions::WRITE,
         );
 
@@ -111,8 +140,8 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
 }
 
 impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
-    fn map(&mut self, to: usize, from: usize, perms: Permissions) {
-        self.arch.map(&mut self.page_manager, to, from, perms)
+    fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions) {
+        self.arch.map(&mut self.page_manager, phys.value(), virt.value(), perms)
     }
 
     fn reload_page_table(&mut self) {
