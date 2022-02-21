@@ -73,10 +73,7 @@ impl<'a> FirstFitPageAllocator<'a> {
         ((addr) + alignment - 1) & !(alignment - 1)
     }
 
-    fn phys_addr_to_physical_page(
-        phys_addr: usize,
-        arch: &impl Architecture,
-    ) -> PhysicalPage {
+    fn phys_addr_to_physical_page(phys_addr: usize, arch: &impl Architecture) -> PhysicalPage {
         let kind = if mm::is_kernel_page(phys_addr) {
             PageKind::Kernel
         } else if mm::is_reserved_page(phys_addr, arch) {

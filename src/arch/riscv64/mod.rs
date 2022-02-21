@@ -7,7 +7,6 @@ pub mod interrupts;
 pub mod registers;
 pub mod sv39;
 
-
 pub struct Riscv64 {
     device_tree: fdt::Fdt<'static>,
 }
@@ -25,18 +24,19 @@ impl Architecture for Riscv64 {
         Self { device_tree }
     }
 
-    fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item=(usize, usize)>)>(&self, mut f: F) {
+    fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(&self, mut f: F) {
         let memory = self.device_tree.memory();
         let mut regions = memory
             .regions()
-            .map(|region| {
-                (region.starting_address as usize, region.size.unwrap_or(0))
-            });
+            .map(|region| (region.starting_address as usize, region.size.unwrap_or(0)));
 
         f(&mut regions);
     }
 
-    fn for_all_reserved_memory_regions<F: FnMut(&mut dyn Iterator<Item=(usize, usize)>)>(&self, mut f: F) {
+    fn for_all_reserved_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(
+        &self,
+        mut f: F,
+    ) {
         let reserved_memory = self.device_tree.find_node("/reserved-memory").unwrap();
 
         let mut regions = reserved_memory

@@ -1,11 +1,10 @@
+mod first_fit_page_allocator;
 mod memory_management;
 mod page_alloc;
-mod first_fit_page_allocator;
 
+use first_fit_page_allocator::FirstFitPageAllocator;
 pub use memory_management::MemoryManagement;
 pub use page_alloc::PageAllocator;
-use first_fit_page_allocator::FirstFitPageAllocator;
-
 
 use crate::arch;
 use crate::utils;
@@ -65,7 +64,6 @@ impl<T> core::convert::From<PAddr> for *mut T {
 pub trait MemoryManager {
     fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions);
     fn reload_page_table(&mut self);
-
 }
 
 pub fn is_kernel_page(base: usize) -> bool {
@@ -86,8 +84,8 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
         is_res = regions
             .map(|(start, size)| (start, size)) // this is a weird hack to fix a type error.
             .any(|(region_start, region_size)| {
-            base >= region_start && base <= (region_start + region_size)
-        })
+                base >= region_start && base <= (region_start + region_size)
+            })
     });
 
     return is_res;
