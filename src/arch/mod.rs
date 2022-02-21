@@ -1,9 +1,7 @@
-
 #[cfg(target_arch = "arm")]
 mod arm32;
 #[cfg(target_arch = "riscv64")]
 mod riscv64;
-
 
 use cfg_if::cfg_if;
 
@@ -31,8 +29,11 @@ pub trait Architecture {
 
     fn new(info: usize) -> Self;
 
-    fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item=(usize, usize)>)>(&self, f: F);
-    fn for_all_reserved_memory_regions<F: FnMut(&mut dyn Iterator<Item=(usize, usize)>)>(&self, f: F);
+    fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(&self, f: F);
+    fn for_all_reserved_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(
+        &self,
+        f: F,
+    );
 }
 
 pub trait ArchitectureMemory {

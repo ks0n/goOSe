@@ -2,13 +2,7 @@ use crate::arch;
 use crate::utils;
 
 use crate::mm::{
-    FirstFitPageAllocator,
-    PAddr,
-    VAddr,
-    Permissions,
-    MemoryManager,
-    KERNEL_START,
-    KERNEL_END,
+    FirstFitPageAllocator, MemoryManager, PAddr, Permissions, VAddr, KERNEL_END, KERNEL_START,
 };
 
 pub struct MemoryManagement<'alloc, T: arch::ArchitectureMemory> {
@@ -18,11 +12,13 @@ pub struct MemoryManagement<'alloc, T: arch::ArchitectureMemory> {
 
 impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
     pub fn new(arch: &impl arch::Architecture) -> Self {
-        let mut page_allocator =
-            FirstFitPageAllocator::from_arch_info(arch, T::get_page_size());
+        let mut page_allocator = FirstFitPageAllocator::from_arch_info(arch, T::get_page_size());
         let arch_mem = T::new(&mut page_allocator);
 
-        Self { page_allocator, arch: arch_mem }
+        Self {
+            page_allocator,
+            arch: arch_mem,
+        }
     }
 
     fn map_memory_rw(&mut self) {
@@ -71,7 +67,8 @@ impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
 
 impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
     fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions) {
-        self.arch.map(&mut self.page_allocator, phys.into(), virt.into(), perms)
+        self.arch
+            .map(&mut self.page_allocator, phys.into(), virt.into(), perms)
     }
 
     fn reload_page_table(&mut self) {
