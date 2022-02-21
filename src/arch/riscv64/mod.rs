@@ -1,7 +1,6 @@
 use core::arch::asm;
 
 use super::Architecture;
-use crate::drivers::plic::plic_handler;
 
 pub mod interrupts;
 pub mod registers;

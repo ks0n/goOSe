@@ -6,6 +6,7 @@
 #![feature(custom_test_frameworks)]
 #![feature(associated_type_defaults)]
 #![feature(type_alias_impl_trait)]
+#![feature(option_get_or_insert_default)]
 #![test_runner(crate::kernel_tests::runner)]
 #![reexport_test_harness_main = "ktests_launch"]
 
@@ -24,13 +25,14 @@ use drivers::ns16550::*;
 use drivers::plic;
 
 use arch::Architecture;
+use arch::ArchitectureMemory;
 
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     #[cfg(test)]
     ktests_launch();
 
-    let mut arch = arch::new_arch(device_tree_ptr);
+    let arch = arch::new_arch(device_tree_ptr);
 
     kprintln!("GoOSe is booting");
 
@@ -45,8 +47,9 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     }
     plic.set_threshold(0);
 
-    let mut memory = mm::MemoryManagement::<arch::MemoryImpl>::new(&arch);
-    memory.map_address_space();
+    mm::init_global_allocator(&arch, arch::MemoryImpl::get_page_size());
+    let mut memory = mm::MemoryManagement::<arch::MemoryImpl>::new();
+    mm::map_address_space(&arch, &mut memory);
 
     kprintln!("[OK] Setup virtual memory");
 

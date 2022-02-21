@@ -44,10 +44,6 @@ impl PhysicalPage {
     fn set_last(&mut self) {
         self.last = true;
     }
-
-    pub fn base(&self) -> usize {
-        self.base
-    }
 }
 
 pub struct FirstFitPageAllocator<'a> {
@@ -166,14 +162,6 @@ impl<'a> FirstFitPageAllocator<'a> {
             page_size,
         }
     }
-
-    pub fn page_size(&self) -> usize {
-        self.page_size
-    }
-
-    pub fn pages(&self) -> impl Iterator<Item = &PhysicalPage> + '_ {
-        self.metadata.iter()
-    }
 }
 
 impl PageAllocator for FirstFitPageAllocator<'_> {
@@ -208,5 +196,9 @@ impl PageAllocator for FirstFitPageAllocator<'_> {
 
     fn dealloc_pages(&mut self, _ptr: PAddr) -> Result<(), AllocatorError> {
         Err(AllocatorError::InvalidFree)
+    }
+
+    fn page_size(&self) -> usize {
+        self.page_size
     }
 }
