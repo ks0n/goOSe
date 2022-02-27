@@ -18,7 +18,7 @@ static mut GLOBAL_ALLOCATOR: Option<FirstFitPageAllocator> = None;
 
 pub fn init_global_allocator(arch: &impl arch::Architecture, page_size: usize) {
     unsafe {
-        if !GLOBAL_ALLOCATOR.is_none() {
+        if GLOBAL_ALLOCATOR.is_some() {
             panic!("[ERROR] Tried to init global page allocator BUT it has already been initialized !");
         }
 
