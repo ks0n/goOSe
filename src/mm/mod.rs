@@ -4,9 +4,10 @@ mod page_alloc;
 
 use first_fit_page_allocator::FirstFitPageAllocator;
 pub use memory_management::MemoryManagement;
-pub use page_alloc::{PageAllocator, init_global_allocator, get_global_allocator};
+pub use page_alloc::{get_global_allocator, init_global_allocator, PageAllocator};
 
 use crate::arch;
+use crate::mm;
 use crate::utils;
 use bitflags::bitflags;
 
@@ -94,7 +95,7 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
 fn map_memory_rw(arch: &impl arch::Architecture, mm: &mut impl MemoryManager, page_size: usize) {
     arch.for_all_memory_regions(|regions| {
         regions
-            .flat_map(|(base, size)| (base..base+size).step_by(page_size))
+            .flat_map(|(base, size)| (base..base + size).step_by(page_size))
             .for_each(|page_base| {
                 if !is_reserved_page(page_base, arch) {
                     mm.map(
@@ -122,8 +123,10 @@ fn map_kernel_rwx(mm: &mut impl MemoryManager, page_size: usize) {
 }
 
 pub fn map_address_space(arch: &impl arch::Architecture, mm: &mut impl MemoryManager) {
-    map_memory_rw(arch, mm, get_global_allocator().page_size());
-    map_kernel_rwx(mm, get_global_allocator().page_size());
+    let page_size = mm::get_global_allocator().lock().page_size();
+
+    map_memory_rw(arch, mm, page_size);
+    map_kernel_rwx(mm, page_size);
 
     let serial_page = crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS;
     mm.map(
