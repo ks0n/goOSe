@@ -135,3 +135,25 @@ fn elf_to_mm_permissions(elf_permsission: u32) -> mm::Permissions {
 
     perms
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernel_tests::*;
+
+    #[test_case]
+    fn elf_load_and_execute_clean(ctx: &mut TestContext) {
+        ctx.reset();
+
+        let elf_bytes = core::include_bytes!("../../fixtures/small");
+        let elf = Elf::from_bytes(elf_bytes);
+
+        elf.load(&mut ctx.memory);
+        elf.execute();
+
+        let mut res: usize;
+        unsafe { asm!("mv {}, a0", out(reg) res) };
+
+        assert!(res == 42);
+    }
+}
