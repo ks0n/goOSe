@@ -27,6 +27,10 @@ impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
         self.arch.reload();
     }
 
+    fn disable_page_table(&mut self) {
+        self.arch.disable();
+    }
+
     fn page_size(&self) -> usize {
         T::get_page_size()
     }

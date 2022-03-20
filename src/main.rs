@@ -31,7 +31,10 @@ use arch::ArchitectureMemory;
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     #[cfg(test)]
-    ktests_launch();
+    {
+        crate::kernel_tests::init(device_tree_ptr);
+        ktests_launch();
+    }
 
     let arch = arch::new_arch(device_tree_ptr);
 

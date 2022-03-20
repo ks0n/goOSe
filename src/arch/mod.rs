@@ -8,6 +8,8 @@ use cfg_if::cfg_if;
 use crate::mm;
 
 #[cfg(target_arch = "riscv64")]
+pub type ArchImpl = riscv64::Riscv64;
+#[cfg(target_arch = "riscv64")]
 pub type MemoryImpl = riscv64::sv39::PageTable;
 #[cfg(target_arch = "riscv64")]
 pub type InterruptsImpl = riscv64::interrupts::Interrupts;
@@ -62,6 +64,7 @@ pub trait ArchitectureMemory {
     );
 
     fn reload(&mut self);
+    fn disable(&mut self);
 }
 
 pub trait ArchitectureInterrupts {
@@ -72,6 +75,7 @@ pub trait ArchitectureInterrupts {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::kernel_tests::TestContext;
 
     struct ArchitectureMemoryDummy {}
     impl ArchitectureMemory for ArchitectureMemoryDummy {
@@ -94,15 +98,16 @@ mod tests {
         }
 
         fn reload(&mut self) {}
+        fn disable(&mut self) {}
     }
 
     #[test_case]
-    fn align_down() {
+    fn align_down(_ctx: &mut TestContext) {
         assert!(ArchitectureMemoryDummy::align_down(0x1042) == 0x1000);
     }
 
     #[test_case]
-    fn align_up() {
+    fn align_up(_ctx: &mut TestContext) {
         assert!(ArchitectureMemoryDummy::align_up(0x1042) == 0x2000);
     }
 }

@@ -210,11 +210,23 @@ impl arch::ArchitectureMemory for PageTable {
     fn reload(&mut self) {
         load_pt(self)
     }
+
+    fn disable(&mut self) {
+        let satp = Satp::new()
+            .with_ppn(0)
+            .with_asid(0)
+            .with_mode(SatpMode::Bare as u8);
+
+        unsafe {
+            asm!("csrw satp, {}", in(reg)u64::from(satp));
+            asm!("sfence.vma");
+        }
+    }
 }
 
 #[repr(u8)]
 pub enum SatpMode {
-    _Bare = 0,
+    Bare = 0,
     Sv39 = 8,
     _Sv48 = 9,
     _Sv57 = 10,
