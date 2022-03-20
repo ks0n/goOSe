@@ -20,6 +20,8 @@ pub trait PageAllocator {
 
 pub fn init_global_allocator(arch: &impl arch::Architecture, page_size: usize) {
     unsafe {
+        // Test might need a clean context so we need to reset the global allocator
+        #[cfg(not(test))]
         if GLOBAL_ALLOCATOR.is_some() {
             panic!(
                 "[ERROR] Tried to init global page allocator BUT it has already been initialized !"

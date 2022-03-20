@@ -136,13 +136,9 @@ impl<'a> FirstFitPageAllocator<'a> {
         let page_count = Self::count_pages(arch, page_size);
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();
         let pages_needed = Self::align_up(metadata_size, page_size) / page_size;
-        kprintln!("total of {:?} pages", page_count);
-        kprintln!("metadata_size: {:?}", metadata_size);
-        kprintln!("pages_needed: {:?}", pages_needed);
 
         let metadata_addr =
             Self::find_contiguous_unused_pages(arch, pages_needed, page_size).unwrap();
-        kprintln!("metadata_addr: {:X}", metadata_addr);
 
         let metadata: &mut [PhysicalPage] =
             unsafe { core::slice::from_raw_parts_mut(metadata_addr as *mut _, page_count) };

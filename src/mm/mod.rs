@@ -74,6 +74,7 @@ impl<T> core::convert::From<&PAddr> for *mut T {
 pub trait MemoryManager {
     fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions);
     fn reload_page_table(&mut self);
+    fn disable_page_table(&mut self);
     fn page_size(&self) -> usize;
 
     fn align_down(&self, addr: usize) -> usize;
