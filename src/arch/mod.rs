@@ -69,7 +69,8 @@ pub trait ArchitectureMemory {
 
 pub trait ArchitectureInterrupts {
     fn new() -> Self;
-    fn init_interrupts(&self);
+    fn init_interrupts(&mut self);
+    fn set_timer(&mut self, delay: usize);
 }
 
 #[cfg(test)]

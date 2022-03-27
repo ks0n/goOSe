@@ -17,6 +17,11 @@ goblin = { version = "0.4", default-features = false, features = ["elf64"] }
 [dev-dependencies]
 qemu-exit = "3.0"
 
+[target.riscv64gc-unknown-none-elf.dependencies]
+sbi = "0.2.0"
+riscv = "0.8.0"
+
+
 [target.thumbv7em-none-eabihf.dependencies]
 cortex-m = "0.7"
 cortex-m-rt = { version = "0.7", default-features = false }

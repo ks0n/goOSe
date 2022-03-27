@@ -18,6 +18,12 @@ pub fn set_sie_seie() {
     }
 }
 
+pub fn set_sie_stie() {
+    unsafe {
+        asm!("csrrs zero, sie, {}", in(reg)1 << 5);
+    }
+}
+
 pub fn set_stvec(addr: usize) {
     unsafe {
         asm!("csrw stvec, {}", in(reg)(addr));
