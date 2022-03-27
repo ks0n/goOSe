@@ -4,9 +4,6 @@
 #![feature(fn_align)]
 #![feature(naked_functions)]
 #![feature(custom_test_frameworks)]
-#![feature(associated_type_defaults)]
-#![feature(type_alias_impl_trait)]
-#![feature(option_get_or_insert_default)]
 #![test_runner(crate::kernel_tests::runner)]
 #![reexport_test_harness_main = "ktests_launch"]
 
@@ -57,7 +54,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     kprintln!("[OK] Setup virtual memory");
 
-    let interrupts = interrupt_manager::InterruptManager::<arch::InterruptsImpl>::new();
+    let mut interrupts = interrupt_manager::InterruptManager::<arch::InterruptsImpl>::new();
     interrupts.init_interrupts();
 
     kprintln!("[OK] Enable interrupts");
