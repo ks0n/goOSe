@@ -2,7 +2,7 @@
 
 A minimal Kernel written in Rust
 
-# Building
+## Building
 
 - Generate the compilation configuration for your desired platform using
   [`gen_cargo.sh`](gen_cargo.sh)
@@ -11,6 +11,20 @@ A minimal Kernel written in Rust
 - Each platform configuration might contains a custom runner setup, meaning that
   depending on your use-case `cargo run` will be able to launch an emulator or
   flash a connected microcontroller.
+
+## Testing
+```console
+$ make -C fixtures
+...
+$ cargo test
+...
+```
+
+You might whant to build tests with release profile to speed up testing:
+```console
+$ cargo test --profile release
+...
+```
 
 ## Roadmap
 
