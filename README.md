@@ -33,7 +33,7 @@ $ cargo test --profile release
     - [ ] Virtual Memory handler/MMU usage
 - [ ] Basic in-kernel filesystem
 - [ ] Device-tree handling
-- [ ] In-kernel ELF loader
+- [x] In-kernel ELF loader
 - [ ] IPC implementation
 - [ ] Drivers
     - [ ] Driver API
