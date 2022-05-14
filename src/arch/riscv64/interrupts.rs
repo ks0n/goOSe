@@ -49,7 +49,7 @@ impl From<InterruptType> for u64 {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum ExceptionType {
     Reserved,
     Custom(u64),
@@ -92,6 +92,7 @@ impl From<u64> for ExceptionType {
     }
 }
 
+#[derive(Copy, Clone)]
 enum TrapType {
     Interrupt(InterruptType),
     Exception(ExceptionType),
@@ -294,4 +295,47 @@ unsafe extern "C" fn trap_handler() {
     );
     // Obviously this isn't done, we need to jump back to the previous context before the
     // interrupt using mpp/spp and mepc/sepc.
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::kernel_tests::*;
+
+    #[test_case]
+    fn arch_timer(ctx: &mut TestContext) {
+        static mut TRAPTYPE: Option<TrapType> = None;
+
+        extern "C" fn test_trap_handler(cause: u64) -> u64 {
+            unsafe { TRAPTYPE = Some(TrapType::from(cause)) };
+
+            // "Disable" timer
+            sbi::timer::set_timer(u64::MAX).unwrap();
+            1
+        }
+
+        ctx.arch_interrupts.init_interrupts();
+        ctx.arch_interrupts
+            .set_higher_trap_handler(test_trap_handler);
+
+        ctx.arch_interrupts.set_timer(10000);
+
+        // Wait for the some time for the timer interrupt to arrive
+        for i in 0..1000000 {
+            // This is just to avoid the whole loop optimized out
+            core::hint::black_box(i);
+
+            if let Some(ttype) = unsafe { TRAPTYPE } {
+                if matches!(ttype, TrapType::Interrupt(InterruptType::SupervisorTimer)) {
+                    return;
+                }
+
+                // There was an interrupt but it was not the timer
+                assert!(false);
+            }
+        }
+
+        // The interrupt was never tirggered
+        assert!(false)
+    }
 }
