@@ -10,6 +10,8 @@ use crate::mm;
 #[cfg(target_arch = "riscv64")]
 pub type ArchImpl = riscv64::Riscv64;
 #[cfg(target_arch = "riscv64")]
+pub type ArchInterruptsImpl = riscv64::interrupts::Interrupts;
+#[cfg(target_arch = "riscv64")]
 pub type MemoryImpl = riscv64::sv39::PageTable;
 #[cfg(target_arch = "riscv64")]
 pub type InterruptsImpl = riscv64::interrupts::Interrupts;

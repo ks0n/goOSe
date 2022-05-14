@@ -5,6 +5,7 @@ use core::panic::PanicInfo;
 
 use crate::arch;
 use crate::arch::Architecture;
+use crate::arch::ArchitectureInterrupts;
 use crate::arch::ArchitectureMemory;
 use crate::mm;
 use crate::mm::MemoryManager;
@@ -18,6 +19,7 @@ static mut TEST_CONTEXT: Option<TestContext> = None;
 pub struct TestContext<'a> {
     device_tree_address: usize,
     pub arch: arch::ArchImpl,
+    pub arch_interrupts: arch::ArchInterruptsImpl,
     pub memory: mm::MemoryManagement<'a, arch::MemoryImpl>,
 }
 
@@ -28,6 +30,7 @@ impl<'a> TestContext<'a> {
         TestContext {
             device_tree_address,
             arch,
+            arch_interrupts: arch::ArchInterruptsImpl::new(),
             memory,
         }
     }

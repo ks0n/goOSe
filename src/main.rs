@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(doc_cfg)]
 #![feature(fn_align)]
+#![feature(bench_black_box)]
 #![feature(naked_functions)]
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::kernel_tests::runner)]
