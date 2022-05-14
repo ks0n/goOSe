@@ -150,12 +150,15 @@ impl ArchitectureInterrupts for Interrupts {
     }
 
     fn init_interrupts(&mut self) {
+        // Set the trap handler
+        self.set_higher_trap_handler(trap_dispatch);
+        registers::set_stvec(trap_handler as usize);
+
+        // Then enable the interrupts sources
         registers::set_sstatus_sie();
         registers::set_sie_ssie();
         registers::set_sie_seie();
         registers::set_sie_stie();
-        registers::set_stvec(trap_handler as usize);
-        self.set_higher_trap_handler(trap_dispatch);
     }
 
     fn set_timer(&mut self, delay: usize) {
