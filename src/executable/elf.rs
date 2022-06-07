@@ -115,6 +115,23 @@ impl<'a> Elf<'a> {
             }
         }
     }
+
+    fn entry_point(&self) -> usize {
+        self.header().e_entry as usize
+    }
+}
+
+/// Check if the bytes represent an ELF file
+pub fn is_valid(data: &[u8]) -> bool {
+    let elf_signature = [0x7f, b'E', b'L', b'F'];
+
+    for i in 0..elf_signature.len() {
+        if data[i] != elf_signature[i] {
+            return false;
+        }
+    }
+
+    true
 }
 
 /// Convert ELF p_flags permissions to mm::Permissions
@@ -141,14 +158,26 @@ mod tests {
     use super::*;
     use crate::kernel_tests::*;
 
+    static ELF_BYTES: &[u8] = core::include_bytes!("../../fixtures/small");
+
+    #[test_case]
+    fn elf_is_valid_fake(_ctx: &mut TestContext) {
+        let fake_elf = [0, 1, 2, 3, 4, 5, 6, 7];
+        assert!(!is_valid(&fake_elf));
+    }
+
+    #[test_case]
+    fn elf_is_valid_real(_ctx: &mut TestContext) {
+        assert!(is_valid(ELF_BYTES));
+    }
+
     #[test_case]
     fn elf_load_and_execute_clean(ctx: &mut TestContext) {
         ctx.reset();
 
-        let elf_bytes = core::include_bytes!("../../fixtures/small");
-        let elf = Elf::from_bytes(elf_bytes);
+        let elf = Elf::from_bytes(ELF_BYTES);
 
-        elf.load(&mut ctx.memory);
+        (&elf).load(&mut ctx.memory);
         elf.execute();
 
         let mut res: usize;
