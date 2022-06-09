@@ -50,12 +50,12 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     plic.set_threshold(0);
 
     mm::init_global_allocator(&arch, arch::MemoryImpl::get_page_size());
-    let mut memory = mm::MemoryManagement::<arch::MemoryImpl>::new();
+    let mut memory = mm::MemoryManagement::new();
     mm::map_address_space(&arch, &mut memory);
 
     kprintln!("[OK] Setup virtual memory");
 
-    let mut interrupts = interrupt_manager::InterruptManager::<arch::InterruptsImpl>::new();
+    let mut interrupts = interrupt_manager::InterruptManager::new();
     interrupts.init_interrupts();
 
     kprintln!("[OK] Enable interrupts");
