@@ -1,21 +1,22 @@
 use crate::arch;
+use crate::arch::ArchitectureMemory;
 use crate::mm;
 use crate::mm::{MemoryManager, PAddr, Permissions, VAddr};
 
-pub struct MemoryManagement<'alloc, T: arch::ArchitectureMemory> {
-    arch: &'alloc mut T,
+pub struct MemoryManagement<'alloc> {
+    arch: &'alloc mut arch::MemoryImpl,
 }
 
-impl<'alloc, T: arch::ArchitectureMemory> MemoryManagement<'alloc, T> {
+impl<'alloc> MemoryManagement<'alloc> {
     pub fn new() -> Self {
         let mut page_allocator = mm::get_global_allocator().lock();
-        let arch_mem = T::new(&mut *page_allocator);
-
-        Self { arch: arch_mem }
+        Self {
+            arch: arch::MemoryImpl::new(&mut *page_allocator),
+        }
     }
 }
 
-impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
+impl<'alloc> MemoryManager for MemoryManagement<'alloc> {
     fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions) {
         let mut page_allocator = mm::get_global_allocator().lock();
 
@@ -32,14 +33,14 @@ impl<T: arch::ArchitectureMemory> MemoryManager for MemoryManagement<'_, T> {
     }
 
     fn page_size(&self) -> usize {
-        T::get_page_size()
+        arch::MemoryImpl::get_page_size()
     }
 
     fn align_down(&self, addr: usize) -> usize {
-        T::align_down(addr)
+        arch::MemoryImpl::align_down(addr)
     }
 
     fn align_up(&self, addr: usize) -> usize {
-        T::align_up(addr)
+        arch::MemoryImpl::align_up(addr)
     }
 }

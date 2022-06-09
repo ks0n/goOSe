@@ -83,8 +83,7 @@ mod tests {
     struct ArchitectureMemoryDummy {}
     impl ArchitectureMemory for ArchitectureMemoryDummy {
         fn new<'alloc>(_allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self {
-            // We will never use this, we just need the compiler to be happy
-            unsafe { (0 as *mut Self).as_mut().unwrap() }
+            unreachable!("We will never use this, we just need the compiler to be happy");
         }
 
         fn get_page_size() -> usize {

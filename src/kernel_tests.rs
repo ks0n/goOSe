@@ -16,14 +16,14 @@ static UTEST_FAILURE: &str = "\x1b[31mFAILED\x1b[0m";
 
 static mut TEST_CONTEXT: Option<TestContext> = None;
 
-pub struct TestContext<'a> {
+pub struct TestContext<'alloc> {
     device_tree_address: usize,
     pub arch: arch::ArchImpl,
     pub arch_interrupts: arch::ArchInterruptsImpl,
-    pub memory: mm::MemoryManagement<'a, arch::MemoryImpl>,
+    pub memory: mm::MemoryManagement<'alloc>,
 }
 
-impl<'a> TestContext<'a> {
+impl<'alloc> TestContext<'alloc> {
     pub fn new(device_tree_address: usize) -> Self {
         let (arch, memory) = TestContext::build_context_data(device_tree_address);
 
@@ -48,11 +48,11 @@ impl<'a> TestContext<'a> {
 
     fn build_context_data(
         device_tree_address: usize,
-    ) -> (arch::ArchImpl, mm::MemoryManagement<'a, arch::MemoryImpl>) {
+    ) -> (arch::ArchImpl, mm::MemoryManagement<'alloc>) {
         let arch = arch::ArchImpl::new(device_tree_address);
 
         mm::init_global_allocator(&arch, arch::MemoryImpl::get_page_size());
-        let mut memory = mm::MemoryManagement::<arch::MemoryImpl>::new();
+        let mut memory = mm::MemoryManagement::new();
         mm::map_address_space(&arch, &mut memory);
 
         (arch, memory)
