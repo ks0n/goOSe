@@ -13,11 +13,10 @@ mod drivers;
 mod executable;
 mod interrupt_manager;
 mod kernel_serial;
-mod mm;
-mod utils;
-
 #[cfg(test)]
 mod kernel_tests;
+mod mm;
+mod utils;
 
 use core::arch::asm;
 use drivers::ns16550::*;
