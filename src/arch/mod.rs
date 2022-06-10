@@ -3,9 +3,10 @@ mod arm32;
 #[cfg(target_arch = "riscv64")]
 mod riscv64;
 
-use cfg_if::cfg_if;
-
 use crate::mm;
+
+use cfg_if::cfg_if;
+use static_assertions::assert_impl_all;
 
 #[cfg(target_arch = "riscv64")]
 pub type ArchImpl = riscv64::Riscv64;
@@ -15,6 +16,10 @@ pub type ArchInterruptsImpl = riscv64::interrupts::Interrupts;
 pub type MemoryImpl = riscv64::sv39::PageTable;
 #[cfg(target_arch = "riscv64")]
 pub type InterruptsImpl = riscv64::interrupts::Interrupts;
+
+assert_impl_all!(ArchImpl: Architecture);
+assert_impl_all!(MemoryImpl: ArchitectureMemory);
+assert_impl_all!(InterruptsImpl: ArchitectureInterrupts);
 
 pub fn new_arch(info: usize) -> impl Architecture {
     cfg_if! {
