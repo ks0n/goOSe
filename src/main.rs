@@ -16,6 +16,7 @@ mod kernel_serial;
 #[cfg(test)]
 mod kernel_tests;
 mod mm;
+mod process;
 mod utils;
 
 use core::arch::asm;

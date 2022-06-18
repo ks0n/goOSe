@@ -64,7 +64,7 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn load(&self, mm: &mut dyn mm::MemoryManager) {
+    pub fn map(&self, mm: &mut dyn mm::MemoryManager) {
         let page_size = mm.page_size();
 
         for segment in self.segments() {
@@ -110,8 +110,6 @@ impl<'a> Elf<'a> {
                     mm::VAddr::from(mm.align_down(virtual_pages as usize) + page_offset),
                     perms,
                 );
-
-                mm.reload_page_table();
             }
         }
     }
@@ -157,6 +155,7 @@ fn elf_to_mm_permissions(elf_permsission: u32) -> mm::Permissions {
 mod tests {
     use super::*;
     use crate::kernel_tests::*;
+    use crate::mm::MemoryManager;
 
     static ELF_BYTES: &[u8] = core::include_bytes!("../../fixtures/small");
 
@@ -177,7 +176,8 @@ mod tests {
 
         let elf = Elf::from_bytes(ELF_BYTES);
 
-        (&elf).load(&mut ctx.memory);
+        (&elf).map(&mut ctx.memory);
+        ctx.memory.reload_page_table();
         elf.execute();
 
         let mut res: usize;
