@@ -9,14 +9,14 @@ pub struct MemoryManagement<'alloc> {
 
 impl<'alloc> MemoryManagement<'alloc> {
     pub fn new() -> Self {
-        let mut page_allocator = mm::get_global_allocator().lock();
+        let mut page_allocator = mm::get_physical_memory_manager().lock();
         Self {
             arch: arch::MemoryImpl::new(&mut *page_allocator),
         }
     }
 
     pub fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions) {
-        let mut page_allocator = mm::get_global_allocator().lock();
+        let mut page_allocator = mm::get_physical_memory_manager().lock();
 
         self.arch
             .map(&mut *page_allocator, phys.into(), virt.into(), perms)

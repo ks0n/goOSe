@@ -2,7 +2,6 @@ use core::arch::asm;
 use core::iter::Iterator;
 
 use crate::mm;
-use crate::mm::PageAllocator;
 
 use goblin;
 use goblin::elf::header::header64::Header;
@@ -76,7 +75,7 @@ impl<'a> Elf<'a> {
             let p_memsz = segment.p_memsz as usize;
 
             let pages_needed = Self::pages_needed(segment, mm);
-            let physical_pages = mm::get_global_allocator()
+            let physical_pages = mm::get_physical_memory_manager()
                 .lock()
                 .alloc_pages(pages_needed)
                 .unwrap();

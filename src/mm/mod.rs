@@ -3,8 +3,8 @@ mod page_alloc;
 mod physical_memory_manager;
 
 pub use memory_management::MemoryManagement;
-pub use page_alloc::{get_global_allocator, init_global_allocator, PageAllocator};
-use physical_memory_manager::PhysicalMemoryManager;
+pub use page_alloc::{get_physical_memory_manager, init_global_allocator};
+pub use physical_memory_manager::PhysicalMemoryManager;
 
 use crate::arch;
 use crate::mm;
@@ -127,7 +127,7 @@ fn map_kernel_rwx(mm: &mut MemoryManagement, page_size: usize) {
 }
 
 pub fn map_address_space(arch: &impl arch::Architecture, mm: &mut MemoryManagement) {
-    let page_size = mm::get_global_allocator().lock().page_size();
+    let page_size = mm::get_physical_memory_manager().lock().page_size();
 
     map_memory_rw(arch, mm, page_size);
     map_kernel_rwx(mm, page_size);
