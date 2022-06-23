@@ -46,7 +46,7 @@ pub trait Architecture {
 }
 
 pub trait ArchitectureMemory {
-    fn new<'alloc>(allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self;
+    fn new<'alloc>(allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self;
 
     fn get_page_size() -> usize;
 
@@ -64,7 +64,7 @@ pub trait ArchitectureMemory {
 
     fn map(
         &mut self,
-        allocator: &mut impl mm::PageAllocator,
+        allocator: &mut mm::PhysicalMemoryManager,
         to: usize,
         from: usize,
         perms: mm::Permissions,
@@ -87,7 +87,7 @@ mod tests {
 
     struct ArchitectureMemoryDummy {}
     impl ArchitectureMemory for ArchitectureMemoryDummy {
-        fn new<'alloc>(_allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self {
+        fn new<'alloc>(_allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self {
             unreachable!("We will never use this, we just need the compiler to be happy");
         }
 
@@ -97,7 +97,7 @@ mod tests {
 
         fn map(
             &mut self,
-            _allocator: &mut impl mm::PageAllocator,
+            _allocator: &mut mm::PhysicalMemoryManager,
             _to: usize,
             _from: usize,
             _perms: mm::Permissions,

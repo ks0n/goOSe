@@ -1,4 +1,4 @@
-use super::page_alloc::{AllocatorError, PageAllocator};
+use super::page_alloc::AllocatorError;
 use crate::kprintln;
 use crate::mm;
 use crate::mm::PAddr;
@@ -162,10 +162,8 @@ impl<'a> PhysicalMemoryManager<'a> {
     pub fn pages(&self) -> impl Iterator<Item = &PhysicalPage> + '_ {
         self.metadata.iter()
     }
-}
 
-impl PageAllocator for PhysicalMemoryManager<'_> {
-    fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
+    pub fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
 
@@ -194,11 +192,11 @@ impl PageAllocator for PhysicalMemoryManager<'_> {
         Err(AllocatorError::OutOfMemory)
     }
 
-    fn dealloc_pages(&mut self, _ptr: PAddr) -> Result<(), AllocatorError> {
+    pub fn dealloc_pages(&mut self, _ptr: PAddr) -> Result<(), AllocatorError> {
         Err(AllocatorError::InvalidFree)
     }
 
-    fn page_size(&self) -> usize {
+    pub fn page_size(&self) -> usize {
         self.page_size
     }
 }

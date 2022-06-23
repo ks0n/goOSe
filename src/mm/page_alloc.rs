@@ -1,5 +1,5 @@
 use crate::arch;
-use crate::mm::{PAddr, PhysicalMemoryManager};
+use crate::mm::PhysicalMemoryManager;
 
 use spin::Mutex;
 
@@ -9,13 +9,6 @@ static mut GLOBAL_ALLOCATOR: Option<Mutex<PhysicalMemoryManager>> = None;
 pub enum AllocatorError {
     OutOfMemory,
     InvalidFree,
-}
-
-pub trait PageAllocator {
-    fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError>;
-    fn dealloc_pages(&mut self, ptr: PAddr) -> Result<(), AllocatorError>;
-
-    fn page_size(&self) -> usize;
 }
 
 pub fn init_global_allocator(arch: &impl arch::Architecture, page_size: usize) {
@@ -34,7 +27,7 @@ pub fn init_global_allocator(arch: &impl arch::Architecture, page_size: usize) {
     }
 }
 
-pub fn get_global_allocator() -> &'static mut Mutex<impl PageAllocator> {
+pub fn get_physical_memory_manager() -> &'static mut Mutex<PhysicalMemoryManager<'static>> {
     unsafe {
         if GLOBAL_ALLOCATOR.is_none() {
             panic!("[ERROR] Tried to access the global page allocator before it has been initialized !");

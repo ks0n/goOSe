@@ -146,7 +146,7 @@ pub struct PageTable {
 impl PageTable {
     fn map_inner(
         &mut self,
-        allocator: &mut impl mm::PageAllocator,
+        allocator: &mut mm::PhysicalMemoryManager,
         paddr: PAddr,
         vaddr: VAddr,
         perms: mm::Permissions,
@@ -175,7 +175,7 @@ impl PageTable {
 }
 
 impl arch::ArchitectureMemory for PageTable {
-    fn new<'alloc>(allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self {
+    fn new<'alloc>(allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self {
         // FIXME: No unwrap here
         let page = allocator.alloc_pages(1).unwrap();
         let page_table: *mut PageTable = page.into();
@@ -193,7 +193,7 @@ impl arch::ArchitectureMemory for PageTable {
 
     fn map(
         &mut self,
-        allocator: &mut impl mm::PageAllocator,
+        allocator: &mut mm::PhysicalMemoryManager,
         to: usize,
         from: usize,
         perms: mm::Permissions,
