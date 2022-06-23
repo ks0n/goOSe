@@ -46,12 +46,12 @@ impl PhysicalPage {
     }
 }
 
-pub struct PhysicalMemoryManager<'a> {
-    metadata: &'a mut [PhysicalPage],
+pub struct PhysicalMemoryManager {
+    metadata: &'static mut [PhysicalPage],
     page_size: usize,
 }
 
-impl<'a> PhysicalMemoryManager<'a> {
+impl PhysicalMemoryManager {
     fn count_pages(arch: &impl Architecture, page_size: usize) -> usize {
         let mut count = 0;
 
