@@ -65,8 +65,8 @@ pub trait ArchitectureMemory {
     fn map(
         &mut self,
         allocator: &mut mm::PhysicalMemoryManager,
-        to: usize,
-        from: usize,
+        pa: mm::PAddr,
+        va: mm::VAddr,
         perms: mm::Permissions,
     );
 
@@ -98,8 +98,8 @@ mod tests {
         fn map(
             &mut self,
             _allocator: &mut mm::PhysicalMemoryManager,
-            _to: usize,
-            _from: usize,
+            _pa: mm::PAddr,
+            _va: mm::VAddr,
             _perms: mm::Permissions,
         ) {
         }
