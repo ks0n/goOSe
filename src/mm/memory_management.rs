@@ -1,25 +1,27 @@
 use crate::arch;
 use crate::arch::ArchitectureMemory;
 use crate::mm;
-use crate::mm::{PAddr, Permissions, VAddr};
+use crate::mm::{PAddr, Permissions, PhysicalMemoryManager, VAddr};
 
 pub struct MemoryManagement<'alloc> {
     arch: &'alloc mut arch::MemoryImpl,
 }
 
 impl<'alloc> MemoryManagement<'alloc> {
-    pub fn new() -> Self {
-        let mut page_allocator = mm::get_physical_memory_manager().lock();
+    pub fn new(pmm: &mut PhysicalMemoryManager) -> Self {
         Self {
-            arch: arch::MemoryImpl::new(&mut *page_allocator),
+            arch: arch::MemoryImpl::new(pmm),
         }
     }
 
-    pub fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions) {
-        let mut page_allocator = mm::get_physical_memory_manager().lock();
-
-        self.arch
-            .map(&mut *page_allocator, phys.into(), virt.into(), perms)
+    pub fn map(
+        &mut self,
+        pmm: &mut PhysicalMemoryManager,
+        phys: PAddr,
+        virt: VAddr,
+        perms: Permissions,
+    ) {
+        self.arch.map(pmm, phys.into(), virt.into(), perms)
     }
 
     pub fn reload_page_table(&mut self) {

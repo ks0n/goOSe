@@ -19,17 +19,19 @@ pub struct TestContext<'alloc> {
     device_tree_address: usize,
     pub arch: arch::ArchImpl,
     pub arch_interrupts: arch::ArchInterruptsImpl,
+    pub pmm: mm::PhysicalMemoryManager<'alloc>,
     pub memory: mm::MemoryManagement<'alloc>,
 }
 
 impl<'alloc> TestContext<'alloc> {
     pub fn new(device_tree_address: usize) -> Self {
-        let (arch, memory) = TestContext::build_context_data(device_tree_address);
+        let (arch, pmm, memory) = TestContext::build_context_data(device_tree_address);
 
         TestContext {
             device_tree_address,
             arch,
             arch_interrupts: arch::ArchInterruptsImpl::new(),
+            pmm,
             memory,
         }
     }
@@ -39,22 +41,28 @@ impl<'alloc> TestContext<'alloc> {
         // allocated via the global allocator. Let's disable pagination to avoiding access fault
         self.memory.disable_page_table();
 
-        let (arch, memory) = TestContext::build_context_data(self.device_tree_address);
+        let (arch, pmm, memory) = TestContext::build_context_data(self.device_tree_address);
 
         self.arch = arch;
+        self.pmm = pmm;
         self.memory = memory;
     }
 
     fn build_context_data(
         device_tree_address: usize,
-    ) -> (arch::ArchImpl, mm::MemoryManagement<'alloc>) {
+    ) -> (
+        arch::ArchImpl,
+        mm::PhysicalMemoryManager<'static>,
+        mm::MemoryManagement<'alloc>,
+    ) {
         let arch = arch::ArchImpl::new(device_tree_address);
+        let mut pmm =
+            mm::PhysicalMemoryManager::from_arch_info(&arch, arch::MemoryImpl::get_page_size());
 
-        mm::init_global_allocator(&arch, arch::MemoryImpl::get_page_size());
-        let mut memory = mm::MemoryManagement::new();
-        mm::map_address_space(&arch, &mut memory);
+        let mut memory = mm::MemoryManagement::new(&mut pmm);
+        mm::map_address_space(&arch, &mut memory, &mut pmm);
 
-        (arch, memory)
+        (arch, pmm, memory)
     }
 }
 
@@ -101,7 +109,7 @@ fn end_utests() {
 
     cfg_if! {
         if #[cfg(target_arch = "riscv64")] {
-            ctx.memory.map(mm::PAddr::from(0x100000), mm::VAddr::from(0x100000),
+            ctx.memory.map(&mut ctx.pmm, mm::PAddr::from(0x100000), mm::VAddr::from(0x100000),
             mm::Permissions::READ | mm::Permissions::WRITE);
             qemu_exit::RISCV64::new(0x100000).exit_success()
         }

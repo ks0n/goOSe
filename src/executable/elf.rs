@@ -63,7 +63,7 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn load(&self, mm: &mut mm::MemoryManagement) {
+    pub fn load(&self, mm: &mut mm::MemoryManagement, pmm: &mut mm::PhysicalMemoryManager) {
         let page_size = mm.page_size();
 
         for segment in self.segments() {
@@ -75,10 +75,7 @@ impl<'a> Elf<'a> {
             let p_memsz = segment.p_memsz as usize;
 
             let pages_needed = Self::pages_needed(segment, mm);
-            let physical_pages = mm::get_physical_memory_manager()
-                .lock()
-                .alloc_pages(pages_needed)
-                .unwrap();
+            let physical_pages = pmm.alloc_pages(pages_needed).unwrap();
             let virtual_pages = segment.p_paddr as *mut u8;
 
             let segment_data_src_addr = (self.load_addr + p_offset) as *const u8;
@@ -105,6 +102,7 @@ impl<'a> Elf<'a> {
             for i in 0..pages_needed {
                 let page_offset = i * page_size;
                 mm.map(
+                    pmm,
                     mm::PAddr::from(usize::from(physical_pages) + page_offset),
                     mm::VAddr::from(mm.align_down(virtual_pages as usize) + page_offset),
                     perms,
@@ -147,7 +145,7 @@ mod tests {
         let elf_bytes = core::include_bytes!("../../fixtures/small");
         let elf = Elf::from_bytes(elf_bytes);
 
-        elf.load(&mut ctx.memory);
+        elf.load(&mut ctx.memory, &mut ctx.pmm);
         elf.execute();
 
         let mut res: usize;
