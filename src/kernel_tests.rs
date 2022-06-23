@@ -19,7 +19,7 @@ pub struct TestContext<'alloc> {
     device_tree_address: usize,
     pub arch: arch::ArchImpl,
     pub arch_interrupts: arch::ArchInterruptsImpl,
-    pub pmm: mm::PhysicalMemoryManager<'alloc>,
+    pub pmm: mm::PhysicalMemoryManager,
     pub page_table: &'alloc mut arch::MemoryImpl,
 }
 
@@ -52,7 +52,7 @@ impl<'alloc> TestContext<'alloc> {
         device_tree_address: usize,
     ) -> (
         arch::ArchImpl,
-        mm::PhysicalMemoryManager<'static>,
+        mm::PhysicalMemoryManager,
         &'alloc mut arch::MemoryImpl,
     ) {
         let arch = arch::ArchImpl::new(device_tree_address);
