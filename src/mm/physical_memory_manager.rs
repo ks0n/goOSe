@@ -46,12 +46,12 @@ impl PhysicalPage {
     }
 }
 
-pub struct FirstFitPageAllocator<'a> {
+pub struct PhysicalMemoryManager<'a> {
     metadata: &'a mut [PhysicalPage],
     page_size: usize,
 }
 
-impl<'a> FirstFitPageAllocator<'a> {
+impl<'a> PhysicalMemoryManager<'a> {
     fn count_pages(arch: &impl Architecture, page_size: usize) -> usize {
         let mut count = 0;
 
@@ -95,8 +95,8 @@ impl<'a> FirstFitPageAllocator<'a> {
         let mut found = None;
 
         arch.for_all_memory_regions(|regions| {
-            let physical_pages = regions
-                .flat_map(|(addr, size)| (addr..addr + size).step_by(page_size));
+            let physical_pages =
+                regions.flat_map(|(addr, size)| (addr..addr + size).step_by(page_size));
 
             let mut first_page_addr: usize = 0;
             let mut consecutive_pages: usize = 0;
@@ -164,7 +164,7 @@ impl<'a> FirstFitPageAllocator<'a> {
     }
 }
 
-impl PageAllocator for FirstFitPageAllocator<'_> {
+impl PageAllocator for PhysicalMemoryManager<'_> {
     fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
