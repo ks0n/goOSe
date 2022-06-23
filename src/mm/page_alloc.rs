@@ -1,9 +1,9 @@
 use crate::arch;
-use crate::mm::{FirstFitPageAllocator, PAddr};
+use crate::mm::{PAddr, PhysicalMemoryManager};
 
 use spin::Mutex;
 
-static mut GLOBAL_ALLOCATOR: Option<Mutex<FirstFitPageAllocator>> = None;
+static mut GLOBAL_ALLOCATOR: Option<Mutex<PhysicalMemoryManager>> = None;
 
 #[derive(Debug)]
 pub enum AllocatorError {
@@ -28,7 +28,7 @@ pub fn init_global_allocator(arch: &impl arch::Architecture, page_size: usize) {
             );
         }
 
-        GLOBAL_ALLOCATOR = Some(Mutex::new(FirstFitPageAllocator::from_arch_info(
+        GLOBAL_ALLOCATOR = Some(Mutex::new(PhysicalMemoryManager::from_arch_info(
             arch, page_size,
         )));
     }

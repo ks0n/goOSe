@@ -1,10 +1,10 @@
-mod first_fit_page_allocator;
 mod memory_management;
 mod page_alloc;
+mod physical_memory_manager;
 
-use first_fit_page_allocator::FirstFitPageAllocator;
 pub use memory_management::MemoryManagement;
 pub use page_alloc::{get_global_allocator, init_global_allocator, PageAllocator};
+use physical_memory_manager::PhysicalMemoryManager;
 
 use crate::arch;
 use crate::mm;
