@@ -50,8 +50,8 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     let mut pmm =
         mm::PhysicalMemoryManager::from_arch_info(&arch, arch::MemoryImpl::get_page_size());
-    let mut memory = mm::MemoryManagement::new(&mut pmm);
-    mm::map_address_space(&arch, &mut memory, &mut pmm);
+    let page_table = arch::MemoryImpl::new(&mut pmm);
+    mm::map_address_space(&arch, page_table, &mut pmm);
 
     kprintln!("[OK] Setup virtual memory");
 

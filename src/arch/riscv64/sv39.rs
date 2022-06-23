@@ -194,14 +194,14 @@ impl arch::ArchitectureMemory for PageTable {
     fn map(
         &mut self,
         allocator: &mut mm::PhysicalMemoryManager,
-        to: usize,
-        from: usize,
+        pa: mm::PAddr,
+        va: mm::VAddr,
         perms: mm::Permissions,
     ) {
         self.map_inner(
             allocator,
-            PAddr::from_u64(to.try_into().unwrap()),
-            VAddr::from_u64(from.try_into().unwrap()),
+            PAddr::from_u64(usize::from(pa).try_into().unwrap()),
+            VAddr::from_u64(usize::from(va).try_into().unwrap()),
             perms,
             2,
         )

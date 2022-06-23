@@ -1,12 +1,10 @@
-mod memory_management;
 mod page_alloc;
 mod physical_memory_manager;
 
-pub use memory_management::MemoryManagement;
 pub use physical_memory_manager::PhysicalMemoryManager;
 
 use crate::arch;
-use crate::mm;
+use crate::arch::ArchitectureMemory;
 use crate::utils;
 
 use bitflags::bitflags;
@@ -97,7 +95,7 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
 
 fn map_memory_rw(
     arch: &impl arch::Architecture,
-    mm: &mut MemoryManagement,
+    page_table: &mut arch::MemoryImpl,
     pmm: &mut PhysicalMemoryManager,
     page_size: usize,
 ) {
@@ -106,7 +104,7 @@ fn map_memory_rw(
             .flat_map(|(base, size)| (base..base + size).step_by(page_size))
             .for_each(|page_base| {
                 if !is_reserved_page(page_base, arch) {
-                    mm.map(
+                    page_table.map(
                         pmm,
                         PAddr::from(page_base),
                         VAddr::from(page_base),
@@ -117,7 +115,7 @@ fn map_memory_rw(
     });
 }
 
-fn map_kernel_rwx(mm: &mut MemoryManagement, pmm: &mut PhysicalMemoryManager, page_size: usize) {
+fn map_kernel_rwx(mm: &mut arch::MemoryImpl, pmm: &mut PhysicalMemoryManager, page_size: usize) {
     let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
@@ -134,21 +132,21 @@ fn map_kernel_rwx(mm: &mut MemoryManagement, pmm: &mut PhysicalMemoryManager, pa
 
 pub fn map_address_space(
     arch: &impl arch::Architecture,
-    mm: &mut MemoryManagement,
+    page_table: &mut arch::MemoryImpl,
     pmm: &mut PhysicalMemoryManager,
 ) {
     let page_size = pmm.page_size();
 
-    map_memory_rw(arch, mm, pmm, page_size);
-    map_kernel_rwx(mm, pmm, page_size);
+    map_memory_rw(arch, page_table, pmm, page_size);
+    map_kernel_rwx(page_table, pmm, page_size);
 
     let serial_page = crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS;
-    mm.map(
+    page_table.map(
         pmm,
         PAddr::from(serial_page),
         VAddr::from(serial_page),
         Permissions::READ | Permissions::WRITE,
     );
 
-    mm.reload_page_table();
+    page_table.reload();
 }

@@ -1,6 +1,8 @@
 use core::arch::asm;
 use core::iter::Iterator;
 
+use crate::arch;
+use crate::arch::ArchitectureMemory;
 use crate::mm;
 
 use goblin;
@@ -52,19 +54,19 @@ impl<'a> Elf<'a> {
 
     fn pages_needed(
         segment: &goblin::elf64::program_header::ProgramHeader,
-        mm: &mut mm::MemoryManagement,
+        page_size: usize,
     ) -> usize {
         let p_memsz = segment.p_memsz as usize;
 
-        if p_memsz < mm.page_size() {
+        if p_memsz < page_size {
             1
         } else {
-            p_memsz / mm.page_size()
+            p_memsz / page_size
         }
     }
 
-    pub fn load(&self, mm: &mut mm::MemoryManagement, pmm: &mut mm::PhysicalMemoryManager) {
-        let page_size = mm.page_size();
+    pub fn load(&self, page_table: &mut arch::MemoryImpl, pmm: &mut mm::PhysicalMemoryManager) {
+        let page_size = pmm.page_size();
 
         for segment in self.segments() {
             if segment.p_type != PT_LOAD {
@@ -74,7 +76,7 @@ impl<'a> Elf<'a> {
             let p_filesz = segment.p_filesz as usize;
             let p_memsz = segment.p_memsz as usize;
 
-            let pages_needed = Self::pages_needed(segment, mm);
+            let pages_needed = Self::pages_needed(segment, page_size);
             let physical_pages = pmm.alloc_pages(pages_needed).unwrap();
             let virtual_pages = segment.p_paddr as *mut u8;
 
@@ -101,14 +103,16 @@ impl<'a> Elf<'a> {
 
             for i in 0..pages_needed {
                 let page_offset = i * page_size;
-                mm.map(
+                page_table.map(
                     pmm,
                     mm::PAddr::from(usize::from(physical_pages) + page_offset),
-                    mm::VAddr::from(mm.align_down(virtual_pages as usize) + page_offset),
+                    mm::VAddr::from(
+                        arch::MemoryImpl::align_down(virtual_pages as usize) + page_offset,
+                    ),
                     perms,
                 );
 
-                mm.reload_page_table();
+                page_table.reload();
             }
         }
     }
@@ -145,7 +149,7 @@ mod tests {
         let elf_bytes = core::include_bytes!("../../fixtures/small");
         let elf = Elf::from_bytes(elf_bytes);
 
-        elf.load(&mut ctx.memory, &mut ctx.pmm);
+        elf.load(ctx.page_table, &mut ctx.pmm);
         elf.execute();
 
         let mut res: usize;
