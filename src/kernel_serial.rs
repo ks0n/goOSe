@@ -1,4 +1,3 @@
-use core::arch::asm;
 use core::fmt::{self, Write};
 
 use crate::drivers::ns16550::{Ns16550, QEMU_VIRT_BASE_ADDRESS};
@@ -45,6 +44,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     crate::kprintln!("\x1b[31mkernel panic\x1b[0m: {}", info);
 
     loop {
+        use core::arch::asm;
         unsafe { asm!("wfi") }
     }
 }

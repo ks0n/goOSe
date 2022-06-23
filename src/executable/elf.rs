@@ -1,4 +1,3 @@
-use core::arch::asm;
 use core::iter::Iterator;
 
 use crate::arch;
@@ -44,10 +43,12 @@ impl<'a> Elf<'a> {
             .map(|addr| unsafe { &(*(addr as *const ProgramHeader)) })
     }
 
+    // TODO this should not be here
     pub fn execute(&self) {
         let addr = self.header().e_entry;
 
         unsafe {
+            use core::arch::asm;
             asm!("jalr {}", in(reg) addr);
         }
     }
@@ -141,6 +142,7 @@ fn elf_to_mm_permissions(elf_permsission: u32) -> mm::Permissions {
 mod tests {
     use super::*;
     use crate::kernel_tests::*;
+    use core::arch::asm;
 
     #[test_case]
     fn elf_load_and_execute_clean(ctx: &mut TestContext) {

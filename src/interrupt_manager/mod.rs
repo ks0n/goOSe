@@ -20,3 +20,5 @@ impl InterruptManager {
         self.arch.set_timer(delay);
     }
 }
+
+// TODO: Test set_timer

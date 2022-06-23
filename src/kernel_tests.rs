@@ -59,7 +59,7 @@ impl<'alloc> TestContext<'alloc> {
         let mut pmm =
             mm::PhysicalMemoryManager::from_arch_info(&arch, arch::MemoryImpl::get_page_size());
 
-        let mut page_table = arch::MemoryImpl::new(&mut pmm);
+        let page_table = arch::MemoryImpl::new(&mut pmm);
         mm::map_address_space(&arch, page_table, &mut pmm);
 
         (arch, pmm, page_table)
