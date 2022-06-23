@@ -47,6 +47,7 @@ pub trait Architecture {
 
 pub trait ArchitectureMemory {
     fn new<'alloc>(allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self;
+    fn clone<'alloc>(&self, allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self;
 
     fn get_page_size() -> usize;
 
@@ -91,6 +92,10 @@ mod tests {
             unreachable!("We will never use this, we just need the compiler to be happy");
         }
 
+        fn clone<'alloc>(&self, _allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self {
+            unreachable!("We will never use this, we just need the compiler to be happy");
+        }
+
         fn get_page_size() -> usize {
             4096
         }
@@ -102,6 +107,7 @@ mod tests {
             _from: usize,
             _perms: mm::Permissions,
         ) {
+            unreachable!("We will never use this, we just need the compiler to be happy");
         }
 
         fn reload(&mut self) {}

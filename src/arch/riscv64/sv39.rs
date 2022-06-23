@@ -64,6 +64,15 @@ impl PAddr {
         }
     }
 
+    fn from_ppn(ppn0: u16, ppn1: u16, ppn2: u32) -> Self {
+        let addr: usize =
+            ((ppn0 as usize) << 12) & ((ppn1 as usize) << 21) & ((ppn2 as usize) << 30);
+        let mut paddr = Self::from_u64(addr as u64);
+        paddr.extend_55th_bit(false);
+
+        paddr
+    }
+
     fn extend_55th_bit(&mut self, bit: bool) {
         let mask = ((!0u64) >> 55) << 55;
 
@@ -79,11 +88,8 @@ impl PAddr {
 #[bitfield]
 struct PageTableEntry {
     v: B1,
-    #[skip(getters)]
     r: B1,
-    #[skip(getters)]
     w: B1,
-    #[skip(getters)]
     x: B1,
     #[skip]
     u: B1,
@@ -121,9 +127,19 @@ impl PageTableEntry {
         self.set_ppn0(paddr.ppn(0) as u16);
     }
 
+    fn get_paddr(&self) -> PAddr {
+        PAddr::from_ppn(self.ppn0(), self.ppn1(), self.ppn2())
+    }
+
     fn set_target(&mut self, pt: *mut PageTable) {
         let addr = pt as u64;
         self.set_paddr(&PAddr::from_u64(addr))
+    }
+
+    fn get_target(&self) -> &mut PageTable {
+        let addr =
+            ((self.ppn2() as u64) << 18 | (self.ppn1() as u64) << 9 | self.ppn0() as u64) * 4096u64;
+        unsafe { (addr as *mut PageTable).as_mut().unwrap() }
     }
 
     fn set_perms(&mut self, perms: mm::Permissions) {
@@ -132,10 +148,22 @@ impl PageTableEntry {
         self.set_x(perms.contains(mm::Permissions::EXECUTE) as u8);
     }
 
-    fn get_target(&mut self) -> &mut PageTable {
-        let addr =
-            ((self.ppn2() as u64) << 18 | (self.ppn1() as u64) << 9 | self.ppn0() as u64) * 4096u64;
-        unsafe { (addr as *mut PageTable).as_mut().unwrap() }
+    fn get_perms(&self) -> mm::Permissions {
+        let mut perms = mm::Permissions::empty();
+
+        if self.r() != 0 {
+            perms.insert(mm::Permissions::READ);
+        }
+
+        if self.w() != 0 {
+            perms.insert(mm::Permissions::WRITE);
+        }
+
+        if self.x() != 0 {
+            perms.insert(mm::Permissions::EXECUTE);
+        }
+
+        perms
     }
 }
 
@@ -172,6 +200,36 @@ impl PageTable {
         pte.get_target()
             .map_inner(allocator, paddr, vaddr, perms, level - 1);
     }
+
+    fn clone_inner(
+        &self,
+        new_page_table: &mut Self,
+        level: usize,
+        allocator: &mut impl mm::PageAllocator,
+    ) {
+        for idx in 0..512 {
+            let old_pte = &self.entries[idx];
+            let new_pte = &mut new_page_table.entries[idx];
+
+            if !old_pte.is_valid() {
+                continue;
+            }
+
+            if level == 0 {
+                new_pte.set_paddr(&old_pte.get_paddr());
+                new_pte.set_perms(old_pte.get_perms());
+                new_pte.set_valid();
+            }
+
+            let new_page_table_leaf = PageTable::new(allocator);
+            new_pte.set_target(new_page_table_leaf as *mut PageTable);
+            new_pte.set_valid();
+
+            old_pte
+                .get_target()
+                .clone_inner(new_page_table_leaf, level - 1, allocator)
+        }
+    }
 }
 
 impl arch::ArchitectureMemory for PageTable {
@@ -185,6 +243,14 @@ impl arch::ArchitectureMemory for PageTable {
         page_table.entries.iter_mut().for_each(|pte| pte.clear());
 
         page_table
+    }
+
+    fn clone<'alloc>(&self, allocator: &mut impl mm::PageAllocator) -> &'alloc mut Self {
+        let new_page_table = Self::new(allocator);
+
+        self.clone_inner(new_page_table, 2, allocator);
+
+        new_page_table
     }
 
     fn get_page_size() -> usize {
