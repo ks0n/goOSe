@@ -53,7 +53,7 @@ impl<'a> Elf<'a> {
 
     fn pages_needed(
         segment: &goblin::elf64::program_header::ProgramHeader,
-        mm: &mut dyn mm::MemoryManager,
+        mm: &mut mm::MemoryManagement,
     ) -> usize {
         let p_memsz = segment.p_memsz as usize;
 
@@ -64,7 +64,7 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn load(&self, mm: &mut dyn mm::MemoryManager) {
+    pub fn load(&self, mm: &mut mm::MemoryManagement) {
         let page_size = mm.page_size();
 
         for segment in self.segments() {

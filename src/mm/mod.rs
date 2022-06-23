@@ -71,16 +71,6 @@ impl<T> core::convert::From<&PAddr> for *mut T {
     }
 }
 
-pub trait MemoryManager {
-    fn map(&mut self, phys: PAddr, virt: VAddr, perms: Permissions);
-    fn reload_page_table(&mut self);
-    fn disable_page_table(&mut self);
-    fn page_size(&self) -> usize;
-
-    fn align_down(&self, addr: usize) -> usize;
-    fn align_up(&self, addr: usize) -> usize;
-}
-
 pub fn is_kernel_page(base: usize) -> bool {
     let (kernel_start, kernel_end) = unsafe {
         (
@@ -106,7 +96,7 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
     return is_res;
 }
 
-fn map_memory_rw(arch: &impl arch::Architecture, mm: &mut impl MemoryManager, page_size: usize) {
+fn map_memory_rw(arch: &impl arch::Architecture, mm: &mut MemoryManagement, page_size: usize) {
     arch.for_all_memory_regions(|regions| {
         regions
             .flat_map(|(base, size)| (base..base + size).step_by(page_size))
@@ -122,7 +112,7 @@ fn map_memory_rw(arch: &impl arch::Architecture, mm: &mut impl MemoryManager, pa
     });
 }
 
-fn map_kernel_rwx(mm: &mut impl MemoryManager, page_size: usize) {
+fn map_kernel_rwx(mm: &mut MemoryManagement, page_size: usize) {
     let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
@@ -136,7 +126,7 @@ fn map_kernel_rwx(mm: &mut impl MemoryManager, page_size: usize) {
     }
 }
 
-pub fn map_address_space(arch: &impl arch::Architecture, mm: &mut impl MemoryManager) {
+pub fn map_address_space(arch: &impl arch::Architecture, mm: &mut MemoryManagement) {
     let page_size = mm::get_global_allocator().lock().page_size();
 
     map_memory_rw(arch, mm, page_size);

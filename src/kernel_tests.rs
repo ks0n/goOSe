@@ -8,7 +8,6 @@ use crate::arch::Architecture;
 use crate::arch::ArchitectureInterrupts;
 use crate::arch::ArchitectureMemory;
 use crate::mm;
-use crate::mm::MemoryManager;
 use crate::{kprint, kprintln};
 
 static UTEST_SUCESS: &str = "\x1b[32mok\x1b[0m";
