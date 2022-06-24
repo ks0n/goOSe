@@ -1,13 +1,12 @@
-use crate::arch;
 use crate::arch::ArchitectureInterrupts;
 
 pub struct InterruptManager {
-    arch: arch::InterruptsImpl,
+    arch: crate::InterruptsImpl,
 }
 
 impl InterruptManager {
     pub fn new() -> Self {
-        let arch = arch::InterruptsImpl::new();
+        let arch = crate::InterruptsImpl::new();
 
         Self { arch }
     }
