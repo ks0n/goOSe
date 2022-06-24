@@ -8,6 +8,9 @@
 #![test_runner(crate::kernel_tests::runner)]
 #![reexport_test_harness_main = "ktests_launch"]
 
+#[cfg(not(target_arch = "riscv64"))]
+compile_error!("Must be compiled as riscv64");
+
 mod arch;
 mod drivers;
 mod executable;
@@ -24,6 +27,10 @@ use drivers::plic;
 
 use arch::Architecture;
 use arch::ArchitectureMemory;
+
+pub type ArchImpl = arch::riscv64::Riscv64;
+pub type InterruptsImpl = arch::riscv64::interrupts::Interrupts;
+pub type MemoryImpl = arch::riscv64::sv39::PageTable;
 
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
@@ -49,8 +56,8 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     plic.set_threshold(0);
 
     let mut pmm =
-        mm::PhysicalMemoryManager::from_arch_info(&arch, arch::MemoryImpl::get_page_size());
-    let page_table = arch::MemoryImpl::new(&mut pmm);
+        mm::PhysicalMemoryManager::from_arch_info(&arch, crate::MemoryImpl::get_page_size());
+    let page_table = crate::MemoryImpl::new(&mut pmm);
     mm::map_address_space(&arch, page_table, &mut pmm);
 
     kprintln!("[OK] Setup virtual memory");

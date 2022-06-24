@@ -95,7 +95,7 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
 
 fn map_memory_rw(
     arch: &impl arch::Architecture,
-    page_table: &mut arch::MemoryImpl,
+    page_table: &mut crate::MemoryImpl,
     pmm: &mut PhysicalMemoryManager,
     page_size: usize,
 ) {
@@ -115,7 +115,7 @@ fn map_memory_rw(
     });
 }
 
-fn map_kernel_rwx(mm: &mut arch::MemoryImpl, pmm: &mut PhysicalMemoryManager, page_size: usize) {
+fn map_kernel_rwx(mm: &mut crate::MemoryImpl, pmm: &mut PhysicalMemoryManager, page_size: usize) {
     let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
@@ -132,7 +132,7 @@ fn map_kernel_rwx(mm: &mut arch::MemoryImpl, pmm: &mut PhysicalMemoryManager, pa
 
 pub fn map_address_space(
     arch: &impl arch::Architecture,
-    page_table: &mut arch::MemoryImpl,
+    page_table: &mut crate::MemoryImpl,
     pmm: &mut PhysicalMemoryManager,
 ) {
     let page_size = pmm.page_size();

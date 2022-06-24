@@ -1,6 +1,5 @@
 use core::iter::Iterator;
 
-use crate::arch;
 use crate::arch::ArchitectureMemory;
 use crate::mm;
 
@@ -66,7 +65,7 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn load(&self, page_table: &mut arch::MemoryImpl, pmm: &mut mm::PhysicalMemoryManager) {
+    pub fn load(&self, page_table: &mut crate::MemoryImpl, pmm: &mut mm::PhysicalMemoryManager) {
         let page_size = pmm.page_size();
 
         for segment in self.segments() {
@@ -108,7 +107,7 @@ impl<'a> Elf<'a> {
                     pmm,
                     mm::PAddr::from(usize::from(physical_pages) + page_offset),
                     mm::VAddr::from(
-                        arch::MemoryImpl::align_down(virtual_pages as usize) + page_offset,
+                        crate::MemoryImpl::align_down(virtual_pages as usize) + page_offset,
                     ),
                     perms,
                 );
