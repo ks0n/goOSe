@@ -36,7 +36,7 @@ pub type MemoryImpl = arch::riscv64::sv39::PageTable;
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     #[cfg(test)]
     {
-        crate::kernel_tests::init(device_tree_ptr);
+        kernel_tests::init(device_tree_ptr);
         ktests_launch();
     }
 
@@ -56,8 +56,8 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     plic.set_threshold(0);
 
     let mut pmm =
-        mm::PhysicalMemoryManager::from_arch_info(&arch, crate::MemoryImpl::get_page_size());
-    let page_table = crate::MemoryImpl::new(&mut pmm);
+        mm::PhysicalMemoryManager::from_arch_info(&arch, MemoryImpl::get_page_size());
+    let page_table = MemoryImpl::new(&mut pmm);
     mm::map_address_space(&arch, page_table, &mut pmm);
 
     kprintln!("[OK] Setup virtual memory");
