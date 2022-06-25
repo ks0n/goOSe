@@ -17,10 +17,10 @@ static mut TEST_CONTEXT: Option<TestContext> = None;
 
 pub struct TestContext<'alloc> {
     device_tree_address: usize,
-    pub arch: arch::ArchImpl,
-    pub arch_interrupts: arch::ArchInterruptsImpl,
+    pub arch: crate::ArchImpl,
+    pub arch_interrupts: crate::InterruptsImpl,
     pub pmm: mm::PhysicalMemoryManager,
-    pub page_table: &'alloc mut arch::MemoryImpl,
+    pub page_table: &'alloc mut crate::MemoryImpl,
 }
 
 impl<'alloc> TestContext<'alloc> {
@@ -30,7 +30,7 @@ impl<'alloc> TestContext<'alloc> {
         TestContext {
             device_tree_address,
             arch,
-            arch_interrupts: arch::ArchInterruptsImpl::new(),
+            arch_interrupts: crate::InterruptsImpl::new(),
             pmm,
             page_table,
         }
@@ -51,15 +51,15 @@ impl<'alloc> TestContext<'alloc> {
     fn build_context_data(
         device_tree_address: usize,
     ) -> (
-        arch::ArchImpl,
+        crate::ArchImpl,
         mm::PhysicalMemoryManager,
-        &'alloc mut arch::MemoryImpl,
+        &'alloc mut crate::MemoryImpl,
     ) {
-        let arch = arch::ArchImpl::new(device_tree_address);
+        let arch = crate::ArchImpl::new(device_tree_address);
         let mut pmm =
-            mm::PhysicalMemoryManager::from_arch_info(&arch, arch::MemoryImpl::get_page_size());
+            mm::PhysicalMemoryManager::from_arch_info(&arch, crate::MemoryImpl::get_page_size());
 
-        let page_table = arch::MemoryImpl::new(&mut pmm);
+        let page_table = crate::MemoryImpl::new(&mut pmm);
         mm::map_address_space(&arch, page_table, &mut pmm);
 
         (arch, pmm, page_table)
