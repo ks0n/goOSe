@@ -1,32 +1,24 @@
 use core::fmt::{self, Write};
 
-use crate::drivers::ns16550::{Ns16550, QEMU_VIRT_BASE_ADDRESS};
-
-static mut KERNEL_SERIAL: Option<Ns16550> = None;
-
-fn check_init() {
-    unsafe {
-        match &KERNEL_SERIAL {
-            None => {
-                KERNEL_SERIAL = Some(Ns16550::new(QEMU_VIRT_BASE_ADDRESS));
-            }
-            Some(_) => {}
-        }
-    }
+pub trait Console {
+    fn write(&mut self, data: &str);
 }
+pub static mut STDOUT_UART: Option<crate::ConsoleImpl> = None;
 
-fn get() -> &'static Ns16550 {
-    check_init();
-    unsafe { KERNEL_SERIAL.as_ref().unwrap() }
+
+pub fn init(uart: crate::ConsoleImpl) {
+    unsafe { STDOUT_UART = Some(uart) };
 }
 
 fn write(data: &str) {
-    get().write(data);
+    if let Some(console) = unsafe { &mut STDOUT_UART } {
+        console.write(data);
+    }
 }
 
-struct KernelSerialWriter;
+struct KernelConsoleWriter;
 
-impl fmt::Write for KernelSerialWriter {
+impl fmt::Write for KernelConsoleWriter {
     fn write_str(&mut self, data: &str) -> fmt::Result {
         write(data);
 
@@ -35,7 +27,7 @@ impl fmt::Write for KernelSerialWriter {
 }
 
 pub fn print_fmt(args: fmt::Arguments) {
-    KernelSerialWriter.write_fmt(args).unwrap()
+    KernelConsoleWriter.write_fmt(args).unwrap_or(());
 }
 
 #[panic_handler]
@@ -51,7 +43,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 #[macro_export]
 macro_rules! kprint {
-    ($($args:tt)*) => ($crate::kernel_serial::print_fmt(format_args!($($args)*)))
+    ($($args:tt)*) => ($crate::kernel_console::print_fmt(format_args!($($args)*)))
 }
 
 #[macro_export]
