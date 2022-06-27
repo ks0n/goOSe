@@ -15,7 +15,7 @@ mod arch;
 mod drivers;
 mod executable;
 mod interrupt_manager;
-mod kernel_serial;
+mod kernel_console;
 #[cfg(test)]
 mod kernel_tests;
 mod mm;
@@ -25,12 +25,14 @@ use core::arch::asm;
 use drivers::ns16550::*;
 use drivers::plic;
 
+
 use arch::Architecture;
 use arch::ArchitectureMemory;
 
 pub type ArchImpl = arch::riscv64::Riscv64;
 pub type InterruptsImpl = arch::riscv64::interrupts::Interrupts;
 pub type MemoryImpl = arch::riscv64::sv39::PageTable;
+pub type ConsoleImpl = Ns16550;
 
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
@@ -41,6 +43,10 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     }
 
     let arch = arch::new_arch(device_tree_ptr);
+
+    kernel_console::init(
+        Ns16550::new(QEMU_VIRT_BASE_ADDRESS)
+    );
 
     kprintln!("GoOSe is booting");
 
