@@ -3,6 +3,7 @@
 //! order to get compiled only is the platform requires it
 
 pub mod ns16550;
+pub mod pl011;
 
 pub mod plic;
 
