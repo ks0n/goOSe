@@ -1,0 +1,2 @@
+[target.riscv64gc-unknown-none-elf]
+runner = 'qemu-system-riscv64 -M virt -nographic -kernel '
