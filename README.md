@@ -4,10 +4,13 @@ A minimal Kernel written in Rust
 
 ## Building
 
-- Generate the compilation configuration for your desired platform using
-  [`gen_cargo.sh`](gen_cargo.sh)
-- Build the project using `cargo`. You will need to install the compilation
-  targets using `rustup target add`
+Currently, the following platforms are supports:
+
+- riscv64 on qemu virt
+    - `cargo build --bin riscv64_qemuvirt --target riscv64-unknown-none`
+- aarch64 on qemu virt
+    - `cargo build --bin aarch64_qemuvirt --target aarch64-unknown-none`
+
 - Each platform configuration might contains a custom runner setup, meaning that
   depending on your use-case `cargo run` will be able to launch an emulator or
   flash a connected microcontroller.
