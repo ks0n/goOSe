@@ -12,6 +12,7 @@
 compile_error!("Must be compiled as riscv64");
 
 mod arch;
+mod arch_mem;
 mod drivers;
 mod executable;
 mod interrupt_manager;
@@ -26,7 +27,7 @@ use drivers::ns16550::*;
 use drivers::plic;
 
 use arch::Architecture;
-use arch::ArchitectureMemory;
+use arch_mem::ArchitectureMemory;
 
 pub type ArchImpl = arch::riscv64::Riscv64;
 pub type InterruptsImpl = arch::riscv64::interrupts::Interrupts;

@@ -2,10 +2,10 @@
 //! As we want the kernel as small as possible, each driver is hidden behind a feature flag in
 //! order to get compiled only is the platform requires it
 
-#[doc(cfg(drv_ns16550))]
 pub mod ns16550;
+pub mod pl011;
 
-#[doc(cfg(drv_plic))]
+#[cfg(target_arch = "riscv64")]
 pub mod plic;
 
 // TODO: - have a driver trait

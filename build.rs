@@ -3,7 +3,7 @@ fn main() {
 
     let linker_scripts = [
         ("boards/generic_qemuvirt.ld",
-            ["riscv64_qemuvirt"]),
+            ["riscv64_qemuvirt", "aarch64_qemuvirt"]),
     ];
 
     for (linker_script, binaries) in linker_scripts.into_iter() {
