@@ -140,7 +140,7 @@ pub fn map_address_space(
     map_memory_rw(arch, page_table, pmm, page_size);
     map_kernel_rwx(page_table, pmm, page_size);
 
-    let serial_page = crate::drivers::ns16550::QEMU_VIRT_BASE_ADDRESS;
+    let serial_page = crate::UART_ADDR;
     page_table.map(
         pmm,
         PAddr::from(serial_page),
