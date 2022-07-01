@@ -16,8 +16,5 @@ jobs:
             components: clippy
             override: true
 
-      - name: Run gen_cargo.sh
-        run: ./gen_cargo.sh riscv64_qemuvirt
-
       - name: Build doc
-        run: cargo doc
+        run: cargo doc --target riscv64gc-unknown-none-elf
