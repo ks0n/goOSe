@@ -18,6 +18,14 @@ SECTIONS
         *(.rodata*);
     }
 
+    .eh_frame : {
+        *(.eh_frame*);
+    }
+
+    .bss : {
+        *(.bss*);
+    }
+
     . = ALIGN(4096);
     STACK_END = . ;
     . = . + 1M;
