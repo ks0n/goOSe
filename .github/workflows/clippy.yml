@@ -3,21 +3,42 @@ name: Clippy
 on: pull_request
 
 jobs:
-  clippy:
+  clippy_riscv64:
     runs-on: ubuntu-latest
+    env:
+      TARGET: riscv64gc-unknown-none-elf
+      BIN: riscv64_qemuvirt
     steps:
       - uses: actions/checkout@v2
 
-      # For now goOSe is RISC-V only
       - uses: actions-rs/toolchain@v1
         with:
             toolchain: nightly
-            target: riscv64gc-unknown-none-elf
+            target: ${{ env.TARGET }}
             components: clippy
             override: true
 
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --target riscv64gc-unknown-none-elf
+          args: --all-features --target ${{ env.TARGET }} --bin ${{ env.BIN }}
 
+  clippy_aarch64:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: aarch64-unknown-none
+      BIN: aarch64_qemuvirt
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            target: ${{ env.TARGET }}
+            components: clippy
+            override: true
+
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --target ${{ env.TARGET }} --bin ${{ env.BIN }}

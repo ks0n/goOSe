@@ -1,5 +1,5 @@
 use crate::arch;
-use crate::arch::ArchitectureMemory;
+use crate::arch_mem::ArchitectureMemory;
 use crate::mm;
 use core::arch::asm;
 use core::convert::TryInto;
@@ -174,7 +174,7 @@ impl PageTable {
     }
 }
 
-impl arch::ArchitectureMemory for PageTable {
+impl ArchitectureMemory for PageTable {
     fn new<'alloc>(allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self {
         // FIXME: No unwrap here
         let page = allocator.alloc_pages(1).unwrap();

@@ -4,7 +4,7 @@ mod physical_memory_manager;
 pub use physical_memory_manager::PhysicalMemoryManager;
 
 use crate::arch;
-use crate::arch::ArchitectureMemory;
+use crate::arch_mem::ArchitectureMemory;
 use crate::utils;
 
 use bitflags::bitflags;

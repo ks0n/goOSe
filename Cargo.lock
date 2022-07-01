@@ -48,6 +48,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "cortex-a"
+version = "7.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f75db6964ed6748e88ff46f9aa209249a0aefe6b06d4b9e9ab820c867586d51a"
+dependencies = [
+ "tock-registers",
+]
+
+[[package]]
 name = "cortex-m"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -111,6 +120,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "cfg-if",
+ "cortex-a",
  "cortex-m",
  "cortex-m-rt",
  "fdt",
@@ -121,6 +131,7 @@ dependencies = [
  "sbi",
  "spin",
  "static_assertions",
+ "tock-registers",
 ]
 
 [[package]]
@@ -277,6 +288,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "tock-registers"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ee8fba06c1f4d0b396ef61a54530bb6b28f0dc61c38bc8bc5a5a48161e6282e"
 
 [[package]]
 name = "unicode-ident"

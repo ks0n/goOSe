@@ -27,6 +27,10 @@ riscv = "0.8.0"
 cortex-m = "0.7"
 cortex-m-rt = { version = "0.7", default-features = false }
 
+[target.aarch64-unknown-none.dependencies]
+tock-registers = "0.7.x"
+cortex-a = "7.4.0"
+
 [profile.dev]
 panic = "abort"
 
@@ -36,3 +40,7 @@ panic = "abort"
 [[bin]]
 name = "riscv64_qemuvirt"
 path = "src/riscv64_qemuvirt_main.rs"
+
+[[bin]]
+name = "aarch64_qemuvirt"
+path = "src/aarch64_qemuvirt_main.rs"
