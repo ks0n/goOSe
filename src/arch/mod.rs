@@ -5,24 +5,11 @@ pub mod riscv64;
 
 use crate::mm;
 
-use cfg_if::cfg_if;
 use static_assertions::assert_impl_all;
 
 assert_impl_all!(crate::ArchImpl: Architecture);
 assert_impl_all!(crate::MemoryImpl: ArchitectureMemory);
 assert_impl_all!(crate::InterruptsImpl: ArchitectureInterrupts);
-
-pub fn new_arch(info: usize) -> impl Architecture {
-    cfg_if! {
-        if #[cfg(target_arch = "riscv64")] {
-            riscv64::Riscv64::new(info)
-        } else if #[cfg(target_arch = "arm")] {
-            arm32::Arm32::new()
-        } else {
-            core::compile_error!("Architecture not supported! Did you run `gen_cargo.sh`?");
-        }
-    }
-}
 
 pub trait Architecture {
     unsafe extern "C" fn _start() -> !;
