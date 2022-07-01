@@ -3,9 +3,6 @@
 
 use crate::kernel_console::Console;
 
-pub const QEMU_VIRT_BASE_ADDRESS: usize = 0x10000000;
-pub const QEMU_VIRT_NS16550_INTERRUPT_NUMBER: u16 = 10;
-
 const TRANSMITTER_HOLDING_REGISTER: usize = 0;
 const _INTERRUPT_ENABLE_REGISTER: usize = 1;
 
