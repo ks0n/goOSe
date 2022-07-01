@@ -90,7 +90,7 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
             })
     });
 
-    return is_res;
+    is_res
 }
 
 fn map_memory_rw(

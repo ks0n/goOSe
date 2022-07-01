@@ -42,7 +42,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
         ktests_launch();
     }
 
-    let arch = arch::new_arch(device_tree_ptr);
+    let arch = arch::riscv64::Riscv64::new(device_tree_ptr);
 
     kernel_console::init(
         Ns16550::new(QEMU_VIRT_BASE_ADDRESS)

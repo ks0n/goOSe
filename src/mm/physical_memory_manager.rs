@@ -113,8 +113,6 @@ impl PhysicalMemoryManager {
                     return;
                 }
             }
-
-            return;
         });
 
         found
