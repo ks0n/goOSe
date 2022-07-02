@@ -6,7 +6,7 @@ use core::panic::PanicInfo;
 use crate::arch;
 use crate::arch::Architecture;
 use crate::arch::ArchitectureInterrupts;
-use crate::arch::ArchitectureMemory;
+use crate::arch_mem::ArchitectureMemory;
 use crate::mm;
 use crate::{kprint, kprintln};
 
