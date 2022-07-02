@@ -1,7 +1,7 @@
 //! Driver for the NS16550 UART chip.
 //! The datasheet used to write this is: <http://caro.su/msx/ocm_de1/16550.pdf>
 
-use crate::kernel_console::Console;
+use super::Console;
 
 const TRANSMITTER_HOLDING_REGISTER: usize = 0;
 const _INTERRUPT_ENABLE_REGISTER: usize = 1;

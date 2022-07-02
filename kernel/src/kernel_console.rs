@@ -1,8 +1,7 @@
 use core::fmt::{self, Write};
 
-pub trait Console {
-    fn write(&mut self, data: &str);
-}
+use drivers::Console;
+
 pub static mut STDOUT_UART: Option<crate::ConsoleImpl> = None;
 
 

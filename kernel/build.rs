@@ -7,6 +7,7 @@ fn main() {
     ];
 
     for (linker_script, binaries) in linker_scripts.into_iter() {
+        let linker_script = format!("{}/{}", "kernel", linker_script);
         for binary in binaries {
             println!("cargo:rustc-link-arg-bin={}={}", binary, linker_script);
             println!("cargo:rerun-if-changed={}", linker_script);

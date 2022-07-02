@@ -6,10 +6,10 @@
 compile_error!("Must be compiled as aarch64");
 
 mod arch;
-mod drivers;
 mod kernel_console;
 
-use crate::drivers::pl011::Pl011;
+use arch::Architecture;
+use drivers::pl011::Pl011;
 
 use cortex_a::registers::*;
 use tock_registers::interfaces::Writeable;
