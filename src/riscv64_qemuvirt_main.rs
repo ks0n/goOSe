@@ -13,6 +13,7 @@ compile_error!("Must be compiled as riscv64");
 
 mod arch;
 mod arch_mem;
+mod device_tree;
 mod drivers;
 mod executable;
 mod interrupt_manager;
@@ -49,7 +50,8 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
         ktests_launch();
     }
 
-    let arch = arch::riscv64::Riscv64::new(device_tree_ptr);
+    let arch = arch::riscv64::Riscv64::new();
+    let device_tree = device_tree::DeviceTree::new(device_tree_ptr);
 
     // Enable Serial interrupts
     plic::init(plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
@@ -62,9 +64,10 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     }
     plic.set_threshold(0);
 
-    let mut pmm = mm::PhysicalMemoryManager::from_arch_info(&arch, MemoryImpl::get_page_size());
+    let mut pmm =
+        mm::PhysicalMemoryManager::from_device_tree(&device_tree, MemoryImpl::get_page_size());
     let page_table = MemoryImpl::new(&mut pmm);
-    mm::map_address_space(&arch, page_table, &mut pmm);
+    mm::map_address_space(&device_tree, page_table, &mut pmm);
 
     kprintln!("[OK] Setup virtual memory");
 

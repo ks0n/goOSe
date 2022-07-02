@@ -2,6 +2,7 @@ use super::page_alloc::AllocatorError;
 use crate::mm;
 use crate::mm::PAddr;
 use crate::Architecture;
+use crate::device_tree::DeviceTree;
 use core::mem;
 
 #[derive(Debug, PartialEq)]
@@ -47,10 +48,10 @@ pub struct PhysicalMemoryManager {
 }
 
 impl PhysicalMemoryManager {
-    fn count_pages(arch: &impl Architecture, page_size: usize) -> usize {
+    fn count_pages(device_tree: &DeviceTree, page_size: usize) -> usize {
         let mut count = 0;
 
-        arch.for_all_memory_regions(|regions| {
+        device_tree.for_all_memory_regions(|regions| {
             count = regions
                 .map(|(start, size)| (start as usize, size as usize))
                 .flat_map(|(start, size)| (start..start + size).step_by(page_size))
@@ -64,10 +65,10 @@ impl PhysicalMemoryManager {
         ((addr) + alignment - 1) & !(alignment - 1)
     }
 
-    fn phys_addr_to_physical_page(phys_addr: usize, arch: &impl Architecture) -> PhysicalPage {
+    fn phys_addr_to_physical_page(phys_addr: usize, device_tree: &DeviceTree) -> PhysicalPage {
         let kind = if mm::is_kernel_page(phys_addr) {
             PageKind::Kernel
-        } else if mm::is_reserved_page(phys_addr, arch) {
+        } else if mm::is_reserved_page(phys_addr, device_tree) {
             PageKind::Reserved
         } else {
             PageKind::Unused
@@ -83,13 +84,13 @@ impl PhysicalMemoryManager {
     /// Look for `pages_needed` contiguous unused pages, beware of pages that are in use by the
     /// kernel or reserved by opensbi.
     fn find_contiguous_unused_pages(
-        arch: &impl Architecture,
+        device_tree: &DeviceTree,
         pages_needed: usize,
         page_size: usize,
     ) -> Option<usize> {
         let mut found = None;
 
-        arch.for_all_memory_regions(|regions| {
+        device_tree.for_all_memory_regions(|regions| {
             let physical_pages =
                 regions.flat_map(|(addr, size)| (addr..addr + size).step_by(page_size));
 
@@ -101,7 +102,7 @@ impl PhysicalMemoryManager {
                     first_page_addr = page;
                 }
 
-                if mm::is_kernel_page(page) || mm::is_reserved_page(page, arch) {
+                if mm::is_kernel_page(page) || mm::is_reserved_page(page, device_tree) {
                     consecutive_pages = 0;
                     continue;
                 }
@@ -125,21 +126,21 @@ impl PhysicalMemoryManager {
     /// - Second (in [`Self::find_contiguous_unused_pages`]), look through our pages for a contiguous
     /// space large enough to hold all our metadata.
     /// - Lastly store our metadata there, and mark pages as unused or kernel.
-    pub fn from_arch_info(arch: &impl Architecture, page_size: usize) -> Self {
-        let page_count = Self::count_pages(arch, page_size);
+    pub fn from_device_tree(device_tree: &DeviceTree, page_size: usize) -> Self {
+        let page_count = Self::count_pages(device_tree, page_size);
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();
         let pages_needed = Self::align_up(metadata_size, page_size) / page_size;
 
         let metadata_addr =
-            Self::find_contiguous_unused_pages(arch, pages_needed, page_size).unwrap();
+            Self::find_contiguous_unused_pages(device_tree, pages_needed, page_size).unwrap();
 
         let metadata: &mut [PhysicalPage] =
             unsafe { core::slice::from_raw_parts_mut(metadata_addr as *mut _, page_count) };
 
-        arch.for_all_memory_regions(|regions| {
+        device_tree.for_all_memory_regions(|regions| {
             let physical_pages = regions
                 .flat_map(|(start, size)| (start..start + size).step_by(page_size))
-                .map(|base| Self::phys_addr_to_physical_page(base, arch));
+                .map(|base| Self::phys_addr_to_physical_page(base, device_tree));
 
             for (i, page) in physical_pages.enumerate() {
                 metadata[i] = page;

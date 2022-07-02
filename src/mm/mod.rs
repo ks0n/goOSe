@@ -3,7 +3,7 @@ mod physical_memory_manager;
 
 pub use physical_memory_manager::PhysicalMemoryManager;
 
-use crate::arch;
+use crate::device_tree::DeviceTree;
 use crate::arch_mem::ArchitectureMemory;
 use crate::utils;
 
@@ -79,10 +79,10 @@ pub fn is_kernel_page(base: usize) -> bool {
     base >= kernel_start && base < kernel_end
 }
 
-pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
+pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
     let mut is_res = false;
 
-    arch.for_all_reserved_memory_regions(|regions| {
+    device_tree.for_all_reserved_memory_regions(|regions| {
         is_res = regions
             .map(|(start, size)| (start, size)) // this is a weird hack to fix a type error.
             .any(|(region_start, region_size)| {
@@ -94,16 +94,16 @@ pub fn is_reserved_page(base: usize, arch: &impl arch::Architecture) -> bool {
 }
 
 fn map_memory_rw(
-    arch: &impl arch::Architecture,
+    device_tree: &DeviceTree,
     page_table: &mut crate::MemoryImpl,
     pmm: &mut PhysicalMemoryManager,
     page_size: usize,
 ) {
-    arch.for_all_memory_regions(|regions| {
+    device_tree.for_all_memory_regions(|regions| {
         regions
             .flat_map(|(base, size)| (base..base + size).step_by(page_size))
             .for_each(|page_base| {
-                if !is_reserved_page(page_base, arch) {
+                if !is_reserved_page(page_base, device_tree) {
                     page_table.map(
                         pmm,
                         PAddr::from(page_base),
@@ -131,13 +131,13 @@ fn map_kernel_rwx(mm: &mut crate::MemoryImpl, pmm: &mut PhysicalMemoryManager, p
 }
 
 pub fn map_address_space(
-    arch: &impl arch::Architecture,
+    device_tree: &DeviceTree,
     page_table: &mut crate::MemoryImpl,
     pmm: &mut PhysicalMemoryManager,
 ) {
     let page_size = pmm.page_size();
 
-    map_memory_rw(arch, page_table, pmm, page_size);
+    map_memory_rw(device_tree, page_table, pmm, page_size);
     map_kernel_rwx(page_table, pmm, page_size);
 
     let serial_page = crate::UART_ADDR;

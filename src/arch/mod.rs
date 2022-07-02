@@ -7,14 +7,6 @@ pub mod aarch64;
 
 pub trait Architecture {
     unsafe extern "C" fn _start() -> !;
-
-    fn new(info: usize) -> Self;
-
-    fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(&self, f: F);
-    fn for_all_reserved_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(
-        &self,
-        f: F,
-    );
 }
 
 pub trait ArchitectureInterrupts {
