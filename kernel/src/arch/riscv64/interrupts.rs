@@ -1,6 +1,6 @@
 use crate::arch::riscv64::registers;
 use crate::arch::ArchitectureInterrupts;
-use crate::drivers::plic::plic_handler;
+use drivers::plic::plic_handler;
 use crate::kprintln;
 
 use core::arch::asm;

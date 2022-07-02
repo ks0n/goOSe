@@ -1,46 +1,6 @@
-[package]
-name = "goose"
-version = "0.1.0"
-authors = ["cohenarthur <arthur.cohen@epita.fr>", "Esteban \"Skallwar\" Blanc <estblcsk@gmail.com>", "Martin \"n1tram1\" Schmidt <martin.schmidt@epita.fr>"]
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-cfg-if = "1.0"
-static_assertions = "1.1.0"
-modular-bitfield = "0.11"
-bitflags = "1.3"
-fdt = "0.1"
-spin = "0.9"
-goblin = { version = "0.4", default-features = false, features = ["elf64"] }
-
-[dev-dependencies]
-qemu-exit = "3.0"
-
-[target.riscv64gc-unknown-none-elf.dependencies]
-sbi = "0.2.0"
-riscv = "0.8.0"
-
-
-[target.thumbv7em-none-eabihf.dependencies]
-cortex-m = "0.7"
-cortex-m-rt = { version = "0.7", default-features = false }
-
-[target.aarch64-unknown-none.dependencies]
-tock-registers = "0.7.x"
-cortex-a = "7.4.0"
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
-
-[[bin]]
-name = "riscv64_qemuvirt"
-path = "src/riscv64_qemuvirt_main.rs"
-
-[[bin]]
-name = "aarch64_qemuvirt"
-path = "src/aarch64_qemuvirt_main.rs"
+members = [
+    "kernel",
+    "drivers",
+]

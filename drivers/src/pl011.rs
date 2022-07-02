@@ -1,3 +1,5 @@
+use super::Console;
+
 pub struct Pl011 {
     base: usize,
 }
@@ -30,7 +32,7 @@ impl Pl011 {
     }
 }
 
-impl crate::kernel_console::Console for Pl011 {
+impl Console for Pl011 {
     fn write(&mut self, data: &str) {
         data
             .bytes()

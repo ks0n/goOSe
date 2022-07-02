@@ -140,13 +140,5 @@ pub fn map_address_space(
     map_memory_rw(device_tree, page_table, pmm, page_size);
     map_kernel_rwx(page_table, pmm, page_size);
 
-    let serial_page = crate::UART_ADDR;
-    page_table.map(
-        pmm,
-        PAddr::from(serial_page),
-        VAddr::from(serial_page),
-        Permissions::READ | Permissions::WRITE,
-    );
-
     page_table.reload();
 }
