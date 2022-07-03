@@ -4,7 +4,6 @@ use drivers::Console;
 
 pub static mut STDOUT_UART: Option<crate::ConsoleImpl> = None;
 
-
 pub fn init(uart: crate::ConsoleImpl) {
     unsafe { STDOUT_UART = Some(uart) };
 }

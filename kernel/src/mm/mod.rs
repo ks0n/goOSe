@@ -3,8 +3,8 @@ mod physical_memory_manager;
 
 pub use physical_memory_manager::PhysicalMemoryManager;
 
-use crate::device_tree::DeviceTree;
 use crate::arch_mem::ArchitectureMemory;
+use crate::device_tree::DeviceTree;
 use crate::utils;
 
 use bitflags::bitflags;

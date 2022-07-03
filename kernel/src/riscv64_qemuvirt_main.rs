@@ -66,7 +66,12 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     let mut pmm =
         mm::PhysicalMemoryManager::from_device_tree(&device_tree, MemoryImpl::get_page_size());
     let page_table = MemoryImpl::new(&mut pmm);
-    page_table.map(&mut pmm, mm::PAddr::from(UART_ADDR), mm::VAddr::from(UART_ADDR), mm::Permissions::READ | mm::Permissions::WRITE);
+    page_table.map(
+        &mut pmm,
+        mm::PAddr::from(UART_ADDR),
+        mm::VAddr::from(UART_ADDR),
+        mm::Permissions::READ | mm::Permissions::WRITE,
+    );
     mm::map_address_space(&device_tree, page_table, &mut pmm);
 
     kprintln!("[OK] Setup virtual memory");

@@ -10,10 +10,7 @@ impl Pl011 {
     }
 
     fn read_flag_register(&self) -> u32 {
-        unsafe {
-            ((self.base + 0x18) as *mut u32)
-                .read_volatile()
-        }
+        unsafe { ((self.base + 0x18) as *mut u32).read_volatile() }
     }
 
     fn tx_fifo_full(&self) -> bool {
@@ -34,8 +31,6 @@ impl Pl011 {
 
 impl Console for Pl011 {
     fn write(&mut self, data: &str) {
-        data
-            .bytes()
-            .for_each(|b| self.putc(b))
+        data.bytes().for_each(|b| self.putc(b))
     }
 }
