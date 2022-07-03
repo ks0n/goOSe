@@ -93,28 +93,6 @@ pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
     is_res
 }
 
-fn map_memory_rw(
-    device_tree: &DeviceTree,
-    page_table: &mut crate::MemoryImpl,
-    pmm: &mut PhysicalMemoryManager,
-    page_size: usize,
-) {
-    device_tree.for_all_memory_regions(|regions| {
-        regions
-            .flat_map(|(base, size)| (base..base + size).step_by(page_size))
-            .for_each(|page_base| {
-                if !is_reserved_page(page_base, device_tree) {
-                    page_table.map(
-                        pmm,
-                        PAddr::from(page_base),
-                        VAddr::from(page_base),
-                        Permissions::READ | Permissions::WRITE,
-                    );
-                }
-            });
-    });
-}
-
 fn map_kernel_rwx(mm: &mut crate::MemoryImpl, pmm: &mut PhysicalMemoryManager, page_size: usize) {
     let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
@@ -130,33 +108,25 @@ fn map_kernel_rwx(mm: &mut crate::MemoryImpl, pmm: &mut PhysicalMemoryManager, p
     }
 }
 
-fn map_console(
-    page_table: &mut crate::MemoryImpl,
-    pmm: &mut PhysicalMemoryManager,
-    page_size: usize,
-) {
-    let (address, size) = crate::kernel_console::get_address_range();
-    for n in 0..=size / page_size {
-        let address_to_map = address + n * page_size;
-        page_table.map(
-            pmm,
-            PAddr::from(address_to_map),
-            VAddr::from(address_to_map),
-            Permissions::READ | Permissions::WRITE,
-        );
-    }
-}
-
 pub fn map_address_space(
     device_tree: &DeviceTree,
     page_table: &mut crate::MemoryImpl,
     pmm: &mut PhysicalMemoryManager,
+    drivers: &[&dyn drivers::Driver],
 ) {
     let page_size = pmm.page_size();
 
-    map_memory_rw(device_tree, page_table, pmm, page_size);
     map_kernel_rwx(page_table, pmm, page_size);
-    map_console(page_table, pmm, page_size);
+
+    let metadata_pages = pmm.metadata_pages();
+    metadata_pages.for_each(|page| page_table.map(pmm, PAddr::from(page), VAddr::from(page), Permissions::READ | Permissions::WRITE));
+
+    drivers
+        .iter()
+        .map(|drv| drv.get_address_range())
+        .flat_map(|(base, len)| (base..(base+len)).step_by(page_size))
+        .for_each(|page|
+            page_table.map(pmm, PAddr::from(page), VAddr::from(page), Permissions::READ | Permissions::WRITE));
 
     page_table.reload();
 }
