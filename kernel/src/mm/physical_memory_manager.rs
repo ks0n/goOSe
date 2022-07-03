@@ -1,8 +1,8 @@
 use super::page_alloc::AllocatorError;
+use crate::device_tree::DeviceTree;
 use crate::mm;
 use crate::mm::PAddr;
 use crate::Architecture;
-use crate::device_tree::DeviceTree;
 use core::mem;
 
 #[derive(Debug, PartialEq)]

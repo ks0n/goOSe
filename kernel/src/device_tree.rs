@@ -9,7 +9,10 @@ impl DeviceTree {
         Self { dtb }
     }
 
-    pub fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(&self, mut f: F) {
+    pub fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(
+        &self,
+        mut f: F,
+    ) {
         let memory = self.dtb.memory();
         let mut regions = memory
             .regions()
