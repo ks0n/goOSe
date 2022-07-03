@@ -2,6 +2,7 @@
 //! The datasheet used to write this is: <http://caro.su/msx/ocm_de1/16550.pdf>
 
 use super::Console;
+use super::Driver;
 
 const TRANSMITTER_HOLDING_REGISTER: usize = 0;
 const _INTERRUPT_ENABLE_REGISTER: usize = 1;
@@ -41,6 +42,13 @@ impl Ns16550 {
             let addr = (self.base_register_address as *mut u8).add(TRANSMITTER_HOLDING_REGISTER);
             addr.read_volatile()
         }
+    }
+}
+
+impl Driver for Ns16550 {
+    fn get_address_range(&self) -> (usize, usize) {
+        // Base address + max register offset
+        (self.base_register_address, 0b111)
     }
 }
 

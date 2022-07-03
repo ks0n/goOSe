@@ -3,8 +3,8 @@ mod physical_memory_manager;
 
 pub use physical_memory_manager::PhysicalMemoryManager;
 
-use crate::device_tree::DeviceTree;
 use crate::arch_mem::ArchitectureMemory;
+use crate::device_tree::DeviceTree;
 use crate::utils;
 
 use bitflags::bitflags;
@@ -130,6 +130,23 @@ fn map_kernel_rwx(mm: &mut crate::MemoryImpl, pmm: &mut PhysicalMemoryManager, p
     }
 }
 
+fn map_console(
+    page_table: &mut crate::MemoryImpl,
+    pmm: &mut PhysicalMemoryManager,
+    page_size: usize,
+) {
+    let (address, size) = crate::kernel_console::get_address_range();
+    for n in 0..=size / page_size {
+        let address_to_map = address + n * page_size;
+        page_table.map(
+            pmm,
+            PAddr::from(address_to_map),
+            VAddr::from(address_to_map),
+            Permissions::READ | Permissions::WRITE,
+        );
+    }
+}
+
 pub fn map_address_space(
     device_tree: &DeviceTree,
     page_table: &mut crate::MemoryImpl,
@@ -139,6 +156,7 @@ pub fn map_address_space(
 
     map_memory_rw(device_tree, page_table, pmm, page_size);
     map_kernel_rwx(page_table, pmm, page_size);
+    map_console(page_table, pmm, page_size);
 
     page_table.reload();
 }

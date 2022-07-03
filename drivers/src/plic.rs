@@ -1,6 +1,8 @@
 //! Driver fot the RISC-V Platform-Level Interrupt Controller
 //! <https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc>
 
+use super::Driver;
+
 pub const QEMU_VIRT_PLIC_BASE_ADDRESS: usize = 0xc000000;
 
 const PLIC_ENABLE_OFFSET: usize = 0x002080;
@@ -105,6 +107,13 @@ pub fn get() -> &'static mut Plic {
 }
 
 fn not_registered() {}
+
+impl Driver for Plic {
+    fn get_address_range(&self) -> (usize, usize) {
+        // Base address + max register offset
+        (self.base_register_address, 0x3FFFFFC)
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn plic_handler() {

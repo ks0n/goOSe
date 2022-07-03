@@ -1,4 +1,5 @@
 use super::Console;
+use super::Driver;
 
 pub struct Pl011 {
     base: usize,
@@ -10,10 +11,7 @@ impl Pl011 {
     }
 
     fn read_flag_register(&self) -> u32 {
-        unsafe {
-            ((self.base + 0x18) as *mut u32)
-                .read_volatile()
-        }
+        unsafe { ((self.base + 0x18) as *mut u32).read_volatile() }
     }
 
     fn tx_fifo_full(&self) -> bool {
@@ -32,10 +30,15 @@ impl Pl011 {
     }
 }
 
+impl Driver for Pl011 {
+    fn get_address_range(&self) -> (usize, usize) {
+        // Base address, max register offset
+        (self.base, 0xFFC)
+    }
+}
+
 impl Console for Pl011 {
     fn write(&mut self, data: &str) {
-        data
-            .bytes()
-            .for_each(|b| self.putc(b))
+        data.bytes().for_each(|b| self.putc(b))
     }
 }
