@@ -55,12 +55,15 @@ impl<'alloc> TestContext<'alloc> {
         mm::PhysicalMemoryManager,
         &'alloc mut crate::MemoryImpl,
     ) {
-        let arch = crate::ArchImpl::new(device_tree_address);
-        let mut pmm =
-            mm::PhysicalMemoryManager::from_arch_info(&arch, crate::MemoryImpl::get_page_size());
+        let arch = crate::ArchImpl::new();
+        let device_tree = crate::device_tree::DeviceTree::new(device_tree_address);
+        let mut pmm = mm::PhysicalMemoryManager::from_device_tree(
+            &device_tree,
+            crate::MemoryImpl::get_page_size(),
+        );
 
         let page_table = crate::MemoryImpl::new(&mut pmm);
-        mm::map_address_space(&arch, page_table, &mut pmm);
+        mm::map_address_space(&device_tree, page_table, &mut pmm);
 
         (arch, pmm, page_table)
     }
