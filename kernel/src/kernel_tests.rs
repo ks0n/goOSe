@@ -63,7 +63,7 @@ impl<'alloc> TestContext<'alloc> {
         );
 
         let page_table = crate::MemoryImpl::new(&mut pmm);
-        mm::map_address_space(&device_tree, page_table, &mut pmm);
+        mm::map_address_space(&device_tree, page_table, &mut pmm, &[crate::kernel_console::get_console()]);
 
         (arch, pmm, page_table)
     }

@@ -9,9 +9,9 @@ pub fn init(uart: crate::ConsoleImpl) {
     unsafe { STDOUT_UART = Some(uart) };
 }
 
-pub fn get_address_range() -> (usize, usize) {
-    if let Some(console) = unsafe { &mut STDOUT_UART } {
-        return console.get_address_range();
+pub fn get_console() -> &'static dyn Driver {
+    if let Some(console) = unsafe { &STDOUT_UART } {
+        return console;
     }
 
     panic!("Cannot get address range of uninitialized console");
