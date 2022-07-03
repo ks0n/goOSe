@@ -1,12 +1,20 @@
 use core::fmt::{self, Write};
 
 use drivers::Console;
+use drivers::Driver;
 
 pub static mut STDOUT_UART: Option<crate::ConsoleImpl> = None;
 
-
 pub fn init(uart: crate::ConsoleImpl) {
     unsafe { STDOUT_UART = Some(uart) };
+}
+
+pub fn get_address_range() -> (usize, usize) {
+    if let Some(console) = unsafe { &mut STDOUT_UART } {
+        return console.get_address_range();
+    }
+
+    panic!("Cannot get address range of uninitialized console");
 }
 
 fn write(data: &str) {
