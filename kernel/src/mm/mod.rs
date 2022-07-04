@@ -1,8 +1,8 @@
 mod page_alloc;
 mod physical_memory_manager;
-
 pub use physical_memory_manager::PhysicalMemoryManager;
 
+use crate::arch_mem;
 use crate::arch_mem::ArchitectureMemory;
 use crate::device_tree::DeviceTree;
 use crate::utils;
@@ -99,34 +99,81 @@ fn map_kernel_rwx(mm: &mut crate::MemoryImpl, pmm: &mut PhysicalMemoryManager, p
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
 
     for addr in (kernel_start..kernel_end_align).step_by(page_size) {
-        mm.map(
+        if let Err(e) = mm.map(
             pmm,
             PAddr::from(addr),
             VAddr::from(addr),
             Permissions::READ | Permissions::WRITE | Permissions::EXECUTE,
-        );
+        ) {
+            panic!("Failed to map address space: {:?}", e);
+        }
+    }
+}
+
+pub struct KernelPageTable(&'static mut crate::MemoryImpl);
+
+impl KernelPageTable {
+    pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), arch_mem::Error> {
+        self.0
+            .map_noalloc(PAddr::from(addr), VAddr::from(addr), perms)
+    }
+
+    pub fn reload(&mut self) {
+        self.0.reload()
+    }
+    pub fn disable(&mut self) {
+        self.0.disable()
     }
 }
 
 pub fn map_address_space(
     device_tree: &DeviceTree,
-    page_table: &mut crate::MemoryImpl,
     pmm: &mut PhysicalMemoryManager,
     drivers: &[&dyn drivers::Driver],
-) {
+) -> KernelPageTable {
+    let page_table = crate::MemoryImpl::new(pmm);
     let page_size = pmm.page_size();
+
+    device_tree.for_all_memory_regions(|regions| {
+        regions
+            .flat_map(|(base, size)| (base..base + size).step_by(page_size))
+            .for_each(|page_base| {
+                if let Err(e) = page_table.add_invalid_entry(pmm, VAddr::from(page_base)) {
+                    panic!("Failed to map address space: {:?}", e);
+                }
+            })
+    });
 
     map_kernel_rwx(page_table, pmm, page_size);
 
     let metadata_pages = pmm.metadata_pages();
-    metadata_pages.for_each(|page| page_table.map(pmm, PAddr::from(page), VAddr::from(page), Permissions::READ | Permissions::WRITE));
+    metadata_pages.for_each(|page| {
+        if let Err(e) = page_table.map(
+            pmm,
+            PAddr::from(page),
+            VAddr::from(page),
+            Permissions::READ | Permissions::WRITE,
+        ) {
+            panic!("Failed to map address space: {:?}", e);
+        }
+    });
 
     drivers
         .iter()
         .map(|drv| drv.get_address_range())
-        .flat_map(|(base, len)| (base..(base+len)).step_by(page_size))
-        .for_each(|page|
-            page_table.map(pmm, PAddr::from(page), VAddr::from(page), Permissions::READ | Permissions::WRITE));
+        .flat_map(|(base, len)| (base..(base + len)).step_by(page_size))
+        .for_each(|page| {
+            if let Err(e) = page_table.map(
+                pmm,
+                PAddr::from(page),
+                VAddr::from(page),
+                Permissions::READ | Permissions::WRITE,
+            ) {
+                panic!("Failed to map address space: {:?}", e);
+            }
+        });
 
     page_table.reload();
+
+    KernelPageTable(page_table)
 }

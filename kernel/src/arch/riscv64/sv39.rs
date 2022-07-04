@@ -1,5 +1,5 @@
 use crate::arch;
-use crate::arch_mem::ArchitectureMemory;
+use crate::arch_mem::{ArchitectureMemory, Error};
 use crate::mm;
 use core::arch::asm;
 use core::convert::TryInto;
@@ -8,6 +8,12 @@ use modular_bitfield::{bitfield, prelude::*};
 #[repr(C)]
 pub struct VAddr {
     addr: u64,
+}
+
+impl From<mm::VAddr> for VAddr {
+    fn from(vaddr: mm::VAddr) -> Self {
+        Self::from_u64(usize::from(vaddr).try_into().unwrap())
+    }
 }
 
 impl VAddr {
@@ -41,6 +47,12 @@ impl VAddr {
 #[repr(C)]
 pub struct PAddr {
     addr: u64,
+}
+
+impl From<mm::PAddr> for PAddr {
+    fn from(paddr: mm::PAddr) -> Self {
+        Self::from_u64(usize::from(paddr).try_into().unwrap())
+    }
 }
 
 impl PAddr {
@@ -79,11 +91,8 @@ impl PAddr {
 #[bitfield]
 struct PageTableEntry {
     v: B1,
-    #[skip(getters)]
     r: B1,
-    #[skip(getters)]
     w: B1,
-    #[skip(getters)]
     x: B1,
     #[skip]
     u: B1,
@@ -109,6 +118,10 @@ impl PageTableEntry {
 
     fn is_valid(&self) -> bool {
         self.v() == 1
+    }
+
+    fn is_leaf(&self) -> bool {
+        self.r() != 0 || self.w() != 0 || self.x() != 0
     }
 
     fn set_valid(&mut self) {
@@ -146,12 +159,12 @@ pub struct PageTable {
 impl PageTable {
     fn map_inner(
         &mut self,
-        allocator: &mut mm::PhysicalMemoryManager,
+        mut allocator: Option<&mut mm::PhysicalMemoryManager>,
         paddr: PAddr,
         vaddr: VAddr,
         perms: mm::Permissions,
         level: usize,
-    ) {
+    ) -> Result<&mut PageTableEntry, Error> {
         let vpn = vaddr.vpn(level);
 
         let pte = &mut self.entries[vpn as usize];
@@ -160,17 +173,23 @@ impl PageTable {
             pte.set_paddr(&paddr);
             pte.set_perms(perms);
             pte.set_valid();
-            return;
+            return Ok(pte);
         }
 
         if !pte.is_valid() {
-            let new_page_table = PageTable::new(allocator);
-            pte.set_target(new_page_table as *mut PageTable);
-            pte.set_valid()
+            assert!(!pte.is_leaf());
+
+            if let Some(alloc) = allocator.as_mut() {
+                let new_page_table = PageTable::new(alloc);
+                pte.set_target(new_page_table as *mut PageTable);
+                pte.set_valid();
+            } else {
+                return Err(Error::CannotMapNoAlloc);
+            }
         }
 
         pte.get_target()
-            .map_inner(allocator, paddr, vaddr, perms, level - 1);
+            .map_inner(allocator, paddr, vaddr, perms, level - 1)
     }
 }
 
@@ -197,14 +216,39 @@ impl ArchitectureMemory for PageTable {
         pa: mm::PAddr,
         va: mm::VAddr,
         perms: mm::Permissions,
-    ) {
-        self.map_inner(
-            allocator,
-            PAddr::from_u64(usize::from(pa).try_into().unwrap()),
-            VAddr::from_u64(usize::from(va).try_into().unwrap()),
-            perms,
+    ) -> Result<(), Error> {
+        self.map_inner(Some(allocator), pa.into(), va.into(), perms, 2)?;
+
+        Ok(())
+    }
+
+    fn map_noalloc(
+        &mut self,
+        pa: mm::PAddr,
+        va: mm::VAddr,
+        perms: mm::Permissions,
+    ) -> Result<(), Error> {
+        self.map_inner(None, pa.into(), va.into(), perms, 2)?;
+
+        Ok(())
+    }
+
+    fn add_invalid_entry(
+        &mut self,
+        allocator: &mut mm::PhysicalMemoryManager,
+        vaddr: mm::VAddr,
+    ) -> Result<(), Error> {
+        let pte = self.map_inner(
+            Some(allocator),
+            PAddr::from_u64(0x0A0A_0A0A_0A0A_0A0A),
+            vaddr.into(),
+            mm::Permissions::READ,
             2,
-        )
+        )?;
+
+        pte.set_v(0);
+
+        Ok(())
     }
 
     fn reload(&mut self) {

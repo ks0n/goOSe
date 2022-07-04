@@ -1,4 +1,17 @@
 use super::mm;
+use core::num::TryFromIntError;
+
+#[derive(Debug)]
+pub enum Error {
+    CannotMapNoAlloc, // TODO: put in the mm::{PAddr, VAddr}
+    InvalidConversion(TryFromIntError),
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(tfie: TryFromIntError) -> Self {
+        Self::InvalidConversion(tfie)
+    }
+}
 
 pub trait ArchitectureMemory {
     fn new<'alloc>(allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self;
@@ -23,7 +36,20 @@ pub trait ArchitectureMemory {
         pa: mm::PAddr,
         va: mm::VAddr,
         perms: mm::Permissions,
-    );
+    ) -> Result<(), Error>;
+
+    fn map_noalloc(
+        &mut self,
+        pa: mm::PAddr,
+        va: mm::VAddr,
+        perms: mm::Permissions,
+    ) -> Result<(), Error>;
+
+    fn add_invalid_entry(
+        &mut self,
+        allocator: &mut mm::PhysicalMemoryManager,
+        vaddr: mm::VAddr,
+    ) -> Result<(), Error>;
 
     fn reload(&mut self);
     fn disable(&mut self);
@@ -50,7 +76,25 @@ mod tests {
             _pa: mm::PAddr,
             _va: mm::VAddr,
             _perms: mm::Permissions,
-        ) {
+        ) -> Result<(), Error> {
+            unreachable!("We will never use this, we just need the compiler to be happy");
+        }
+
+        fn map_noalloc(
+            &mut self,
+            _pa: mm::PAddr,
+            _va: mm::VAddr,
+            _perms: mm::Permissions,
+        ) -> Result<(), Error> {
+            unreachable!("We will never use this, we just need the compiler to be happy");
+        }
+
+        fn add_invalid_entry(
+            &mut self,
+            _allocator: &mut mm::PhysicalMemoryManager,
+            _vaddr: mm::VAddr,
+        ) -> Result<(), Error> {
+            unreachable!("We will never use this, we just need the compiler to be happy");
         }
 
         fn reload(&mut self) {}
