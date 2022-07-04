@@ -15,15 +15,15 @@ static UTEST_FAILURE: &str = "\x1b[31mFAILED\x1b[0m";
 
 static mut TEST_CONTEXT: Option<TestContext> = None;
 
-pub struct TestContext<'alloc> {
+pub struct TestContext {
     device_tree_address: usize,
     pub arch: crate::ArchImpl,
     pub arch_interrupts: crate::InterruptsImpl,
     pub pmm: mm::PhysicalMemoryManager,
-    pub page_table: &'alloc mut crate::MemoryImpl,
+    pub page_table: mm::KernelPageTable,
 }
 
-impl<'alloc> TestContext<'alloc> {
+impl TestContext {
     pub fn new(device_tree_address: usize) -> Self {
         let (arch, pmm, page_table) = TestContext::build_context_data(device_tree_address);
 
@@ -53,7 +53,7 @@ impl<'alloc> TestContext<'alloc> {
     ) -> (
         crate::ArchImpl,
         mm::PhysicalMemoryManager,
-        &'alloc mut crate::MemoryImpl,
+        mm::KernelPageTable,
     ) {
         let arch = crate::ArchImpl::new();
         let device_tree = crate::device_tree::DeviceTree::new(device_tree_address);
@@ -62,8 +62,11 @@ impl<'alloc> TestContext<'alloc> {
             crate::MemoryImpl::get_page_size(),
         );
 
-        let page_table = crate::MemoryImpl::new(&mut pmm);
-        mm::map_address_space(&device_tree, page_table, &mut pmm, &[crate::kernel_console::get_console()]);
+        let page_table = mm::map_address_space(
+            &device_tree,
+            &mut pmm,
+            &[crate::kernel_console::get_console()],
+        );
 
         (arch, pmm, page_table)
     }
@@ -112,8 +115,7 @@ fn end_utests() {
 
     cfg_if! {
         if #[cfg(target_arch = "riscv64")] {
-            ctx.page_table.map(&mut ctx.pmm, mm::PAddr::from(0x100000), mm::VAddr::from(0x100000),
-            mm::Permissions::READ | mm::Permissions::WRITE);
+            ctx.page_table.identity_map(0x100000, mm::Permissions::READ | mm::Permissions::WRITE);
             qemu_exit::RISCV64::new(0x100000).exit_success()
         }
     }

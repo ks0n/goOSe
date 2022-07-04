@@ -186,9 +186,10 @@ impl PhysicalMemoryManager {
         self.page_size
     }
 
-    pub fn metadata_pages(&self) -> impl core::iter::Iterator<Item=usize> {
+    pub fn metadata_pages(&self) -> impl core::iter::Iterator<Item = usize> {
         let metadata_start = (&self.metadata[0] as *const PhysicalPage) as usize;
-        let metadata_last = (&self.metadata[self.metadata.len() - 1] as *const PhysicalPage) as usize;
+        let metadata_last =
+            (&self.metadata[self.metadata.len() - 1] as *const PhysicalPage) as usize;
 
         (metadata_start..=metadata_last).step_by(self.page_size())
     }

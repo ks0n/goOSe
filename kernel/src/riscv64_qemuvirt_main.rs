@@ -65,9 +65,11 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     let mut pmm =
         mm::PhysicalMemoryManager::from_device_tree(&device_tree, MemoryImpl::get_page_size());
-    let page_table = MemoryImpl::new(&mut pmm);
-    mm::map_address_space(&device_tree, page_table, &mut pmm,
-        &[crate::kernel_console::get_console()]);
+    let pagetable = mm::map_address_space(
+        &device_tree,
+        &mut pmm,
+        &[crate::kernel_console::get_console()],
+    );
 
     kprintln!("[OK] Setup virtual memory");
 
