@@ -2,9 +2,9 @@ mod page_alloc;
 mod physical_memory_manager;
 pub use physical_memory_manager::PhysicalMemoryManager;
 
-use crate::arch_mem;
-use crate::arch_mem::ArchitectureMemory;
 use crate::device_tree::DeviceTree;
+use crate::paging;
+use crate::paging::PagingImpl as _;
 use crate::utils;
 
 use bitflags::bitflags;
@@ -93,7 +93,7 @@ pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
     is_res
 }
 
-fn map_kernel_rwx(mm: &mut crate::MemoryImpl, pmm: &mut PhysicalMemoryManager, page_size: usize) {
+fn map_kernel_rwx(mm: &mut crate::PagingImpl, pmm: &mut PhysicalMemoryManager, page_size: usize) {
     let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
@@ -110,10 +110,10 @@ fn map_kernel_rwx(mm: &mut crate::MemoryImpl, pmm: &mut PhysicalMemoryManager, p
     }
 }
 
-pub struct KernelPageTable(&'static mut crate::MemoryImpl);
+pub struct KernelPageTable(&'static mut crate::PagingImpl);
 
 impl KernelPageTable {
-    pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), arch_mem::Error> {
+    pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), paging::Error> {
         self.0
             .map_noalloc(PAddr::from(addr), VAddr::from(addr), perms)
     }
@@ -131,7 +131,7 @@ pub fn map_address_space(
     pmm: &mut PhysicalMemoryManager,
     drivers: &[&dyn drivers::Driver],
 ) -> KernelPageTable {
-    let page_table = crate::MemoryImpl::new(pmm);
+    let page_table = crate::PagingImpl::new(pmm);
     let page_size = pmm.page_size();
 
     device_tree.for_all_memory_regions(|regions| {
