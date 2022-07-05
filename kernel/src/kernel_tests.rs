@@ -5,8 +5,8 @@ use core::panic::PanicInfo;
 use crate::arch;
 use crate::arch::Architecture;
 use crate::arch::ArchitectureInterrupts;
-use crate::arch_mem::ArchitectureMemory;
 use crate::mm;
+use crate::paging::PagingImpl;
 use crate::{kprint, kprintln};
 
 use drivers::qemuexit::QemuExit;
@@ -60,7 +60,7 @@ impl TestContext {
         let device_tree = crate::device_tree::DeviceTree::new(device_tree_address);
         let mut pmm = mm::PhysicalMemoryManager::from_device_tree(
             &device_tree,
-            crate::MemoryImpl::get_page_size(),
+            crate::PagingImpl::get_page_size(),
         );
 
         let page_table = mm::map_address_space(

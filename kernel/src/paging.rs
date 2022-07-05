@@ -13,7 +13,7 @@ impl From<TryFromIntError> for Error {
     }
 }
 
-pub trait ArchitectureMemory {
+pub trait PagingImpl {
     fn new<'alloc>(allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self;
 
     fn get_page_size() -> usize;
@@ -60,8 +60,8 @@ mod tests {
     use super::*;
     use crate::kernel_tests::TestContext;
 
-    struct ArchitectureMemoryDummy {}
-    impl ArchitectureMemory for ArchitectureMemoryDummy {
+    struct PagingImplDummy {}
+    impl PagingImpl for PagingImplDummy {
         fn new<'alloc>(_allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self {
             unreachable!("We will never use this, we just need the compiler to be happy");
         }
@@ -103,11 +103,11 @@ mod tests {
 
     #[test_case]
     fn align_down(_ctx: &mut TestContext) {
-        assert!(ArchitectureMemoryDummy::align_down(0x1042) == 0x1000);
+        assert!(PagingImplDummy::align_down(0x1042) == 0x1000);
     }
 
     #[test_case]
     fn align_up(_ctx: &mut TestContext) {
-        assert!(ArchitectureMemoryDummy::align_up(0x1042) == 0x2000);
+        assert!(PagingImplDummy::align_up(0x1042) == 0x2000);
     }
 }
