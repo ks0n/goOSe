@@ -1,6 +1,8 @@
 use crate::arch;
-use crate::arch_mem::{ArchitectureMemory, Error};
 use crate::mm;
+use crate::paging;
+use crate::paging::Error;
+use crate::paging::PagingImpl;
 use core::arch::asm;
 use core::convert::TryInto;
 use modular_bitfield::{bitfield, prelude::*};
@@ -164,7 +166,7 @@ impl PageTable {
         vaddr: VAddr,
         perms: mm::Permissions,
         level: usize,
-    ) -> Result<&mut PageTableEntry, Error> {
+    ) -> Result<&mut PageTableEntry, paging::Error> {
         let vpn = vaddr.vpn(level);
 
         let pte = &mut self.entries[vpn as usize];
@@ -184,7 +186,7 @@ impl PageTable {
                 pte.set_target(new_page_table as *mut PageTable);
                 pte.set_valid();
             } else {
-                return Err(Error::CannotMapNoAlloc);
+                return Err(paging::Error::CannotMapNoAlloc);
             }
         }
 
@@ -193,7 +195,7 @@ impl PageTable {
     }
 }
 
-impl ArchitectureMemory for PageTable {
+impl PagingImpl for PageTable {
     fn new<'alloc>(allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self {
         // FIXME: No unwrap here
         let page = allocator.alloc_pages(1).unwrap();
@@ -227,7 +229,7 @@ impl ArchitectureMemory for PageTable {
         pa: mm::PAddr,
         va: mm::VAddr,
         perms: mm::Permissions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), paging::Error> {
         self.map_inner(None, pa.into(), va.into(), perms, 2)?;
 
         Ok(())

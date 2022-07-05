@@ -12,7 +12,6 @@
 compile_error!("Must be compiled as riscv64");
 
 mod arch;
-mod arch_mem;
 mod device_tree;
 mod executable;
 mod interrupt_manager;
@@ -20,6 +19,7 @@ mod kernel_console;
 #[cfg(test)]
 mod kernel_tests;
 mod mm;
+mod paging;
 mod utils;
 
 use core::arch::asm;
@@ -27,11 +27,11 @@ use drivers::ns16550::*;
 use drivers::plic;
 
 use arch::Architecture;
-use arch_mem::ArchitectureMemory;
+use paging::PagingImpl as _;
 
 pub type ArchImpl = arch::riscv64::Riscv64;
 pub type InterruptsImpl = arch::riscv64::interrupts::Interrupts;
-pub type MemoryImpl = arch::riscv64::sv39::PageTable;
+pub type PagingImpl = arch::riscv64::sv39::PageTable;
 pub type ConsoleImpl = Ns16550;
 
 pub const UART_ADDR: usize = 0x1000_0000;
@@ -64,7 +64,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     plic.set_threshold(0);
 
     let mut pmm =
-        mm::PhysicalMemoryManager::from_device_tree(&device_tree, MemoryImpl::get_page_size());
+        mm::PhysicalMemoryManager::from_device_tree(&device_tree, PagingImpl::get_page_size());
     let pagetable = mm::map_address_space(
         &device_tree,
         &mut pmm,
