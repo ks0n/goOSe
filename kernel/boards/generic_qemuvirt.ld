@@ -14,6 +14,10 @@ SECTIONS
         *(.data*);
     }
 
+    .sdata : {
+        *(.sdata*);
+    }
+
     .rodata : {
         *(.rodata*);
     }
@@ -24,6 +28,10 @@ SECTIONS
 
     .bss : {
         *(.bss*);
+    }
+
+    .sbss : {
+        *(.sbss*);
     }
 
     . = ALIGN(4096);
