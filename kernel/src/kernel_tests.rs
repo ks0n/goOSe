@@ -1,5 +1,4 @@
 use cfg_if::cfg_if;
-use qemu_exit::QEMUExit;
 
 use core::panic::PanicInfo;
 
@@ -9,6 +8,8 @@ use crate::arch::ArchitectureInterrupts;
 use crate::arch_mem::ArchitectureMemory;
 use crate::mm;
 use crate::{kprint, kprintln};
+
+use drivers::qemuexit::QemuExit;
 
 static UTEST_SUCESS: &str = "\x1b[32mok\x1b[0m";
 static UTEST_FAILURE: &str = "\x1b[31mFAILED\x1b[0m";
@@ -65,7 +66,7 @@ impl TestContext {
         let page_table = mm::map_address_space(
             &device_tree,
             &mut pmm,
-            &[crate::kernel_console::get_console()],
+            &[crate::kernel_console::get_console(), &QemuExit::new()],
         );
 
         (arch, pmm, page_table)
@@ -113,12 +114,7 @@ pub fn runner(tests: &[&dyn Testable]) {
 fn end_utests() {
     let ctx = unsafe { (&mut TEST_CONTEXT).as_mut().unwrap() };
 
-    cfg_if! {
-        if #[cfg(target_arch = "riscv64")] {
-            ctx.page_table.identity_map(0x100000, mm::Permissions::READ | mm::Permissions::WRITE);
-            qemu_exit::RISCV64::new(0x100000).exit_success()
-        }
-    }
+    QemuExit::new().exit_success();
 }
 
 #[panic_handler]
@@ -127,6 +123,8 @@ fn panic(info: &PanicInfo) -> ! {
     kprintln!("{}", info);
 
     end_utests();
+
+    QemuExit::new().exit_failure();
 
     loop {}
 }
