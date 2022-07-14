@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 qemu-exit = "3.0"
-
+tock-registers = "0.7.x"

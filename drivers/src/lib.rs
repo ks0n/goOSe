@@ -5,6 +5,8 @@
 pub mod ns16550;
 pub mod pl011;
 
+pub mod gicv2;
+
 #[cfg(target_arch = "riscv64")]
 pub mod plic;
 #[cfg(target_arch = "riscv64")]
