@@ -31,10 +31,6 @@ impl Aarch64 {
 }
 
 impl ArchitectureInterrupts for Aarch64 {
-    fn new() -> Self {
-        Self {}
-    }
-
     fn init_interrupts(&mut self) {
         unsafe {
             Self::init_el1_interrupts();
@@ -68,7 +64,7 @@ extern "C" fn fiq_current_el_sp0() {
 
 #[no_mangle]
 extern "C" fn serror_current_el_sp0() {
-    panic!("hit fiq_current_el_sp0");
+    panic!("hit serror_current_el_sp0");
 }
 
 #[no_mangle]

@@ -8,14 +8,17 @@ compile_error!("Must be compiled as aarch64");
 
 mod arch;
 mod kernel_console;
+mod interrupt_manager;
 
 use arch::Architecture;
+use drivers::gicv2::GicV2;
 use drivers::pl011::Pl011;
 
 use core::arch::asm;
 
-use cortex_a::{registers::*, asm};
-use tock_registers::interfaces::Writeable;
+use cortex_a::registers::*;
+use cortex_a::asm;
+use tock_registers::interfaces::{Readable, Writeable};
 
 pub type ConsoleImpl = Pl011;
 
@@ -26,6 +29,10 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     CPACR_EL1.set(0b11 << 20);
 
     kernel_console::init(Pl011::new(0x0900_0000));
+
+    let mut gic = GicV2::new(0x8000000, 0x8010000);
+    gic.enable(30); // Physical timer
+    gic.enable_interrupts();
 
     unsafe { arch::aarch64::Aarch64::init_el1_interrupts(); }
 
