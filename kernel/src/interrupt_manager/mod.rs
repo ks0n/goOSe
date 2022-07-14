@@ -1,22 +1,22 @@
 use crate::arch::ArchitectureInterrupts;
 
-pub struct InterruptManager {
-    arch: crate::InterruptsImpl,
+use core::marker::PhantomData;
+
+pub struct InterruptManager<I> {
+    arch_interrupts: I,
 }
 
-impl InterruptManager {
-    pub fn new() -> Self {
-        let arch = crate::InterruptsImpl {};
-
-        Self { arch }
+impl<I: ArchitectureInterrupts> InterruptManager<I> {
+    pub fn new(arch_interrupts: I) -> Self {
+        Self { arch_interrupts }
     }
 
     pub fn init_interrupts(&mut self) {
-        self.arch.init_interrupts()
+        self.arch_interrupts.init_interrupts();
     }
 
     pub fn set_timer(&mut self, delay: usize) {
-        self.arch.set_timer(delay);
+        self.arch_interrupts.set_timer(delay);
     }
 }
 
