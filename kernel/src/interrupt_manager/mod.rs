@@ -6,7 +6,7 @@ pub struct InterruptManager {
 
 impl InterruptManager {
     pub fn new() -> Self {
-        let arch = crate::InterruptsImpl{};
+        let arch = crate::InterruptsImpl {};
 
         Self { arch }
     }

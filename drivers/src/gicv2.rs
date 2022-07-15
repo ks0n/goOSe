@@ -1,6 +1,6 @@
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
-use tock_registers::registers::{ReadOnly, ReadWrite};
 use tock_registers::register_bitfields;
+use tock_registers::registers::{ReadOnly, ReadWrite};
 
 pub struct GicV2 {
     pub distributor: &'static GicDistributor,
@@ -9,7 +9,11 @@ pub struct GicV2 {
 
 impl GicV2 {
     pub fn new(distributor_base: usize, cpu_base: usize) -> Self {
-        let distributor = unsafe { (distributor_base as *const GicDistributor).as_ref().unwrap() };
+        let distributor = unsafe {
+            (distributor_base as *const GicDistributor)
+                .as_ref()
+                .unwrap()
+        };
         let cpu = unsafe { (cpu_base as *const GicCpu).as_ref().unwrap() };
         let mut gic = Self { distributor, cpu };
 
@@ -74,18 +78,17 @@ impl GicV2 {
         // Set maximum amount of bits to be used for Group priority field.
         self.cpu.BPR.set(0x0);
 
-        self.cpu.CTLR.write(GICC_CTLR::EnableGrp0::Enable +
-            GICC_CTLR::EnableGrp1::Enable +
-            GICC_CTLR::FIQEn.val(0));
-
+        self.cpu.CTLR.write(
+            GICC_CTLR::EnableGrp0::Enable + GICC_CTLR::EnableGrp1::Enable + GICC_CTLR::FIQEn.val(0),
+        );
     }
 
     pub fn enable(&mut self, line: usize) {
         let enable_reg_index = line >> 5;
         let enable_bit: u32 = 1u32 << (line % 32);
 
-        self.distributor.ISENABLER[enable_reg_index].set(
-            self.distributor.ISENABLER[enable_reg_index].get() | enable_bit);
+        self.distributor.ISENABLER[enable_reg_index]
+            .set(self.distributor.ISENABLER[enable_reg_index].get() | enable_bit);
         self.distributor.IPRIORITYR[line].set(0x80);
     }
 }
@@ -182,7 +185,7 @@ register_bitfields! {u32,
 #[repr(C)]
 #[allow(non_snake_case)]
 pub struct GicCpu {
-        /// CPU Interface Control Register
+    /// CPU Interface Control Register
     pub CTLR: ReadWrite<u32, GICC_CTLR::Register>,
     /// Interrupt Priority Mask Register
     pub PMR: ReadWrite<u32>,

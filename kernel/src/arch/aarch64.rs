@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use cortex_a::{registers::*, asm};
+use cortex_a::{asm, registers::*};
 use tock_registers::interfaces::Writeable;
 
 use super::Architecture;
@@ -12,12 +12,15 @@ impl Architecture for Aarch64 {
     #[naked]
     #[no_mangle]
     unsafe extern "C" fn _start() -> ! {
-        asm!("
+        asm!(
+            "
             adrp x0, STACK_START
             msr spsel, xzr
             mov sp, x0
             b k_main
-        ", options(noreturn));
+        ",
+            options(noreturn)
+        );
     }
 }
 
@@ -46,7 +49,9 @@ impl ArchitectureInterrupts for Aarch64 {
 
         unsafe { asm::barrier::isb(asm::barrier::SY) };
 
-        CNTP_CTL_EL0.write(CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR + CNTP_CTL_EL0::ISTATUS::CLEAR);
+        CNTP_CTL_EL0.write(
+            CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR + CNTP_CTL_EL0::ISTATUS::CLEAR,
+        );
     }
 }
 
