@@ -10,6 +10,7 @@ pub trait Architecture {
 }
 
 pub trait ArchitectureInterrupts {
+    fn new() -> Self;
     fn init_interrupts(&mut self);
     fn set_timer(&mut self, delay: usize);
 }

@@ -31,6 +31,10 @@ impl Aarch64 {
 }
 
 impl ArchitectureInterrupts for Aarch64 {
+    fn new() -> Self {
+        Self {}
+    }
+
     fn init_interrupts(&mut self) {
         unsafe {
             Self::init_el1_interrupts();

@@ -38,7 +38,9 @@ restore_regs:
     ldp x0, x1, [sp], #16
     ret
 
-.macro call_with_context_switch func
+.macro gen_stub func
+.balign 0x80
+asm_\func:
     msr spsel, xzr
     bl save_regs
     bl \func
@@ -50,70 +52,25 @@ restore_regs:
 el1_vector_table:
 
 // Current EL with SP0
-asm_sync_current_el_sp0:
-    call_with_context_switch sync_current_el_sp0
-
-.balign 0x80
-asm_irq_current_el_sp0:
-    call_with_context_switch irq_current_el_sp0
-
-.balign 0x80
-asm_fiq_current_el_sp0:
-    call_with_context_switch fiq_current_el_sp0
-
-.balign 0x80
-asm_serror_current_el_sp0:
-    call_with_context_switch serror_current_el_sp0
+gen_stub sync_current_el_sp0
+gen_stub irq_current_el_sp0
+gen_stub fiq_current_el_sp0
+gen_stub serror_current_el_sp0
 
 // Current EL with SPx
-.balign 0x80
-asm_sync_current_el_spx:
-    call_with_context_switch sync_current_el_spx
-
-.balign 0x80
-asm_irq_current_el_spx:
-    call_with_context_switch irq_current_el_spx
-
-.balign 0x80
-asm_fiq_current_el_spx:
-    call_with_context_switch fiq_current_el_spx
-
-.balign 0x80
-asm_serror_current_el_spx:
-    call_with_context_switch serror_current_el_spx
+gen_stub sync_current_el_spx
+gen_stub irq_current_el_spx
+gen_stub fiq_current_el_spx
+gen_stub serror_current_el_spx
 
 // Lower EL
-.balign 0x80
-asm_sync_lower_el:
-    call_with_context_switch sync_lower_el
-
-.balign 0x80
-asm_irq_lower_el:
-    call_with_context_switch irq_lower_el
-
-.balign 0x80
-asm_fiq_lower_el:
-    call_with_context_switch fiq_lower_el
-
-.balign 0x80
-asm_serror_lower_el:
-    call_with_context_switch serror_lower_el
+gen_stub sync_lower_el
+gen_stub irq_lower_el
+gen_stub fiq_lower_el
+gen_stub serror_lower_el
 
 // Lower EL with aarch32
-.balign 0x80
-asm_sync_lower_el_aarch32:
-    call_with_context_switch sync_lower_el_aarch32
-
-.balign 0x80
-asm_irq_lower_el_aarch32:
-    call_with_context_switch irq_lower_el_aarch32
-
-.balign 0x80
-asm_fiq_lower_el_aarch32:
-    call_with_context_switch fiq_lower_el_aarch32
-
-.balign 0x80
-asm_serror_lower_el_aarch32:
-    call_with_context_switch serror_lower_el_aarch32
-
-
+gen_stub sync_lower_el_aarch32
+gen_stub irq_lower_el_aarch32
+gen_stub fiq_lower_el_aarch32
+gen_stub serror_lower_el_aarch32
