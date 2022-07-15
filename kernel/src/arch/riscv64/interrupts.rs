@@ -146,10 +146,6 @@ impl Interrupts {
 }
 
 impl ArchitectureInterrupts for Interrupts {
-    fn new() -> Self {
-        Self {}
-    }
-
     fn init_interrupts(&mut self) {
         // Set the trap handler
         self.set_higher_trap_handler(trap_dispatch);

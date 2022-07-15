@@ -31,7 +31,7 @@ impl TestContext {
         TestContext {
             device_tree_address,
             arch,
-            arch_interrupts: crate::InterruptsImpl {},
+            arch_interrupts: crate::InterruptsImpl,
             pmm,
             page_table,
         }

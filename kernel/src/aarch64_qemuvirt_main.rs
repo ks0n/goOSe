@@ -7,7 +7,6 @@ compile_error!("Must be compiled as aarch64");
 
 mod arch;
 mod kernel_console;
-mod interrupt_manager;
 
 use drivers::gicv2::GicV2;
 use drivers::pl011::Pl011;
