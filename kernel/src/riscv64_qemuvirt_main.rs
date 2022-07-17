@@ -14,7 +14,6 @@ compile_error!("Must be compiled as riscv64");
 mod arch;
 mod device_tree;
 mod executable;
-mod interrupt_manager;
 mod kernel_console;
 #[cfg(test)]
 mod kernel_tests;
@@ -28,6 +27,7 @@ use drivers::ns16550::*;
 use drivers::plic;
 
 use arch::Architecture;
+use arch::ArchitectureInterrupts as _;
 use paging::PagingImpl as _;
 
 pub type ArchImpl = arch::riscv64::Riscv64;
@@ -74,8 +74,8 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     kprintln!("[OK] Setup virtual memory");
 
-    let mut interrupts = interrupt_manager::InterruptManager::new();
-    interrupts.init_interrupts();
+    let mut arch_interrupts = InterruptsImpl{};
+    arch_interrupts.init_interrupts();
 
     kprintln!("[OK] Enable interrupts");
 
