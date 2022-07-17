@@ -7,6 +7,14 @@ pub mod riscv64;
 
 pub trait Architecture {
     unsafe extern "C" fn _start() -> !;
+    fn get_core_local_storage() -> &'static mut PerCoreContext;
+    fn set_core_local_storage(p: &mut PerCoreContext);
+}
+
+/// Each core has its own copy of this, accessible using Architecutre::{get_core_local_storage, set_core_local_storage}.
+/// Technically accesses to irq_manager should be protected with a Mutex.
+pub struct PerCoreContext {
+    pub coreid: u32,
 }
 
 pub trait ArchitectureInterrupts {

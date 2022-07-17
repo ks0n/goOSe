@@ -1,9 +1,9 @@
 use core::arch::asm;
 
 use cortex_a::{asm, registers::*};
-use tock_registers::interfaces::Writeable;
+use tock_registers::interfaces::{Readable, Writeable};
 
-use super::Architecture;
+use super::{Architecture, PerCoreContext};
 use super::ArchitectureInterrupts;
 
 pub struct Aarch64 {}
@@ -21,6 +21,16 @@ impl Architecture for Aarch64 {
         ",
             options(noreturn)
         );
+    }
+
+    fn get_core_local_storage() -> &'static mut PerCoreContext {
+        let ptr = TPIDR_EL1.get();
+
+        unsafe { &mut *(ptr as *mut PerCoreContext) }
+    }
+
+    fn set_core_local_storage(p: &mut PerCoreContext) {
+        TPIDR_EL1.set((p as *mut PerCoreContext) as u64);
     }
 }
 

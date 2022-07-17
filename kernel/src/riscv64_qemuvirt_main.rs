@@ -21,6 +21,7 @@ mod kernel_tests;
 mod mm;
 mod paging;
 mod utils;
+mod irq;
 
 use core::arch::asm;
 use drivers::ns16550::*;

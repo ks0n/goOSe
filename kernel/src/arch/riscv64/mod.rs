@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use super::Architecture;
+use super::{Architecture, PerCoreContext};
 
 pub mod interrupts;
 pub mod registers;
@@ -19,5 +19,18 @@ impl Architecture for Riscv64 {
     #[no_mangle]
     unsafe extern "C" fn _start() -> ! {
         asm!("la sp, STACK_START", "call k_main", options(noreturn));
+    }
+
+    fn get_core_local_storage() -> &'static mut PerCoreContext<'static> {
+        let mut sscratch = 0;
+
+        unsafe {
+            asm!("csrww sscratch, {}", out(reg) sscratch);
+            &mut *(sscratch as *mut PerCoreContext)
+        }
+    } 
+
+    fn set_core_local_storage(p: &mut PerCoreContext) {
+        unsafe { asm!("csrrw {}, sscratch", in(reg) (p as *mut PerCoreContext) as u64) };
     }
 }
