@@ -8,6 +8,10 @@ pub struct GicV2 {
 }
 
 impl GicV2 {
+    pub const fn max_interrupts() -> usize {
+        1022
+    }
+
     pub fn new(distributor_base: usize, cpu_base: usize) -> Self {
         let distributor = unsafe {
             (distributor_base as *const GicDistributor)

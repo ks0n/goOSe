@@ -23,7 +23,7 @@ impl Architecture for Aarch64 {
         );
     }
 
-    fn get_core_local_storage() -> &'static mut PerCoreContext {
+    fn get_core_local_storage() -> &'static mut PerCoreContext<'static> {
         let ptr = TPIDR_EL1.get();
 
         unsafe { &mut *(ptr as *mut PerCoreContext) }
@@ -70,6 +70,7 @@ extern "C" fn sync_current_el_sp0() {
 
 #[no_mangle]
 extern "C" fn irq_current_el_sp0() {
+    Aarch64::get_core_local_storage().irq_manager.handle(30);
     panic!("hit irq_current_el_sp0");
 }
 #[no_mangle]

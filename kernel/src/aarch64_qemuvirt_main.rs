@@ -6,10 +6,14 @@
 compile_error!("Must be compiled as aarch64");
 
 mod arch;
+mod gicv2;
+mod irq;
 mod kernel_console;
 
-use drivers::gicv2::GicV2;
+use arch::{Architecture, PerCoreContext};
 use drivers::pl011::Pl011;
+use gicv2::GicV2;
+use irq::IrqManager;
 
 use core::arch::asm;
 
@@ -28,12 +32,18 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     kernel_console::init(Pl011::new(0x0900_0000));
 
     let mut gic = GicV2::new(0x8000000, 0x8010000);
-    gic.enable(30); // Physical timer
+    gic.enable(30, || kprintln!("got physical timer interrupt"));
     gic.enable_interrupts();
 
     unsafe {
         arch::aarch64::Aarch64::init_el1_interrupts();
     }
+
+    let mut percore = PerCoreContext {
+        coreid: 0,
+        irq_manager: &mut gic,
+    };
+    arch::aarch64::Aarch64::set_core_local_storage(&mut percore);
 
     unsafe {
         asm::barrier::isb(asm::barrier::SY);
@@ -43,7 +53,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
 
     kprintln!("Kernel has been initialized");
 
-    if false {
+    if true {
         // IRQ
         DAIF.write(DAIF::D::Unmasked + DAIF::A::Unmasked + DAIF::I::Unmasked + DAIF::F::Unmasked);
         CNTP_CTL_EL0.write(
