@@ -3,8 +3,8 @@ use core::arch::asm;
 use cortex_a::{asm, registers::*};
 use tock_registers::interfaces::{Readable, Writeable};
 
-use super::{Architecture, PerCoreContext};
 use super::ArchitectureInterrupts;
+use super::{Architecture, PerCoreContext};
 
 pub struct Aarch64 {}
 

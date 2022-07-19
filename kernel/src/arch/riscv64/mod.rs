@@ -28,7 +28,7 @@ impl Architecture for Riscv64 {
             asm!("csrww sscratch, {}", out(reg) sscratch);
             &mut *(sscratch as *mut PerCoreContext)
         }
-    } 
+    }
 
     fn set_core_local_storage(p: &mut PerCoreContext) {
         unsafe { asm!("csrrw {}, sscratch", in(reg) (p as *mut PerCoreContext) as u64) };
