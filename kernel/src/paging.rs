@@ -17,6 +17,7 @@ pub trait PagingImpl {
     fn new<'alloc>(mm: &mut mm::MemoryManager) -> &'alloc mut Self;
 
     fn get_page_size() -> usize;
+    fn get_uppermost_address() -> usize;
 
     fn align_down(addr: usize) -> usize {
         let page_size = Self::get_page_size();
@@ -68,6 +69,10 @@ mod tests {
 
         fn get_page_size() -> usize {
             4096
+        }
+
+        fn get_uppermost_address() -> usize {
+            unreachable!("We will never use this, we just need the compiler to be happy");
         }
 
         fn map(

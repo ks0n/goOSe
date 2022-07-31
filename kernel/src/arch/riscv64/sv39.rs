@@ -219,6 +219,10 @@ impl PagingImpl for PageTable {
         4096
     }
 
+    fn get_uppermost_address() -> usize {
+        0x7fffffffff
+    }
+
     fn map(
         &mut self,
         mm: &mut mm::MemoryManager,
