@@ -14,7 +14,10 @@ impl From<TryFromIntError> for Error {
 }
 
 pub trait PagingImpl {
-    fn new<'alloc>(allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self;
+    fn new<'alloc>(
+        kernel_pagetable: Option<&mut Self>,
+        allocator: &mut mm::PhysicalMemoryManager,
+    ) -> &'alloc mut Self;
 
     fn get_page_size() -> usize;
 
@@ -32,6 +35,7 @@ pub trait PagingImpl {
 
     fn map(
         &mut self,
+        kernel_page_table: Option<&mut Self>,
         allocator: &mut mm::PhysicalMemoryManager,
         pa: mm::PAddr,
         va: mm::VAddr,
@@ -62,7 +66,10 @@ mod tests {
 
     struct PagingImplDummy {}
     impl PagingImpl for PagingImplDummy {
-        fn new<'alloc>(_allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self {
+        fn new<'alloc>(
+            _kernel_pagetable: Option<&mut Self>,
+            _allocator: &mut mm::PhysicalMemoryManager,
+        ) -> &'alloc mut Self {
             unreachable!("We will never use this, we just need the compiler to be happy");
         }
 
@@ -72,6 +79,7 @@ mod tests {
 
         fn map(
             &mut self,
+            _kernel_pagetable: Option<&mut Self>,
             _allocator: &mut mm::PhysicalMemoryManager,
             _pa: mm::PAddr,
             _va: mm::VAddr,
