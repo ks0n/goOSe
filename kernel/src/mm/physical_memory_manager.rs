@@ -198,6 +198,27 @@ impl PhysicalMemoryManager {
         Err(AllocatorError::OutOfMemory)
     }
 
+    pub fn alloc_pages_mapped(
+        &mut self,
+        kernel_pagetable: &mut mm::KernelPageTable,
+        page_count: usize,
+        perms: mm::Permissions,
+    ) -> Result<PAddr, AllocatorError> {
+        let pages = self.alloc_pages(page_count)?;
+
+        for i in 0..page_count {
+            let offset = i * self.page_size();
+
+            kernel_pagetable
+                .identity_map(pages.addr + offset, perms)
+                .unwrap();
+        }
+
+        kernel_pagetable.reload();
+
+        Ok(pages)
+    }
+
     pub fn page_size(&self) -> usize {
         self.page_size
     }
