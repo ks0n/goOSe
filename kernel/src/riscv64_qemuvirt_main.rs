@@ -20,6 +20,7 @@ mod kernel_console;
 mod kernel_tests;
 mod mm;
 mod paging;
+mod process;
 mod utils;
 
 use core::arch::asm;

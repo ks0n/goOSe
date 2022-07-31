@@ -165,59 +165,6 @@ impl KernelPageTable {
             .map_noalloc(PAddr::from(addr), VAddr::from(addr), perms)
     }
 
-    pub fn fork_user_page_table(
-        &mut self,
-        pmm: &mut PhysicalMemoryManager,
-    ) -> Result<UserPageTable, paging::Error> {
-        let page_table = crate::PagingImpl::new(Some(self.0), pmm);
-        let page_table_addr = (page_table as *mut crate::PagingImpl) as usize;
-        self.identity_map(page_table_addr, Permissions::READ | Permissions::WRITE)?;
-
-        map_kernel_rwx(Some(self.0), page_table, pmm);
-
-        Ok(UserPageTable(page_table))
-    }
-
-    pub fn reload(&mut self) {
-        self.0.reload()
-    }
-    pub fn disable(&mut self) {
-        self.0.disable()
-    }
-}
-
-pub struct UserPageTable(&'static mut crate::PagingImpl);
-
-impl UserPageTable {
-    pub fn map(
-        &mut self,
-        kernel_page_table: &mut KernelPageTable,
-        allocator: &mut PhysicalMemoryManager,
-        paddr: usize,
-        vaddr: usize,
-        perms: Permissions,
-    ) -> Result<(), paging::Error> {
-        self.0.map(
-            Some(kernel_page_table.0),
-            allocator,
-            PAddr::from(paddr),
-            VAddr::from(vaddr),
-            perms,
-        )
-    }
-
-    pub fn get_uppermost_address(&self) -> usize {
-        crate::PagingImpl::get_uppermost_address()
-    }
-
-    pub fn align_down(&self, addr: usize) -> usize {
-        crate::PagingImpl::align_down(addr)
-    }
-
-    pub fn align_up(&self, addr: usize) -> usize {
-        crate::PagingImpl::align_up(addr)
-    }
-
     pub fn reload(&mut self) {
         self.0.reload()
     }
@@ -254,6 +201,10 @@ impl UserPageTable {
 
     pub fn align_up(&self, addr: usize) -> usize {
         crate::PagingImpl::align_up(addr)
+    }
+
+    pub fn get_uppermost_address(&self) -> usize {
+        crate::PagingImpl::get_uppermost_address()
     }
 
     pub fn reload(&mut self) {

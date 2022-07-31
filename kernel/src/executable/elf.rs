@@ -59,13 +59,8 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn load(
-        &self,
-        kernel_pagetable: &mut mm::KernelPageTable,
-        pagetable: &mut mm::UserPageTable,
-        pmm: &mut mm::PhysicalMemoryManager,
-    ) {
-        let page_size = pmm.page_size();
+    pub fn load(&self, pagetable: &mut mm::UserPageTable, mm: &mut mm::MemoryManager) {
+        let page_size = mm.page_size();
 
         for segment in self.segments() {
             if segment.p_type != PT_LOAD {
@@ -77,13 +72,7 @@ impl<'a> Elf<'a> {
             let p_memsz = segment.p_memsz as usize;
 
             let pages_needed = Self::pages_needed(segment, page_size);
-            let physical_pages = pmm
-                .alloc_pages_mapped(
-                    kernel_pagetable,
-                    pages_needed,
-                    mm::Permissions::READ | mm::Permissions::WRITE,
-                )
-                .unwrap();
+            let physical_pages = mm.alloc_pages(pages_needed).unwrap();
             let virtual_pages = segment.p_paddr as *mut u8;
 
             let segment_data_src_addr = (self.load_addr + p_offset) as *const u8;
@@ -112,8 +101,7 @@ impl<'a> Elf<'a> {
                 // FIXME: No unwrap
                 pagetable
                     .map(
-                        kernel_pagetable,
-                        pmm,
+                        mm,
                         usize::from(physical_pages) + page_offset,
                         crate::PagingImpl::align_down(virtual_pages as usize) + page_offset,
                         perms,
@@ -156,8 +144,8 @@ mod tests {
         let elf_bytes = core::include_bytes!("../../fixtures/small");
         let elf = Elf::from_bytes(elf_bytes);
 
-        let mut user_pagetable = ctx.page_table.fork_user_page_table(&mut ctx.pmm).unwrap();
+        let mut user_pagetable = mm::UserPageTable::new(&mut ctx.mm).unwrap();
 
-        elf.load(&mut ctx.page_table, &mut user_pagetable, &mut ctx.pmm);
+        elf.load(&mut user_pagetable, &mut ctx.mm);
     }
 }

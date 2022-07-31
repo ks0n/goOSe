@@ -7,6 +7,7 @@ pub mod riscv64;
 
 pub trait Architecture {
     unsafe extern "C" fn _start() -> !;
+    fn jump_to_userland(&mut self, addr: usize, stack: usize);
 }
 
 pub trait ArchitectureInterrupts {
