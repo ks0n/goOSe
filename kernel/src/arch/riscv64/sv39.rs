@@ -1,10 +1,10 @@
-use crate::arch;
 use crate::mm;
 use crate::paging;
 use crate::paging::Error;
 use crate::paging::PagingImpl;
 use core::arch::asm;
 use core::convert::TryInto;
+use core::ops::DerefMut;
 use modular_bitfield::{bitfield, prelude::*};
 
 #[repr(C)]
@@ -96,7 +96,6 @@ struct PageTableEntry {
     r: B1,
     w: B1,
     x: B1,
-    #[skip]
     u: B1,
     #[skip]
     g: B1,
@@ -122,10 +121,6 @@ impl PageTableEntry {
         self.v() == 1
     }
 
-    fn is_leaf(&self) -> bool {
-        self.r() != 0 || self.w() != 0 || self.x() != 0
-    }
-
     fn set_valid(&mut self) {
         self.set_v(1)
     }
@@ -141,16 +136,17 @@ impl PageTableEntry {
         self.set_paddr(&PAddr::from_u64(addr))
     }
 
-    fn set_perms(&mut self, perms: mm::Permissions) {
-        self.set_r(perms.contains(mm::Permissions::READ) as u8);
-        self.set_w(perms.contains(mm::Permissions::WRITE) as u8);
-        self.set_x(perms.contains(mm::Permissions::EXECUTE) as u8);
-    }
-
     fn get_target(&mut self) -> &mut PageTable {
         let addr =
             ((self.ppn2() as u64) << 18 | (self.ppn1() as u64) << 9 | self.ppn0() as u64) * 4096u64;
         unsafe { (addr as *mut PageTable).as_mut().unwrap() }
+    }
+
+    fn set_perms(&mut self, perms: mm::Permissions) {
+        self.set_r(perms.contains(mm::Permissions::READ) as u8);
+        self.set_w(perms.contains(mm::Permissions::WRITE) as u8);
+        self.set_x(perms.contains(mm::Permissions::EXECUTE) as u8);
+        self.set_u(perms.contains(mm::Permissions::USER) as u8);
     }
 }
 
@@ -161,45 +157,72 @@ pub struct PageTable {
 impl PageTable {
     fn map_inner(
         &mut self,
+        mut kernel_page_table: Option<&mut Self>,
         mut allocator: Option<&mut mm::PhysicalMemoryManager>,
         paddr: PAddr,
         vaddr: VAddr,
         perms: mm::Permissions,
-        level: usize,
     ) -> Result<&mut PageTableEntry, paging::Error> {
-        let vpn = vaddr.vpn(level);
+        let mut pagetable = self;
 
-        let pte = &mut self.entries[vpn as usize];
+        for level in (0..=2).rev() {
+            // Get offset for this vaddr
+            let vpn = vaddr.vpn(level);
+            // Get entry for this vaddr
+            let pte = &mut pagetable.entries[vpn as usize];
 
-        if level == 0 {
-            pte.set_paddr(&paddr);
-            pte.set_perms(perms);
-            pte.set_valid();
-            return Ok(pte);
-        }
-
-        if !pte.is_valid() {
-            assert!(!pte.is_leaf());
-
-            if let Some(alloc) = allocator.as_mut() {
-                let new_page_table = PageTable::new(alloc);
-                pte.set_target(new_page_table as *mut PageTable);
+            // If we are a leaf, add an entry for the paddr
+            if level == 0 {
+                pte.set_paddr(&paddr);
+                pte.set_perms(perms);
                 pte.set_valid();
-            } else {
-                return Err(paging::Error::CannotMapNoAlloc);
+
+                return Ok(pte);
             }
+
+            // If the entry is not valid we will need to allocate a new PageTable
+            if !pte.is_valid() {
+                if let Some(alloc) = allocator.as_mut() {
+                    let new_page_table = PageTable::new(kernel_page_table.as_deref_mut(), alloc);
+
+                    // Set new PageTable as target of this entry
+                    pte.set_target(new_page_table as *mut PageTable);
+                    pte.set_valid();
+                } else {
+                    // We need to allocate but we did not have an allocator
+                    return Err(paging::Error::CannotMapNoAlloc);
+                }
+            }
+
+            // Get the next level PageTable
+            pagetable = pte.get_target();
         }
 
-        pte.get_target()
-            .map_inner(allocator, paddr, vaddr, perms, level - 1)
+        unreachable!("We should have returned by now");
     }
 }
 
 impl PagingImpl for PageTable {
-    fn new<'alloc>(allocator: &mut mm::PhysicalMemoryManager) -> &'alloc mut Self {
+    fn new<'alloc>(
+        kernel_pagetable: Option<&mut Self>,
+        allocator: &mut mm::PhysicalMemoryManager,
+    ) -> &'alloc mut Self {
         // FIXME: No unwrap here
         let page = allocator.alloc_pages(1).unwrap();
         let page_table: *mut PageTable = page.into();
+
+        if let Some(kernel_pagetable) = kernel_pagetable {
+            let page_table_addr = page_table as usize;
+            // FIXME: No unwrap here
+            kernel_pagetable
+                .map_noalloc(
+                    page_table_addr.into(),
+                    page_table_addr.into(),
+                    mm::Permissions::READ | mm::Permissions::WRITE,
+                )
+                .unwrap();
+        }
+
         // FIXME: Do not unwrap either
         let page_table = unsafe { page_table.as_mut().unwrap() };
 
@@ -214,12 +237,19 @@ impl PagingImpl for PageTable {
 
     fn map(
         &mut self,
+        kernel_page_table: Option<&mut Self>,
         allocator: &mut mm::PhysicalMemoryManager,
         pa: mm::PAddr,
         va: mm::VAddr,
         perms: mm::Permissions,
     ) -> Result<(), Error> {
-        self.map_inner(Some(allocator), pa.into(), va.into(), perms, 2)?;
+        self.map_inner(
+            kernel_page_table,
+            Some(allocator),
+            pa.into(),
+            va.into(),
+            perms,
+        )?;
 
         Ok(())
     }
@@ -230,7 +260,7 @@ impl PagingImpl for PageTable {
         va: mm::VAddr,
         perms: mm::Permissions,
     ) -> Result<(), paging::Error> {
-        self.map_inner(None, pa.into(), va.into(), perms, 2)?;
+        self.map_inner(None, None, pa.into(), va.into(), perms)?;
 
         Ok(())
     }
@@ -241,11 +271,11 @@ impl PagingImpl for PageTable {
         vaddr: mm::VAddr,
     ) -> Result<(), Error> {
         let pte = self.map_inner(
+            None,
             Some(allocator),
             PAddr::from_u64(0x0A0A_0A0A_0A0A_0A0A),
             vaddr.into(),
             mm::Permissions::READ,
-            2,
         )?;
 
         pte.set_v(0);
