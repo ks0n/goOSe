@@ -18,6 +18,7 @@ pub use error::Error;
 pub mod arch;
 pub mod device_tree;
 pub mod driver_manager;
+pub mod executable;
 pub mod globals;
 pub mod kernel_console;
 mod lock;
