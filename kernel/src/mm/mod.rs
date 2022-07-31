@@ -134,6 +134,19 @@ impl KernelPageTable {
         self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
     }
 
+    pub fn fork_user_page_table(
+        &mut self,
+        pmm: &mut PhysicalMemoryManager,
+    ) -> Result<UserPageTable, Error> {
+        let page_table = crate::PagingImpl::new()?;
+        let page_table_addr = (page_table as *mut crate::PagingImpl) as usize;
+        self.identity_map(page_table_addr, Permissions::READ | Permissions::WRITE)?;
+
+        map_kernel_rwx(page_table);
+
+        Ok(UserPageTable(page_table))
+    }
+
     pub fn reload(&mut self) {
         self.0.reload()
     }
@@ -145,18 +158,14 @@ impl KernelPageTable {
 pub struct UserPageTable(&'static mut crate::PagingImpl);
 
 impl UserPageTable {
-    pub fn new() -> Result<Self, Error> {
-        let page_table = crate::PagingImpl::new()?;
-
-        // TODO: do we really need this:
-        // - aarch64
-        //      thx to TTBR0_EL1/TTBR0_EL0 I don't see why we'd need it
-        map_kernel_rwx(page_table);
-
-        Ok(UserPageTable(page_table))
-    }
-
-    pub fn map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) -> Result<(), Error> {
+    pub fn map(
+        &mut self,
+        kernel_page_table: &mut KernelPageTable,
+        allocator: &mut PhysicalMemoryManager,
+        paddr: usize,
+        vaddr: usize,
+        perms: Permissions,
+    ) -> Result<(), Error> {
         self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
     }
 
