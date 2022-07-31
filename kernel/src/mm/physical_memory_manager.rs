@@ -10,8 +10,8 @@ pub enum PageKind {
     /// For now, all reserved pages are owned by OpenSBI.
     Reserved,
     Kernel,
-    Used,
-    Unused,
+    Allocated,
+    Free,
 }
 
 /// Holds data about each physical page in the system.
@@ -26,11 +26,27 @@ pub struct PhysicalPage {
 
 impl PhysicalPage {
     fn is_used(&self) -> bool {
-        self.kind != PageKind::Unused
+        self.kind != PageKind::Free
     }
 
-    fn set_used(&mut self) {
-        self.kind = PageKind::Used;
+    fn is_reserved(&self) -> bool {
+        self.kind == PageKind::Reserved
+    }
+
+    fn is_kernel(&self) -> bool {
+        self.kind == PageKind::Reserved
+    }
+
+    fn is_allocated(&self) -> bool {
+        self.kind == PageKind::Allocated
+    }
+
+    fn is_free(&self) -> bool {
+        self.kind == PageKind::Free
+    }
+
+    fn set_allocated(&mut self) {
+        self.kind = PageKind::Allocated;
     }
 
     fn _is_last(&self) -> bool {
@@ -71,7 +87,7 @@ impl PhysicalMemoryManager {
         } else if mm::is_reserved_page(phys_addr, device_tree) {
             PageKind::Reserved
         } else {
-            PageKind::Unused
+            PageKind::Free
         };
 
         PhysicalPage {
@@ -172,7 +188,7 @@ impl PhysicalMemoryManager {
             if consecutive_pages == page_count {
                 self.metadata[first_page_index..=i]
                     .iter_mut()
-                    .for_each(|page| page.set_used());
+                    .for_each(|page| page.set_allocated());
                 self.metadata[i].set_last();
 
                 return Ok(PAddr::from(self.metadata[first_page_index].base));
@@ -192,5 +208,12 @@ impl PhysicalMemoryManager {
             (&self.metadata[self.metadata.len() - 1] as *const PhysicalPage) as usize;
 
         (metadata_start..=metadata_last).step_by(self.page_size())
+    }
+
+    pub fn allocated_pages(&self) -> impl core::iter::Iterator<Item = usize> + '_ {
+        self.metadata
+            .iter()
+            .filter(|page| page.is_allocated())
+            .map(|page| page.base)
     }
 }

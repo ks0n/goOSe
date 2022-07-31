@@ -19,6 +19,7 @@ bitflags! {
         const READ    = 0b00000001;
         const WRITE   = 0b00000010;
         const EXECUTE = 0b00000100;
+        const USER    = 0b00001000;
     }
 }
 
@@ -93,13 +94,19 @@ pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
     is_res
 }
 
-fn map_kernel_rwx(mm: &mut crate::PagingImpl, pmm: &mut PhysicalMemoryManager, page_size: usize) {
+fn map_kernel_rwx(
+    mut kernel_mm: Option<&mut crate::PagingImpl>,
+    mm: &mut crate::PagingImpl,
+    pmm: &mut PhysicalMemoryManager,
+) {
+    let page_size = pmm.page_size();
     let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
 
     for addr in (kernel_start..kernel_end_align).step_by(page_size) {
         if let Err(e) = mm.map(
+            kernel_mm.as_deref_mut(),
             pmm,
             PAddr::from(addr),
             VAddr::from(addr),
@@ -131,7 +138,7 @@ pub fn map_address_space(
     pmm: &mut PhysicalMemoryManager,
     drivers: &[&dyn drivers::Driver],
 ) -> KernelPageTable {
-    let page_table = crate::PagingImpl::new(pmm);
+    let page_table = crate::PagingImpl::new(None, pmm);
     let page_size = pmm.page_size();
 
     device_tree.for_all_memory_regions(|regions| {
@@ -144,12 +151,14 @@ pub fn map_address_space(
             })
     });
 
-    map_kernel_rwx(page_table, pmm, page_size);
+    map_kernel_rwx(None, page_table, pmm);
 
     let metadata_pages = pmm.metadata_pages();
-    metadata_pages.for_each(|page| {
-        if let Err(e) = page_table.map(
-            pmm,
+    let allocated_pages = pmm.allocated_pages();
+    let pmm_pages = metadata_pages.chain(allocated_pages);
+    pmm_pages.for_each(|page| {
+        // All pmm pages are in DRAM so they are already in the pagetable
+        if let Err(e) = page_table.map_noalloc(
             PAddr::from(page),
             VAddr::from(page),
             Permissions::READ | Permissions::WRITE,
@@ -164,6 +173,7 @@ pub fn map_address_space(
         .flat_map(|(base, len)| (base..(base + len)).step_by(page_size))
         .for_each(|page| {
             if let Err(e) = page_table.map(
+                None,
                 pmm,
                 PAddr::from(page),
                 VAddr::from(page),
