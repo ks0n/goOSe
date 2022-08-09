@@ -1,4 +1,3 @@
-use super::page_alloc::AllocatorError;
 use crate::device_tree::DeviceTree;
 use crate::mm;
 use crate::mm::PAddr;
@@ -56,6 +55,11 @@ impl PhysicalPage {
     fn set_last(&mut self) {
         self.last = true;
     }
+}
+
+#[derive(Debug)]
+pub enum AllocatorError {
+    OutOfMemory,
 }
 
 pub struct PhysicalMemoryManager {

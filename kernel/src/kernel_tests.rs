@@ -20,56 +20,51 @@ pub struct TestContext {
     device_tree_address: usize,
     pub arch: crate::ArchImpl,
     pub arch_interrupts: crate::InterruptsImpl,
-    pub pmm: mm::PhysicalMemoryManager,
-    pub page_table: mm::KernelPageTable,
+    pub mm: mm::MemoryManager,
 }
 
 impl TestContext {
     pub fn new(device_tree_address: usize) -> Self {
-        let (arch, pmm, page_table) = TestContext::build_context_data(device_tree_address);
+        let (arch, mm) = TestContext::build_context_data(device_tree_address);
 
         TestContext {
             device_tree_address,
             arch,
             arch_interrupts: crate::InterruptsImpl {},
-            pmm,
-            page_table,
+            mm,
         }
     }
 
     pub fn reset(&mut self) {
         // We will recreate a global allocator from scratch. Currently loaded page table is
         // allocated via the global allocator. Let's disable pagination to avoiding access fault
-        self.page_table.disable();
+        self.mm.get_kernel_pagetable().unwrap().disable();
 
-        let (arch, pmm, page_table) = TestContext::build_context_data(self.device_tree_address);
+        let (arch, mm) = TestContext::build_context_data(self.device_tree_address);
 
         self.arch = arch;
-        self.pmm = pmm;
-        self.page_table = page_table;
+        self.mm = mm;
     }
 
-    fn build_context_data(
-        device_tree_address: usize,
-    ) -> (
-        crate::ArchImpl,
-        mm::PhysicalMemoryManager,
-        mm::KernelPageTable,
-    ) {
+    fn build_context_data(device_tree_address: usize) -> (crate::ArchImpl, mm::MemoryManager) {
         let arch = crate::ArchImpl::new();
         let device_tree = crate::device_tree::DeviceTree::new(device_tree_address);
-        let mut pmm = mm::PhysicalMemoryManager::from_device_tree(
+        let pmm = mm::PhysicalMemoryManager::from_device_tree(
             &device_tree,
             crate::PagingImpl::get_page_size(),
         );
 
-        let page_table = mm::map_address_space(
+        let mut mm = mm::MemoryManager::new(pmm);
+
+        let pagetable = mm::map_address_space(
             &device_tree,
-            &mut pmm,
+            &mut mm,
             &[crate::kernel_console::get_console(), &QemuExit::new()],
         );
 
-        (arch, pmm, page_table)
+        mm.set_kernel_pagetable(pagetable);
+
+        (arch, mm)
     }
 }
 
