@@ -11,21 +11,16 @@ pub struct Process<'a> {
 }
 
 impl<'a> Process<'a> {
-    pub fn from_elf(
-        elf_bytes: &'a [u8],
-        kernel_pagetable: &mut mm::KernelPageTable,
-        pmm: &mut mm::PhysicalMemoryManager,
-    ) -> Self {
-        let mut user_pagetable = kernel_pagetable.fork_user_page_table(pmm).unwrap(); // TODO: No
-                                                                                      // unwrap
-                                                                                      //
-        let stack_pages = pmm.alloc_pages(STACK_PAGES).unwrap();
+    pub fn from_elf(elf_bytes: &'a [u8], mm: &mut mm::MemoryManager) -> Self {
+        let mut user_pagetable = mm.fork_user_page_table().unwrap();
+
+        // TODO: No unwrap
+        let stack_pages = mm.alloc_pages(STACK_PAGES).unwrap();
         let stack_base = user_pagetable.get_uppermost_address();
         let stack_base_page = user_pagetable.align_down(stack_base);
         user_pagetable
             .map(
-                kernel_pagetable,
-                pmm,
+                mm,
                 stack_pages.into(),
                 stack_base_page,
                 mm::Permissions::READ | mm::Permissions::WRITE | mm::Permissions::USER,
@@ -33,7 +28,7 @@ impl<'a> Process<'a> {
             .unwrap();
 
         let elf = Elf::from_bytes(elf_bytes);
-        elf.load(kernel_pagetable, &mut user_pagetable, pmm);
+        elf.load(&mut user_pagetable, mm);
 
         Self {
             elf,
@@ -82,12 +77,12 @@ mod tests {
             .set_higher_trap_handler(exit_trap_handler);
 
         let elf_bytes = core::include_bytes!("../fixtures/small");
-        let mut process = Process::from_elf(elf_bytes, &mut ctx.page_table, &mut ctx.pmm);
+        let mut process = Process::from_elf(elf_bytes, &mut ctx.mm);
 
         process.execute(&mut ctx.arch);
 
         // Restore kernel pagetable
-        ctx.page_table.reload();
+        ctx.mm.get_kernel_pagetable().unwrap().reload();
 
         assert!(unsafe { EXIT_CODE } == 42);
     }
