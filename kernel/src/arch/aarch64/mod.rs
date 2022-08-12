@@ -55,7 +55,7 @@ impl ArchitectureInterrupts for Aarch64 {
     }
 }
 
-core::arch::global_asm!(include_str!("aarch64_exceptions.S"));
+core::arch::global_asm!(include_str!("exceptions.S"));
 
 #[no_mangle]
 extern "C" fn sync_current_el_sp0() {
