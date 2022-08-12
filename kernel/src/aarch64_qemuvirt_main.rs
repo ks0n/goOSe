@@ -6,18 +6,28 @@
 compile_error!("Must be compiled as aarch64");
 
 mod arch;
+mod device_tree;
 mod kernel_console;
+mod mm;
+mod paging;
+mod utils;
 
 use drivers::gicv2::GicV2;
 use drivers::pl011::Pl011;
 
 use core::arch::asm;
 
+use paging::PagingImpl as _;
+
 use cortex_a::asm;
 use cortex_a::registers::*;
 use tock_registers::interfaces::Writeable;
 
+pub type Architecture = arch::aarch64::Aarch64;
 pub type ConsoleImpl = Pl011;
+pub type PagingImpl = arch::aarch64::pgt48::PageTable;
+
+const DTB_ADDR: usize = 0x4000_0000;
 
 #[no_mangle]
 extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
@@ -41,23 +51,29 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
         asm::barrier::dsb(asm::barrier::SY);
     };
 
+    let device_tree_ptr = DTB_ADDR;
+    let device_tree = device_tree::DeviceTree::new(device_tree_ptr);
+
+    let pmm =
+        mm::PhysicalMemoryManager::from_device_tree(&device_tree, PagingImpl::get_page_size());
+    let mut mm = mm::MemoryManager::new(pmm);
+    let mut pagetable = mm::map_address_space(
+        &device_tree,
+        &mut mm,
+        &[crate::kernel_console::get_console()],
+    );
+    mm.set_kernel_pagetable(pagetable);
+
     kprintln!("Kernel has been initialized");
 
-    if false {
-        // IRQ
-        DAIF.write(DAIF::D::Unmasked + DAIF::A::Unmasked + DAIF::I::Unmasked + DAIF::F::Unmasked);
-        CNTP_CTL_EL0.write(
-            CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR + CNTP_CTL_EL0::ISTATUS::CLEAR,
-        );
-
-        unsafe { asm!("msr CNTP_CVAL_EL0, xzr") };
-        CNTP_TVAL_EL0.set(10000);
-    } else {
-        // Synchronous exception
-        unsafe {
-            asm!("svc 42");
-        }
-    }
+    mm.kernel_map(
+        0x0900_0000,
+        0x0450_0000,
+        mm::Permissions::READ | mm::Permissions::WRITE,
+    );
+    let mut uart = Pl011::new(0x0450_0000);
+    use drivers::Console;
+    uart.write("Uart remaped");
 
     loop {}
 }
