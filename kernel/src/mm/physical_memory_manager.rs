@@ -4,8 +4,9 @@ use crate::mm::PAddr;
 use crate::Architecture;
 use core::mem;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PageKind {
+    Metadata,
     /// For now, all reserved pages are owned by OpenSBI.
     Reserved,
     Kernel,
@@ -85,11 +86,22 @@ impl PhysicalMemoryManager {
         ((addr) + alignment - 1) & !(alignment - 1)
     }
 
-    fn phys_addr_to_physical_page(phys_addr: usize, device_tree: &DeviceTree) -> PhysicalPage {
+    fn is_metadata_page(base: usize, metadata_start: usize, metadata_end: usize) -> bool {
+        base >= metadata_start && base < metadata_end
+    }
+
+    fn phys_addr_to_physical_page(
+        phys_addr: usize,
+        metadata_start: usize,
+        metadata_end: usize,
+        device_tree: &DeviceTree,
+    ) -> PhysicalPage {
         let kind = if mm::is_kernel_page(phys_addr) {
             PageKind::Kernel
         } else if mm::is_reserved_page(phys_addr, device_tree) {
             PageKind::Reserved
+        } else if Self::is_metadata_page(phys_addr, metadata_start, metadata_end) {
+            PageKind::Metadata
         } else {
             PageKind::Free
         };
@@ -111,8 +123,9 @@ impl PhysicalMemoryManager {
         let mut found = None;
 
         device_tree.for_all_memory_regions(|regions| {
-            let physical_pages =
-                regions.flat_map(|(addr, size)| (addr..addr + size).step_by(page_size));
+            let physical_pages = regions
+                .flat_map(|(addr, size)| (addr..addr + size).step_by(page_size))
+                .filter(|addr| !device_tree.is_used(*addr));
 
             let mut first_page_addr: usize = 0;
             let mut consecutive_pages: usize = 0;
@@ -160,7 +173,15 @@ impl PhysicalMemoryManager {
         device_tree.for_all_memory_regions(|regions| {
             let physical_pages = regions
                 .flat_map(|(start, size)| (start..start + size).step_by(page_size))
-                .map(|base| Self::phys_addr_to_physical_page(base, device_tree));
+                .filter(|addr| !device_tree.is_used(*addr))
+                .map(|base| {
+                    Self::phys_addr_to_physical_page(
+                        base,
+                        metadata_addr,
+                        metadata_addr + pages_needed * page_size,
+                        device_tree,
+                    )
+                });
 
             for (i, page) in physical_pages.enumerate() {
                 metadata[i] = page;

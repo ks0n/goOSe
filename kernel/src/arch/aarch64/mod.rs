@@ -1,3 +1,5 @@
+pub mod pgt48;
+
 use core::arch::asm;
 
 use cortex_a::{asm, registers::*};
@@ -14,9 +16,9 @@ impl Architecture for Aarch64 {
     unsafe extern "C" fn _start() -> ! {
         asm!(
             "
-            adrp x0, STACK_START
+            adrp x9, STACK_START
             msr spsel, xzr
-            mov sp, x0
+            mov sp, x9
             b k_main
         ",
             options(noreturn)

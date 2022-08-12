@@ -112,6 +112,14 @@ impl MemoryManager {
     pub fn page_size(&self) -> usize {
         self.pmm.page_size()
     }
+
+    pub fn kernel_map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) {
+        let pgt_haha_fuck_you_safety =
+            &mut unsafe { &mut *(self.kernel_pagetable.as_mut().unwrap() as *mut KernelPageTable) };
+
+        pgt_haha_fuck_you_safety.map(self, paddr, vaddr, perms);
+        pgt_haha_fuck_you_safety.reload();
+    }
 }
 
 pub fn is_kernel_page(base: usize) -> bool {
@@ -163,6 +171,17 @@ impl KernelPageTable {
     pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), paging::Error> {
         self.0
             .map_noalloc(PAddr::from(addr), VAddr::from(addr), perms)
+    }
+
+    pub fn map(
+        &mut self,
+        mm: &mut mm::MemoryManager,
+        paddr: usize,
+        vaddr: usize,
+        perms: Permissions,
+    ) -> Result<(), paging::Error> {
+        self.0
+            .map(mm, PAddr::from(paddr), VAddr::from(vaddr), perms)
     }
 
     pub fn reload(&mut self) {
@@ -231,20 +250,6 @@ pub fn map_address_space(
 
     map_kernel_rwx(page_table, mm);
 
-    let metadata_pages = mm.pmm.metadata_pages();
-    let allocated_pages = mm.pmm.allocated_pages();
-    let pmm_pages = metadata_pages.chain(allocated_pages);
-    pmm_pages.for_each(|page| {
-        // All pmm pages are in DRAM so they are already in the pagetable
-        if let Err(e) = page_table.map_noalloc(
-            PAddr::from(page),
-            VAddr::from(page),
-            Permissions::READ | Permissions::WRITE,
-        ) {
-            panic!("Failed to map address space: {:?}", e);
-        }
-    });
-
     drivers
         .iter()
         .map(|drv| drv.get_address_range())
@@ -259,6 +264,20 @@ pub fn map_address_space(
                 panic!("Failed to map address space: {:?}", e);
             }
         });
+
+    let metadata_pages = mm.pmm.metadata_pages();
+    let allocated_pages = mm.pmm.allocated_pages();
+    let pmm_pages = metadata_pages.chain(allocated_pages);
+    pmm_pages.for_each(|page| {
+        // All pmm pages are in DRAM so they are already in the pagetable
+        if let Err(e) = page_table.map_noalloc(
+            PAddr::from(page),
+            VAddr::from(page),
+            Permissions::READ | Permissions::WRITE,
+        ) {
+            panic!("Failed to map address space: {:?}", e);
+        }
+    });
 
     page_table.reload();
 
