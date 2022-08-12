@@ -1,4 +1,4 @@
-CC := clang
+CC = clang
 
 ASFLAGS += -Wall -Wextra -nostdlib -nostartfiles -static -mno-relax
 LDFLAGS += -fuse-ld=lld
@@ -13,6 +13,9 @@ all:
 
 riscv64gc-unknown-none-elf: ASFLAGS+=--target=riscv64-unknown-none-elf-riscv64gc
 riscv64gc-unknown-none-elf: $(EXEC)
+
+aarch64-unknown-none: ASFLAGS+=--target=aarch64-unknown-none-elf
+aarch64-unknown-none: $(EXEC)
 
 clean:
 	rm -f *.o

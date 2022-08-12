@@ -22,6 +22,15 @@ impl Architecture for Aarch64 {
             options(noreturn)
         );
     }
+
+    fn jump_to_userland(&mut self, addr: usize, stack: usize) {
+        unsafe {
+            // Return to EL0
+            cortex_a::registers::SPSR_EL1.write(cortex_a::registers::SPSR_EL1::M::EL0t);
+            // Set return address
+            cortex_a::registers::ELR_EL1.set(addr as u64);
+        }
+    }
 }
 
 impl Aarch64 {

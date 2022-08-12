@@ -23,6 +23,7 @@ impl Architecture for Riscv64 {
 
     fn jump_to_userland(&mut self, addr: usize, stack: usize) {
         unsafe {
+            // Return to userland
             riscv::register::sstatus::set_spp(riscv::register::sstatus::SPP::User);
             riscv::register::sepc::write(addr);
 
