@@ -31,9 +31,9 @@ impl Pl011 {
 }
 
 impl Driver for Pl011 {
-    fn get_address_range(&self) -> (usize, usize) {
+    fn get_address_range(&self) -> Option<(usize, usize)> {
         // Base address, max register offset
-        (self.base, 0xFFC)
+        Some((self.base, 0xFFC))
     }
 }
 

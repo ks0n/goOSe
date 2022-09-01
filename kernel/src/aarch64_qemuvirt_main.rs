@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 #![feature(naked_functions)]
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::kernel_tests::runner)]
+#![reexport_test_harness_main = "ktests_launch"]
 
 #[cfg(not(target_arch = "aarch64"))]
 compile_error!("Must be compiled as aarch64");
@@ -8,6 +11,8 @@ compile_error!("Must be compiled as aarch64");
 mod arch;
 mod device_tree;
 mod kernel_console;
+#[cfg(test)]
+mod kernel_tests;
 mod mm;
 mod paging;
 mod utils;
@@ -23,7 +28,9 @@ use cortex_a::asm;
 use cortex_a::registers::*;
 use tock_registers::interfaces::Writeable;
 
+pub type ArchImpl = arch::aarch64::Aarch64;
 pub type Architecture = arch::aarch64::Aarch64;
+pub type InterruptsImpl = arch::aarch64::Aarch64;
 pub type ConsoleImpl = Pl011;
 pub type PagingImpl = arch::aarch64::pgt48::PageTable;
 
@@ -36,6 +43,12 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     CPACR_EL1.set(0b11 << 20);
 
     kernel_console::init(Pl011::new(0x0900_0000));
+
+    #[cfg(test)]
+    {
+        kernel_tests::init(DTB_ADDR);
+        ktests_launch();
+    }
 
     let mut gic = GicV2::new(0x8000000, 0x8010000);
     gic.enable(30); // Physical timer
@@ -57,7 +70,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     let pmm =
         mm::PhysicalMemoryManager::from_device_tree(&device_tree, PagingImpl::get_page_size());
     let mut mm = mm::MemoryManager::new(pmm);
-    let mut pagetable = mm::map_address_space(
+    let pagetable = mm::map_address_space(
         &device_tree,
         &mut mm,
         &[crate::kernel_console::get_console()],

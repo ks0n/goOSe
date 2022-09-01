@@ -46,9 +46,9 @@ impl Ns16550 {
 }
 
 impl Driver for Ns16550 {
-    fn get_address_range(&self) -> (usize, usize) {
+    fn get_address_range(&self) -> Option<(usize, usize)> {
         // Base address + max register offset
-        (self.base_register_address, 0b111)
+        Some((self.base_register_address, 0b111))
     }
 }
 
