@@ -114,11 +114,19 @@ impl MemoryManager {
     }
 
     pub fn kernel_map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) {
-        let pgt_haha_fuck_you_safety =
+        // This one is a bit tricky. The pagetable is stored in self. But when calling map() on a
+        // pagetable, you need to provide a MemoryManager (self) in order to map potential
+        // alloction required by the mapping.
+        // The borrow checker is not happy with self.kernel_pagetable.map(self, ...) and I agree
+        // with him. But on this case, we are just using the MemoryManager to bundle both a
+        // pagetable and an allocator together. Since we could have passed this as tupple instead,
+        // one could argue that this is "safe"ish.
+        // See you when we realize it was not "safe"ish
+        let kernel_pgt =
             &mut unsafe { &mut *(self.kernel_pagetable.as_mut().unwrap() as *mut KernelPageTable) };
 
-        pgt_haha_fuck_you_safety.map(self, paddr, vaddr, perms);
-        pgt_haha_fuck_you_safety.reload();
+        kernel_pgt.map(self, paddr, vaddr, perms);
+        kernel_pgt.reload();
     }
 }
 
@@ -252,7 +260,7 @@ pub fn map_address_space(
 
     drivers
         .iter()
-        .map(|drv| drv.get_address_range())
+        .filter_map(|drv| drv.get_address_range())
         .flat_map(|(base, len)| (base..(base + len)).step_by(page_size))
         .for_each(|page| {
             if let Err(e) = page_table.map(

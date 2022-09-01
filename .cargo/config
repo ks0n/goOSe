@@ -2,4 +2,4 @@
 runner = 'qemu-system-riscv64 -M virt -nographic -kernel '
 
 [target.aarch64-unknown-none]
-runner = 'qemu-system-aarch64 -M virt,gic-version=2 -cpu cortex-a53 -m 32M -nographic -kernel '
+runner = 'qemu-system-aarch64 -M virt,gic-version=2 -cpu cortex-a53 -m 3M -nographic -semihosting -kernel '
