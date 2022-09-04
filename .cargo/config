@@ -1,5 +1,5 @@
 [target.riscv64gc-unknown-none-elf]
-runner = 'qemu-system-riscv64 -M virt -nographic -kernel '
+runner = 'qemu-system-riscv64 -M virt -m 32M -nographic -kernel '
 
 [target.aarch64-unknown-none]
 runner = 'qemu-system-aarch64 -M virt,gic-version=2 -cpu cortex-a53 -m 3M -nographic -semihosting -kernel '
