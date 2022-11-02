@@ -2,8 +2,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-    /* . = 0x80200000; */
-    . = 0x40100000;
+    . = 0x80200000;
 
     KERNEL_START = . ;
     .text : {
