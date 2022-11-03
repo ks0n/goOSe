@@ -77,6 +77,12 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     );
     mm.set_kernel_pagetable(pagetable);
 
+    // ???:
+    // why do we pass the pagetable after into the mm ?
+    //     (can we pass it at initialization)
+    // - also when we map, we reload the page table, enabling the MMU (SCTLR_EL1.M)
+    //   shouldn't that be separate ? ie map just put it in the pagetable, then we can manually reload it / enable paging ?
+
     kprintln!("Kernel has been initialized");
 
     mm.kernel_map(
