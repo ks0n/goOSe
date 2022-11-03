@@ -141,6 +141,15 @@ pub fn is_kernel_page(base: usize) -> bool {
     base >= kernel_start && base < kernel_end
 }
 
+pub fn kernel_memory_region() -> (usize, usize) {
+    unsafe {
+        (
+            utils::external_symbol_value(&KERNEL_START),
+            utils::external_symbol_value(&KERNEL_END),
+        )
+    }
+}
+
 pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
     let mut is_res = false;
 
@@ -246,6 +255,7 @@ pub fn map_address_space(
     let page_table = crate::PagingImpl::new(mm);
     let page_size = mm.page_size();
 
+    // ???: aren't we mapping the same stuff here as in pmm_pages.for_each...
     device_tree.for_all_memory_regions(|regions| {
         regions
             .flat_map(|(base, size)| (base..base + size).step_by(page_size))

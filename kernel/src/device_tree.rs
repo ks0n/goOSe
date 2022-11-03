@@ -15,8 +15,8 @@ impl DeviceTree {
         }
     }
 
-    pub fn is_used(&self, page: usize) -> bool {
-        page >= self.addr && page < self.addr + self.total_size
+    pub fn memory_region(&self) -> (usize, usize) {
+        (self.addr, self.addr + self.total_size)
     }
 
     pub fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(

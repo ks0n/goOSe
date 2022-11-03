@@ -4,12 +4,33 @@ use crate::mm::PAddr;
 use crate::Architecture;
 use core::mem;
 
+/// A range similar to core::ops::Range but that is copyable.
+/// The range is half-open, inclusive below, exclusive above, ie. [start; end[
+#[derive(Debug, Copy, Clone, PartialEq)]
+struct AddressRange<T: Copy> {
+    pub start: T,
+    pub end: T,
+}
+
+impl<T: Copy + core::cmp::PartialOrd + core::cmp::PartialEq + core::ops::Sub<Output = T>>
+    AddressRange<T>
+{
+    pub fn new(start: T, end: T) -> Self {
+        Self { start, end }
+    }
+
+    pub fn contains(&self, val: T) -> bool {
+        self.start <= val && val < self.end
+    }
+
+    pub fn size(&self) -> T {
+        self.end - self.start
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum PageKind {
     Metadata,
-    /// For now, all reserved pages are owned by OpenSBI.
-    Reserved,
-    Kernel,
     Allocated,
     Free,
 }
@@ -27,14 +48,6 @@ pub struct PhysicalPage {
 impl PhysicalPage {
     fn is_used(&self) -> bool {
         self.kind != PageKind::Free
-    }
-
-    fn is_reserved(&self) -> bool {
-        self.kind == PageKind::Reserved
-    }
-
-    fn is_kernel(&self) -> bool {
-        self.kind == PageKind::Reserved
     }
 
     fn is_allocated(&self) -> bool {
@@ -69,21 +82,33 @@ pub struct PhysicalMemoryManager {
 }
 
 impl PhysicalMemoryManager {
-    fn count_pages(device_tree: &DeviceTree, page_size: usize) -> usize {
-        let mut count = 0;
+    fn count_pages(regions: &[Option<AddressRange<usize>>], page_size: usize) -> usize {
+        let total_memory_bytes: usize = regions
+            .iter()
+            .filter_map(|maybe_region| maybe_region.map(|region| region.size()))
+            .sum();
 
-        device_tree.for_all_memory_regions(|regions| {
-            count = regions
-                .map(|(start, size)| (start as usize, size as usize))
-                .flat_map(|(start, size)| (start..start + size).step_by(page_size))
-                .count();
-        });
+        total_memory_bytes / page_size
+    }
 
-        count
+    fn find_large_region(
+        regions: &[Option<AddressRange<usize>>],
+        minimum_size: usize,
+    ) -> Option<usize> {
+        regions
+            .iter()
+            .flatten()
+            .find(|region| region.size() >= minimum_size)
+            .map(|region| region.start)
     }
 
     fn align_up(addr: usize, alignment: usize) -> usize {
         ((addr) + alignment - 1) & !(alignment - 1)
+    }
+
+    fn align_down(addr: usize, alignment: usize) -> usize {
+        // TODO: can this be more optimized ?
+        Self::align_up(addr, alignment) + alignment
     }
 
     fn is_metadata_page(base: usize, metadata_start: usize, metadata_end: usize) -> bool {
@@ -94,13 +119,8 @@ impl PhysicalMemoryManager {
         phys_addr: usize,
         metadata_start: usize,
         metadata_end: usize,
-        device_tree: &DeviceTree,
     ) -> PhysicalPage {
-        let kind = if mm::is_kernel_page(phys_addr) {
-            PageKind::Kernel
-        } else if mm::is_reserved_page(phys_addr, device_tree) {
-            PageKind::Reserved
-        } else if Self::is_metadata_page(phys_addr, metadata_start, metadata_end) {
+        let kind = if Self::is_metadata_page(phys_addr, metadata_start, metadata_end) {
             PageKind::Metadata
         } else {
             PageKind::Free
@@ -113,80 +133,135 @@ impl PhysicalMemoryManager {
         }
     }
 
-    /// Look for `pages_needed` contiguous unused pages, beware of pages that are in use by the
-    /// kernel or reserved by opensbi.
-    fn find_contiguous_unused_pages(
+    fn exclude_range<const MAX_REGIONS: usize>(
+        regions: &mut [Option<AddressRange<usize>>; MAX_REGIONS],
+        excluded: (usize, usize),
+    ) {
+        let (excl_start, excl_end) = excluded;
+
+        assert!(excl_start < excl_end);
+
+        for i in 0..MAX_REGIONS {
+            if regions[i].is_none() {
+                continue;
+            }
+            let region = regions[i].unwrap();
+
+            if region.start == excl_start && region.end == excl_end {
+                // Perfect overlap between the region to be excluded and the current region, just remove the region.
+                regions[i] = None;
+            } else if (region.start < excl_start && excl_start < region.end)
+                && (region.start < excl_end && excl_end < region.end)
+            {
+                // Region to be excluded is the middle of the current region.
+                let new_region = AddressRange {
+                    start: excl_end,
+                    end: region.end,
+                };
+                regions[i] = Some(AddressRange::new(region.start, excl_start));
+
+                // The exclusion in the middle causes a split of the current region, put the new region (the end part) somewhere there is a none.
+                *regions
+                    .iter_mut()
+                    .find(|maybe_region| maybe_region.is_none())
+                    .expect("regions array is too small, increase MAX_REGIONS") = Some(new_region);
+            } else if region.contains(excl_end) {
+                // Region to be removed is at the left (at the beginning) of the current region.
+                regions[i] = Some(AddressRange::new(excl_end, region.end));
+            } else if region.contains(excl_start) {
+                // Region to be removed is at the right (at the end) of the current region.
+                regions[i] = Some(AddressRange::new(region.start, excl_start));
+            }
+        }
+    }
+
+    fn available_memory_regions<const MAX_REGIONS: usize>(
         device_tree: &DeviceTree,
-        pages_needed: usize,
         page_size: usize,
-    ) -> Option<usize> {
-        let mut found = None;
-
+    ) -> [Option<AddressRange<usize>>; MAX_REGIONS] {
+        // First put all regions in the array.
+        let mut all_regions = [None; MAX_REGIONS];
         device_tree.for_all_memory_regions(|regions| {
-            let physical_pages = regions
-                .flat_map(|(addr, size)| (addr..addr + size).step_by(page_size))
-                .filter(|addr| !device_tree.is_used(*addr));
-
-            let mut first_page_addr: usize = 0;
-            let mut consecutive_pages: usize = 0;
-
-            for page in physical_pages {
-                if consecutive_pages == 0 {
-                    first_page_addr = page;
+            regions.enumerate().for_each(|(i, (base, size))| {
+                if i == MAX_REGIONS - 1 {
+                    panic!(
+                        "found more regions in the device tree than this has been compiled to fit"
+                    );
                 }
 
-                if mm::is_kernel_page(page) || mm::is_reserved_page(page, device_tree) {
-                    consecutive_pages = 0;
-                    continue;
-                }
+                all_regions[i] = Some(AddressRange {
+                    start: base,
+                    end: base + size,
+                });
+            });
+        });
 
-                consecutive_pages += 1;
+        Self::exclude_range(&mut all_regions, mm::kernel_memory_region());
 
-                if consecutive_pages == pages_needed {
-                    found = Some(first_page_addr);
-                    return;
-                }
+        Self::exclude_range(&mut all_regions, device_tree.memory_region());
+
+        device_tree.for_all_reserved_memory_regions(|reserved_regions| {
+            reserved_regions
+                .for_each(|(base, size)| Self::exclude_range(&mut all_regions, (base, base + size)))
+        });
+
+        // Re-align the regions, for exemple things we exclude are not always aligned to a page boundary.
+        all_regions.iter_mut().for_each(|maybe_region| {
+            if let Some(region) = maybe_region {
+                region.start = Self::align_down(region.start, page_size);
+                region.end = Self::align_up(region.end, page_size);
+
+                *maybe_region = if region.size() > 0 {
+                    Some(*region)
+                } else {
+                    None
+                };
             }
         });
 
-        found
+        all_regions
     }
 
-    /// TLDR: Initialize a [`PageAllocator`] from the device tree.
-    /// How it works:
-    /// - First count how many pages we can make out on the system, how much size we will need for
-    /// metadata and align that up to a page size.
-    /// - Second (in [`Self::find_contiguous_unused_pages`]), look through our pages for a contiguous
-    /// space large enough to hold all our metadata.
-    /// - Lastly store our metadata there, and mark pages as unused or kernel.
+    /// Initialize a [`PageAllocator`] from the device tree.
     pub fn from_device_tree(device_tree: &DeviceTree, page_size: usize) -> Self {
-        let page_count = Self::count_pages(device_tree, page_size);
+        let available_regions = Self::available_memory_regions::<10>(device_tree, page_size);
+
+        assert!(
+            available_regions
+                .iter()
+                .flatten()
+                .all(
+                    |region| region.start == Self::align_up(region.start, page_size)
+                        && region.end == Self::align_up(region.end, page_size)
+                ),
+            "Expected region bounds to be aligned to the page size (won't be possible to allocate pages otherwise)"
+        );
+
+        let page_count = Self::count_pages(&available_regions, page_size);
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();
         let pages_needed = Self::align_up(metadata_size, page_size) / page_size;
 
-        let metadata_addr =
-            Self::find_contiguous_unused_pages(device_tree, pages_needed, page_size).unwrap();
+        let metadata_addr = Self::find_large_region(&available_regions, metadata_size).unwrap();
 
         let metadata: &mut [PhysicalPage] =
             unsafe { core::slice::from_raw_parts_mut(metadata_addr as *mut _, page_count) };
 
-        device_tree.for_all_memory_regions(|regions| {
-            let physical_pages = regions
-                .flat_map(|(start, size)| (start..start + size).step_by(page_size))
-                .filter(|addr| !device_tree.is_used(*addr))
-                .map(|base| {
-                    Self::phys_addr_to_physical_page(
-                        base,
-                        metadata_addr,
-                        metadata_addr + pages_needed * page_size,
-                        device_tree,
-                    )
-                });
+        let physical_pages = available_regions
+            .iter()
+            .flatten()
+            .flat_map(|region| (region.start..region.end).step_by(page_size))
+            .map(|base| {
+                Self::phys_addr_to_physical_page(
+                    base,
+                    metadata_addr,
+                    metadata_addr + pages_needed * page_size,
+                )
+            });
 
-            for (i, page) in physical_pages.enumerate() {
-                metadata[i] = page;
-            }
-        });
+        assert!(physical_pages.clone().count() == page_count);
+        for (i, page) in physical_pages.enumerate() {
+            metadata[i] = page;
+        }
 
         Self {
             metadata,
@@ -197,13 +272,20 @@ impl PhysicalMemoryManager {
     pub fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
+        let mut last_page_base: usize = 0;
 
         for (i, page) in self.metadata.iter().enumerate() {
             if consecutive_pages == 0 {
                 first_page_index = i;
+                last_page_base = page.base;
             }
 
             if page.is_used() {
+                consecutive_pages = 0;
+                continue;
+            }
+
+            if consecutive_pages > 0 && page.base != last_page_base + self.page_size {
                 consecutive_pages = 0;
                 continue;
             }
@@ -240,5 +322,56 @@ impl PhysicalMemoryManager {
             .iter()
             .filter(|page| page.is_allocated())
             .map(|page| page.base)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernel_tests::*;
+
+    #[test_case]
+    fn exclude_range_remove_in_the_middle(_ctx: &mut TestContext) {
+        let mut ranges = [Some(AddressRange::new(0x0, 0x1000)), None];
+        PhysicalMemoryManager::exclude_range(&mut ranges, (0x500, 0x600));
+
+        assert_eq!(ranges[0], Some(AddressRange::new(0x0, 0x500)));
+        assert_eq!(ranges[1], Some(AddressRange::new(0x600, 0x1000)));
+    }
+
+    #[test_case]
+    fn exclude_range_remove_beginning(_ctx: &mut TestContext) {
+        let mut ranges = [Some(AddressRange::new(0x100, 0x1000)), None];
+        PhysicalMemoryManager::exclude_range(&mut ranges, (0x0, 0x200));
+
+        assert_eq!(ranges[0], Some(AddressRange::new(0x200, 0x1000)));
+        assert!(ranges[1].is_none());
+    }
+
+    #[test_case]
+    fn exclude_range_remove_ending(_ctx: &mut TestContext) {
+        let mut ranges = [Some(AddressRange::new(0x100, 0x1000)), None];
+        PhysicalMemoryManager::exclude_range(&mut ranges, (0x800, 0x1000));
+
+        assert_eq!(ranges[0], Some(AddressRange::new(0x100, 0x800)));
+        assert!(ranges[1].is_none());
+    }
+
+    #[test_case]
+    fn exclude_range_overlaps_exactly(_ctx: &mut TestContext) {
+        let mut ranges = [Some(AddressRange::new(0x400_000, 0x800_000)), None];
+        PhysicalMemoryManager::exclude_range(&mut ranges, (0x400_000, 0x800_000));
+
+        assert!(ranges[0].is_none());
+        assert!(ranges[1].is_none());
+    }
+
+    #[test_case]
+    fn exclude_range_overlap_with_exact_beginning(_ctx: &mut TestContext) {
+        let mut ranges = [Some(AddressRange::new(0x400_000, 0x800_000)), None];
+        PhysicalMemoryManager::exclude_range(&mut ranges, (0x400_000, 0x401_000));
+
+        assert_eq!(ranges[0], Some(AddressRange::new(0x401_000, 0x800_000)));
+        assert!(ranges[1].is_none());
     }
 }
