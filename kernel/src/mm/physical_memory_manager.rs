@@ -1,7 +1,6 @@
 use crate::device_tree::DeviceTree;
 use crate::mm;
 use crate::mm::PAddr;
-use crate::Architecture;
 use core::mem;
 
 /// A range similar to core::ops::Range but that is copyable.

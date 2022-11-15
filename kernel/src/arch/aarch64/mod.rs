@@ -1,12 +1,18 @@
-pub mod pgt48;
-
+use super::Architecture;
+use super::ArchitectureInterrupts;
 use core::arch::asm;
-
 use cortex_a::{asm, registers::*};
 use tock_registers::interfaces::Writeable;
 
-use super::Architecture;
-use super::ArchitectureInterrupts;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "aarch64_pgt48oa")] {
+        pub mod pgt48;
+        pub type PagingImpl = pgt48::PageTable;
+    }
+}
+
+pub type ArchImpl = Aarch64;
+pub type InterruptsImpl = Aarch64;
 
 pub struct Aarch64 {}
 
@@ -27,6 +33,11 @@ impl Architecture for Aarch64 {
 }
 
 impl Aarch64 {
+    pub fn disable_fp_trap() {
+        // Disable trapping of FP instructions.
+        // CPACR_EL1.write(CPACR_EL1::FPEN::TrapNothing);
+        CPACR_EL1.set(0b11 << 20);
+    }
     pub unsafe fn init_el1_interrupts() {
         extern "Rust" {
             static el1_vector_table: core::cell::UnsafeCell<()>;

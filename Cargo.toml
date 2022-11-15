@@ -3,4 +3,6 @@
 members = [
     "kernel",
     "drivers",
+    "aarch64_qemuvirt",
+    "riscv64_qemuvirt",
 ]

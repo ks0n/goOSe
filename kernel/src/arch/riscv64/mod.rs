@@ -4,7 +4,16 @@ use super::Architecture;
 
 pub mod interrupts;
 pub mod registers;
-pub mod sv39;
+
+cfg_if::cfg_if! {
+    if  #[cfg(feature = "riscv64_sv39")] {
+        pub mod sv39;
+        pub type PagingImpl = sv39::PageTable;
+    }
+}
+
+pub type ArchImpl = Riscv64;
+pub type InterruptsImpl = interrupts::Interrupts;
 
 pub struct Riscv64 {}
 
