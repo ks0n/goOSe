@@ -1,0 +1,6 @@
+[build]
+target = "aarch64-unknown-none"
+
+[target.aarch64-unknown-none]
+rustflags = ["-C", "link-arg=-Taarch64_qemuvirt/src/aarch64_qemuvirt.ld"]
+runner = 'qemu-system-aarch64 -M virt,gic-version=2 -cpu cortex-a53 -m 256M -nographic -semihosting -kernel '

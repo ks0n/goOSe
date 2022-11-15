@@ -7,38 +7,26 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET: riscv64gc-unknown-none-elf
-      BIN: riscv64_qemuvirt
     steps:
       - uses: actions/checkout@v2
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
             toolchain: nightly
-            target: ${{ env.TARGET }}
             components: clippy
-            override: true
-
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --target ${{ env.TARGET }} --bin ${{ env.BIN }}
+            targets: ${{ env.TARGET }}
+      - run: cd riscv64_qemuvirt && cargo clippy --all-features --target ${{ env.TARGET }}
 
   clippy_aarch64:
     runs-on: ubuntu-latest
     env:
       TARGET: aarch64-unknown-none
-      BIN: aarch64_qemuvirt
     steps:
       - uses: actions/checkout@v2
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
             toolchain: nightly
-            target: ${{ env.TARGET }}
             components: clippy
-            override: true
-
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --target ${{ env.TARGET }} --bin ${{ env.BIN }}
+            targets: ${{ env.TARGET }}
+      - run: cd aarch64_qemuvirt && cargo clippy --all-features --target ${{ env.TARGET }}

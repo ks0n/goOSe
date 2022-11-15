@@ -1,5 +1,5 @@
 [package]
-name = "goose"
+name = "kernel"
 version = "0.1.0"
 authors = ["cohenarthur <arthur.cohen@epita.fr>", "Esteban \"Skallwar\" Blanc <estblcsk@gmail.com>", "Martin \"n1tram1\" Schmidt <martin.schmidt@epita.fr>"]
 edition = "2021"
@@ -37,10 +37,11 @@ panic = "abort"
 [profile.release]
 panic = "abort"
 
-[[bin]]
-name = "riscv64_qemuvirt"
-path = "src/riscv64_qemuvirt_main.rs"
+[features]
+aarch64 = []
+aarch64_pgt48oa = []
 
-[[bin]]
-name = "aarch64_qemuvirt"
-path = "src/aarch64_qemuvirt_main.rs"
+riscv64 = []
+riscv64_sv39 = []
+
+arm = []
