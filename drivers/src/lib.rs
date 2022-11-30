@@ -2,6 +2,10 @@
 
 #![no_std]
 
+mod lock;
+pub mod init_cell;
+
+pub mod null_uart;
 pub mod ns16550;
 pub mod pl011;
 pub mod qemuexit;
@@ -15,6 +19,6 @@ pub trait Driver {
     fn get_address_range(&self) -> Option<(usize, usize)>;
 }
 
-pub trait Console {
-    fn write(&mut self, data: &str);
+pub trait Console: Driver {
+    fn write(&self, data: &str);
 }

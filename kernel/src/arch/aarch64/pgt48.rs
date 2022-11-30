@@ -2,6 +2,8 @@ use crate::mm;
 use crate::paging;
 use crate::paging::Error;
 use crate::paging::PagingImpl;
+use crate::globals;
+use crate::kprintln;
 
 use cortex_a::asm::barrier;
 use cortex_a::registers::*;
@@ -198,14 +200,31 @@ union PageTableContent {
     entry: core::mem::ManuallyDrop<TableEntry>,
 }
 
+impl PageTableContent {
+    /// With Aarch64 Pgt48OA, if the first two bits are set to 0b00, entry/descriptor is invalid.
+    const fn new_invalid() -> Self {
+        unsafe { core::mem::transmute::<u64, Self>(0b00u64) }
+    }
+}
+
+#[repr(align(0x1000))]
 pub struct PageTable {
     entries: [PageTableContent; 512],
 }
 
 impl PageTable {
+    pub const fn zeroed() -> Self {
+        let mut entries: [PageTableContent; 512] = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
+        let mut i = 0;
+        while i < 512 {
+            entries[i] = PageTableContent::new_invalid();
+            i += 1;
+        }
+        Self { entries }
+    }
+
     fn map_inner(
         &mut self,
-        mut mm: Option<&mut mm::MemoryManager>,
         paddr: PAddr,
         vaddr: VAddr,
         perms: mm::Permissions,
@@ -229,13 +248,8 @@ impl PageTable {
 
             let descriptor = unsafe { &mut content.descriptor };
             if descriptor.is_invalid() {
-                if let Some(mm) = mm.as_mut() {
-                    let new_page_table = PageTable::new(mm);
-
-                    descriptor.set_next_level(new_page_table);
-                } else {
-                    return Err(paging::Error::CannotMapNoAlloc);
-                }
+                let new_page_table = PageTable::new();
+                descriptor.set_next_level(new_page_table);
             }
 
             pagetable = descriptor.get_next_level();
@@ -246,9 +260,10 @@ impl PageTable {
 }
 
 impl PagingImpl for PageTable {
-    fn new<'alloc>(mm: &mut mm::MemoryManager) -> &'alloc mut Self {
+    fn new<'alloc>() -> &'alloc mut Self {
         // FIXME: No unwrap here
-        let page = mm.alloc_pages(1).unwrap();
+        let page = globals::PHYSICAL_MEMORY_MANAGER
+            .lock(|pmm|  pmm.alloc_rw_pages(1).unwrap());
         let page_table: *mut PageTable = page.into();
         // FIXME: Do not unwrap either
         let page_table = unsafe { page_table.as_mut().unwrap() };
@@ -267,38 +282,29 @@ impl PagingImpl for PageTable {
 
     fn map(
         &mut self,
-        mm: &mut mm::MemoryManager,
         pa: mm::PAddr,
         va: mm::VAddr,
         perms: mm::Permissions,
     ) -> Result<(), Error> {
-        self.map_inner(Some(mm), pa.into(), va.into(), perms)?;
-
-        Ok(())
-    }
-
-    fn map_noalloc(
-        &mut self,
-        pa: mm::PAddr,
-        va: mm::VAddr,
-        perms: mm::Permissions,
-    ) -> Result<(), paging::Error> {
-        self.map_inner(None, pa.into(), va.into(), perms)?;
+        self.map_inner(pa.into(), va.into(), perms)?;
 
         Ok(())
     }
 
     fn add_invalid_entry(
         &mut self,
-        mm: &mut mm::MemoryManager,
         vaddr: mm::VAddr,
     ) -> Result<(), Error> {
+        if vaddr.addr == 0x4011dde8 {
+            kprintln!("add_invalid_entry: found our addr");
+        }
+
         let entry = self.map_inner(
-            Some(mm),
             PAddr(0x0A0A_0A0A_0A0A_0A0A),
             vaddr.into(),
             mm::Permissions::READ,
         )?;
+
 
         entry.set_invalid();
 
