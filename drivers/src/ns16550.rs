@@ -1,6 +1,7 @@
 //! Driver for the NS16550 UART chip.
 //! The datasheet used to write this is: <http://caro.su/msx/ocm_de1/16550.pdf>
 
+use super::lock::Lock;
 use super::Console;
 use super::Driver;
 
@@ -8,10 +9,14 @@ const TRANSMITTER_HOLDING_REGISTER: usize = 0;
 const _INTERRUPT_ENABLE_REGISTER: usize = 1;
 
 pub struct Ns16550 {
+    inner: Lock<Ns16550Inner>,
+}
+
+struct Ns16550Inner {
     base_register_address: usize,
 }
 
-impl Ns16550 {
+impl Ns16550Inner {
     pub const fn new(base_register_address: usize) -> Self {
         Self {
             base_register_address,
@@ -45,17 +50,28 @@ impl Ns16550 {
     }
 }
 
+impl Ns16550 {
+    pub const fn new(base: usize) -> Self {
+        Self {
+            inner: Lock::new(Ns16550Inner::new(base)),
+        }
+    }
+}
+
 impl Driver for Ns16550 {
     fn get_address_range(&self) -> Option<(usize, usize)> {
         // Base address + max register offset
-        Some((self.base_register_address, 0b111))
+        self.inner
+            .lock(|ns16550| Some((ns16550.base_register_address, 0b111)))
     }
 }
 
 impl Console for Ns16550 {
-    fn write(&mut self, data: &str) {
-        for byte in data.bytes() {
-            self.write_transmitter_holding_reg(byte);
-        }
+    fn write(&self, data: &str) {
+        self.inner.lock(|ns16550| {
+            for byte in data.bytes() {
+                ns16550.write_transmitter_holding_reg(byte);
+            }
+        })
     }
 }

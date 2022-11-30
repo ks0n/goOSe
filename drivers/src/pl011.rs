@@ -1,12 +1,17 @@
+use super::lock::Lock;
 use super::Console;
 use super::Driver;
 
 pub struct Pl011 {
+    inner: Lock<Pl011Inner>,
+}
+
+struct Pl011Inner {
     base: usize,
 }
 
-impl Pl011 {
-    pub fn new(base: usize) -> Self {
+impl Pl011Inner {
+    pub const fn new(base: usize) -> Self {
         Self { base }
     }
 
@@ -33,12 +38,21 @@ impl Pl011 {
 impl Driver for Pl011 {
     fn get_address_range(&self) -> Option<(usize, usize)> {
         // Base address, max register offset
-        Some((self.base, 0xFFC))
+        self.inner.lock(|pl011| Some((pl011.base, 0xFFC)))
     }
 }
 
 impl Console for Pl011 {
-    fn write(&mut self, data: &str) {
-        data.bytes().for_each(|b| self.putc(b))
+    fn write(&self, data: &str) {
+        self.inner
+            .lock(|pl011| data.bytes().for_each(|b| pl011.putc(b)));
+    }
+}
+
+impl Pl011 {
+    pub const fn new(base: usize) -> Self {
+        Self {
+            inner: Lock::new(Pl011Inner::new(base)),
+        }
     }
 }

@@ -2,10 +2,11 @@ mod physical_memory_manager;
 pub use physical_memory_manager::{AllocatorError, PhysicalMemoryManager};
 
 use crate::device_tree::DeviceTree;
-use crate::mm;
+use crate::globals;
 use crate::paging;
 use crate::paging::PagingImpl as _;
 use crate::utils;
+use drivers::Driver;
 
 use bitflags::bitflags;
 
@@ -23,9 +24,9 @@ bitflags! {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct VAddr {
-    addr: usize,
+    pub addr: usize,
 }
 
 impl core::convert::From<usize> for VAddr {
@@ -69,67 +70,6 @@ impl<T> core::convert::From<&PAddr> for *mut T {
     }
 }
 
-pub struct MemoryManager {
-    pmm: PhysicalMemoryManager,
-    kernel_pagetable: Option<KernelPageTable>,
-}
-
-impl MemoryManager {
-    pub fn new(pmm: PhysicalMemoryManager) -> Self {
-        Self {
-            pmm,
-            kernel_pagetable: None,
-        }
-    }
-
-    pub fn get_kernel_pagetable(&mut self) -> Option<&mut KernelPageTable> {
-        self.kernel_pagetable.as_mut()
-    }
-
-    pub fn set_kernel_pagetable(&mut self, kernel_pagetable: KernelPageTable) {
-        self.kernel_pagetable = Some(kernel_pagetable);
-    }
-
-    pub fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
-        let pages = self.pmm.alloc_pages(page_count)?;
-        let page_size = self.page_size();
-
-        if let Some(kernel_pagetable) = &mut self.kernel_pagetable {
-            for i in 0..page_count {
-                let offset = i * page_size;
-
-                kernel_pagetable
-                    .identity_map(pages.addr + offset, Permissions::READ | Permissions::WRITE)
-                    .unwrap();
-            }
-
-            kernel_pagetable.reload();
-        }
-
-        Ok(pages)
-    }
-
-    pub fn page_size(&self) -> usize {
-        self.pmm.page_size()
-    }
-
-    pub fn kernel_map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) {
-        // This one is a bit tricky. The pagetable is stored in self. But when calling map() on a
-        // pagetable, you need to provide a MemoryManager (self) in order to map potential
-        // alloction required by the mapping.
-        // The borrow checker is not happy with self.kernel_pagetable.map(self, ...) and I agree
-        // with him. But on this case, we are just using the MemoryManager to bundle both a
-        // pagetable and an allocator together. Since we could have passed this as tupple instead,
-        // one could argue that this is "safe"ish.
-        // See you when we realize it was not "safe"ish
-        let kernel_pgt =
-            &mut unsafe { &mut *(self.kernel_pagetable.as_mut().unwrap() as *mut KernelPageTable) };
-
-        kernel_pgt.map(self, paddr, vaddr, perms);
-        kernel_pgt.reload();
-    }
-}
-
 pub fn is_kernel_page(base: usize) -> bool {
     let (kernel_start, kernel_end) = unsafe {
         (
@@ -164,15 +104,14 @@ pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
     is_res
 }
 
-fn map_kernel_rwx(pagetable: &mut crate::PagingImpl, mm: &mut MemoryManager) {
-    let page_size = mm.page_size();
+fn map_kernel_rwx(pagetable: &mut crate::PagingImpl) {
+    let page_size = crate::PagingImpl::get_page_size();
     let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
 
     for addr in (kernel_start..kernel_end_align).step_by(page_size) {
         if let Err(e) = pagetable.map(
-            mm,
             PAddr::from(addr),
             VAddr::from(addr),
             Permissions::READ | Permissions::WRITE | Permissions::EXECUTE,
@@ -186,19 +125,16 @@ pub struct KernelPageTable(&'static mut crate::PagingImpl);
 
 impl KernelPageTable {
     pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), paging::Error> {
-        self.0
-            .map_noalloc(PAddr::from(addr), VAddr::from(addr), perms)
+        self.0.map(PAddr::from(addr), VAddr::from(addr), perms)
     }
 
     pub fn map(
         &mut self,
-        mm: &mut mm::MemoryManager,
         paddr: usize,
         vaddr: usize,
         perms: Permissions,
     ) -> Result<(), paging::Error> {
-        self.0
-            .map(mm, PAddr::from(paddr), VAddr::from(vaddr), perms)
+        self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
     }
 
     pub fn reload(&mut self) {
@@ -212,23 +148,24 @@ impl KernelPageTable {
 pub struct UserPageTable(&'static mut crate::PagingImpl);
 
 impl UserPageTable {
-    pub fn new(mm: &mut mm::MemoryManager) -> Result<Self, paging::Error> {
-        let page_table = crate::PagingImpl::new(mm);
+    pub fn new() -> Result<Self, paging::Error> {
+        let page_table = crate::PagingImpl::new();
 
-        map_kernel_rwx(page_table, mm);
+        // TODO: do we really need this:
+        // - aarch64
+        //      thx to TTBR0_EL1/TTBR0_EL0 I don't see why we'd need it
+        map_kernel_rwx(page_table);
 
         Ok(UserPageTable(page_table))
     }
 
     pub fn map(
         &mut self,
-        mm: &mut mm::MemoryManager,
         paddr: usize,
         vaddr: usize,
         perms: Permissions,
     ) -> Result<(), paging::Error> {
-        self.0
-            .map(mm, PAddr::from(paddr), VAddr::from(vaddr), perms)
+        self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
     }
 
     pub fn align_down(&self, addr: usize) -> usize {
@@ -247,34 +184,33 @@ impl UserPageTable {
     }
 }
 
-pub fn map_address_space(
-    device_tree: &DeviceTree,
-    mm: &mut MemoryManager,
-    drivers: &[&dyn drivers::Driver],
-) -> KernelPageTable {
-    let page_table = crate::PagingImpl::new(mm);
-    let page_size = mm.page_size();
+pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) {
+    // TODO: return a result from map_address_space !!!
+    let page_table: &mut crate::PagingImpl = globals::KERNEL_PAGETABLE.lock(|pt| pt);
 
-    // ???: aren't we mapping the same stuff here as in pmm_pages.for_each...
+    let page_size = crate::PagingImpl::get_page_size();
+
+    // Add entries/descriptors in the pagetable for all of accessible memory regions.
+    // That way in the future, mapping those entries won't require any memory allocations,
+    // just settings the entry to valid and filling up the bits.
     device_tree.for_all_memory_regions(|regions| {
         regions
             .flat_map(|(base, size)| (base..base + size).step_by(page_size))
             .for_each(|page_base| {
-                if let Err(e) = page_table.add_invalid_entry(mm, VAddr::from(page_base)) {
+                if let Err(e) = page_table.add_invalid_entry(VAddr::from(page_base)) {
                     panic!("Failed to map address space: {:?}", e);
                 }
             })
     });
 
-    map_kernel_rwx(page_table, mm);
+    map_kernel_rwx(page_table);
 
     drivers
         .iter()
-        .filter_map(|drv| drv.get_address_range())
+        .flat_map(|drv| drv.get_address_range())
         .flat_map(|(base, len)| (base..(base + len)).step_by(page_size))
         .for_each(|page| {
             if let Err(e) = page_table.map(
-                mm,
                 PAddr::from(page),
                 VAddr::from(page),
                 Permissions::READ | Permissions::WRITE,
@@ -283,21 +219,23 @@ pub fn map_address_space(
             }
         });
 
-    let metadata_pages = mm.pmm.metadata_pages();
-    let allocated_pages = mm.pmm.allocated_pages();
-    let pmm_pages = metadata_pages.chain(allocated_pages);
-    pmm_pages.for_each(|page| {
-        // All pmm pages are in DRAM so they are already in the pagetable
-        if let Err(e) = page_table.map_noalloc(
-            PAddr::from(page),
-            VAddr::from(page),
-            Permissions::READ | Permissions::WRITE,
-        ) {
-            panic!("Failed to map address space: {:?}", e);
-        }
+    globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| {
+        let metadata_pages = pmm.metadata_pages();
+        let allocated_pages = pmm.allocated_pages();
+        let pmm_pages = metadata_pages.chain(allocated_pages);
+        pmm_pages.for_each(|page| {
+            // All pmm pages are part of DRAM so they are already in the pagetable.
+            // Therefore no allocations should be made.
+            page_table
+                .map(
+                    PAddr::from(page),
+                    VAddr::from(page),
+                    Permissions::READ | Permissions::WRITE,
+                )
+                .unwrap()
+        });
     });
 
+    unsafe { globals::STATE = globals::KernelState::MmuEnabledInit };
     page_table.reload();
-
-    KernelPageTable(page_table)
 }

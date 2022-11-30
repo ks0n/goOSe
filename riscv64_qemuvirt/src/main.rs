@@ -16,7 +16,8 @@ pub const UART_INTERRUPT_NUMBER: u16 = 10;
 
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
-    kernel::kernel_console::init(Ns16550::new(UART_ADDR));
+    static NS16550: Ns16550 = Ns16550::new(UART_ADDR);
+    kernel::globals::set_console(&NS16550);
 
     kernel::kprintln!("GoOSe is booting");
 
@@ -40,14 +41,9 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     }
     plic.set_threshold(0);
 
-    let pmm = kernel::mm::PhysicalMemoryManager::from_device_tree(&device_tree, 4096);
-    let mut mm = kernel::mm::MemoryManager::new(pmm);
-    let pagetable = kernel::mm::map_address_space(
-        &device_tree,
-        &mut mm,
-        &[kernel::kernel_console::get_console()],
-    );
-    mm.set_kernel_pagetable(pagetable);
+    kernel::globals::PHYSICAL_MEMORY_MANAGER
+        .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096));
+    kernel::mm::map_address_space(&device_tree, &[&NS16550]);
 
     kernel::kprintln!("[OK] Setup virtual memory");
 

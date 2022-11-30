@@ -1,6 +1,8 @@
 use crate::device_tree::DeviceTree;
+use crate::globals;
 use crate::mm;
 use crate::mm::PAddr;
+use crate::paging::PagingImpl as _;
 use core::mem;
 
 /// A range similar to core::ops::Range but that is copyable.
@@ -75,6 +77,7 @@ pub enum AllocatorError {
     OutOfMemory,
 }
 
+#[derive(Debug)]
 pub struct PhysicalMemoryManager {
     metadata: &'static mut [PhysicalPage],
     page_size: usize,
@@ -221,8 +224,22 @@ impl PhysicalMemoryManager {
         all_regions
     }
 
+    pub const fn new() -> Self {
+        let metadata = unsafe {
+            core::slice::from_raw_parts_mut(
+                core::ptr::NonNull::<PhysicalPage>::dangling().as_ptr(),
+                0,
+            )
+        };
+
+        Self {
+            metadata,
+            page_size: 0,
+        }
+    }
+
     /// Initialize a [`PageAllocator`] from the device tree.
-    pub fn from_device_tree(device_tree: &DeviceTree, page_size: usize) -> Self {
+    pub fn init_from_device_tree(&mut self, device_tree: &DeviceTree, page_size: usize) {
         let available_regions = Self::available_memory_regions::<10>(device_tree, page_size);
 
         assert!(
@@ -262,10 +279,8 @@ impl PhysicalMemoryManager {
             metadata[i] = page;
         }
 
-        Self {
-            metadata,
-            page_size,
-        }
+        self.metadata = metadata;
+        self.page_size = page_size;
     }
 
     pub fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
@@ -302,6 +317,34 @@ impl PhysicalMemoryManager {
         }
 
         Err(AllocatorError::OutOfMemory)
+    }
+
+    pub fn alloc_rw_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
+        // If there is a kernel pagetable, identity map the pages.
+        // Not sure this is the best idea, but I would say it follows the
+        // principle of least astonishment.
+        let first_page = self.alloc_pages(page_count)?;
+        let addr: usize = first_page.into();
+
+        if unsafe { globals::STATE.is_mmu_enabled() } {
+            globals::KERNEL_PAGETABLE.lock(|kernel_pt| {
+                for page_addr in
+                    (addr..(addr + page_count * self.page_size())).step_by(self.page_size())
+                {
+                    kernel_pt
+                        .map(
+                            page_addr.into(),
+                            page_addr.into(),
+                            mm::Permissions::READ | mm::Permissions::WRITE,
+                        )
+                        .unwrap();
+                }
+            });
+        }
+
+        // Bit weird, when we have a KERNEL_PAGETABLE this is a VAddr, but PAddr
+        // otherwise.
+        Ok(PAddr::from(addr))
     }
 
     pub fn page_size(&self) -> usize {
