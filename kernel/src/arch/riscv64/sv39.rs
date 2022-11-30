@@ -1,3 +1,4 @@
+use crate::globals;
 use crate::mm;
 use crate::paging;
 use crate::paging::Error;
@@ -112,7 +113,14 @@ struct PageTableEntry {
 }
 
 impl PageTableEntry {
-    fn clear(&mut self) {
+    const fn new_invalid() -> Self {
+        let mut pte = Self::new();
+        pte.clear();
+
+        pte
+    }
+
+    const fn clear(&mut self) {
         *self = PageTableEntry::from_bytes([0u8; 8])
     }
 
@@ -149,14 +157,26 @@ impl PageTableEntry {
     }
 }
 
+#[repr(align(0x1000))]
 pub struct PageTable {
     entries: [PageTableEntry; 512],
 }
 
 impl PageTable {
+    pub const fn zeroed() -> Self {
+        #[allow(clippy::uninit_assumed_init)]
+        let mut entries: [PageTableEntry; 512] =
+            unsafe { core::mem::MaybeUninit::uninit().assume_init() };
+        let mut i = 0;
+        while i < entries.len() {
+            entries[i] = PageTableEntry::new_invalid();
+            i += 1;
+        }
+        Self { entries }
+    }
+
     fn map_inner(
         &mut self,
-        mut mm: Option<&mut mm::MemoryManager>,
         paddr: PAddr,
         vaddr: VAddr,
         perms: mm::Permissions,
@@ -180,16 +200,11 @@ impl PageTable {
 
             // If the entry is not valid we will need to allocate a new PageTable
             if !pte.is_valid() {
-                if let Some(mm) = mm.as_mut() {
-                    let new_page_table = PageTable::new(mm);
+                let new_page_table = PageTable::new();
 
-                    // Set new PageTable as target of this entry
-                    pte.set_target(new_page_table as *mut PageTable);
-                    pte.set_valid();
-                } else {
-                    // We need to allocate but we did not have the MemoryManager was not provided
-                    return Err(paging::Error::CannotMapNoAlloc);
-                }
+                // Set new PageTable as target of this entry
+                pte.set_target(new_page_table as *mut PageTable);
+                pte.set_valid();
             }
 
             // Get the next level PageTable
@@ -201,9 +216,9 @@ impl PageTable {
 }
 
 impl PagingImpl for PageTable {
-    fn new<'alloc>(mm: &mut mm::MemoryManager) -> &'alloc mut Self {
+    fn new() -> &'static mut Self {
         // FIXME: No unwrap here
-        let page = mm.alloc_pages(1).unwrap();
+        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_pages(1).unwrap());
 
         let page_table: *mut PageTable = page.into();
 
@@ -219,36 +234,14 @@ impl PagingImpl for PageTable {
         4096
     }
 
-    fn map(
-        &mut self,
-        mm: &mut mm::MemoryManager,
-        pa: mm::PAddr,
-        va: mm::VAddr,
-        perms: mm::Permissions,
-    ) -> Result<(), Error> {
-        self.map_inner(Some(mm), pa.into(), va.into(), perms)?;
+    fn map(&mut self, pa: mm::PAddr, va: mm::VAddr, perms: mm::Permissions) -> Result<(), Error> {
+        self.map_inner(pa.into(), va.into(), perms)?;
 
         Ok(())
     }
 
-    fn map_noalloc(
-        &mut self,
-        pa: mm::PAddr,
-        va: mm::VAddr,
-        perms: mm::Permissions,
-    ) -> Result<(), paging::Error> {
-        self.map_inner(None, pa.into(), va.into(), perms)?;
-
-        Ok(())
-    }
-
-    fn add_invalid_entry(
-        &mut self,
-        mm: &mut mm::MemoryManager,
-        vaddr: mm::VAddr,
-    ) -> Result<(), Error> {
+    fn add_invalid_entry(&mut self, vaddr: mm::VAddr) -> Result<(), Error> {
         let pte = self.map_inner(
-            Some(mm),
             PAddr::from_u64(0x0A0A_0A0A_0A0A_0A0A),
             vaddr.into(),
             mm::Permissions::READ,

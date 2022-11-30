@@ -36,7 +36,7 @@ impl DeviceTree {
         mut f: F,
     ) {
         match self.dtb.find_node("/reserved-memory") {
-            None => return,
+            None => (),
             Some(reserved_memory) => {
                 let mut regions = reserved_memory
                     .children()

@@ -1,26 +1,11 @@
 use core::fmt::{self, Write};
 
+use crate::globals;
+
 use drivers::Console;
-use drivers::Driver;
-
-pub static mut STDOUT_UART: Option<crate::ConsoleImpl> = None;
-
-pub fn init(uart: crate::ConsoleImpl) {
-    unsafe { STDOUT_UART = Some(uart) };
-}
-
-pub fn get_console() -> &'static dyn Driver {
-    if let Some(console) = unsafe { &STDOUT_UART } {
-        return console;
-    }
-
-    panic!("Cannot get address range of uninitialized console");
-}
 
 fn write(data: &str) {
-    if let Some(console) = unsafe { &mut STDOUT_UART } {
-        console.write(data);
-    }
+    globals::get_console().write(data);
 }
 
 struct KernelConsoleWriter;

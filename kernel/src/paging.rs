@@ -14,7 +14,7 @@ impl From<TryFromIntError> for Error {
 }
 
 pub trait PagingImpl {
-    fn new<'alloc>(mm: &mut mm::MemoryManager) -> &'alloc mut Self;
+    fn new() -> &'static mut Self;
 
     fn get_page_size() -> usize;
 
@@ -30,26 +30,9 @@ pub trait PagingImpl {
         ((addr + page_size - 1) / page_size) * page_size
     }
 
-    fn map(
-        &mut self,
-        mm: &mut mm::MemoryManager,
-        pa: mm::PAddr,
-        va: mm::VAddr,
-        perms: mm::Permissions,
-    ) -> Result<(), Error>;
+    fn map(&mut self, pa: mm::PAddr, va: mm::VAddr, perms: mm::Permissions) -> Result<(), Error>;
 
-    fn map_noalloc(
-        &mut self,
-        pa: mm::PAddr,
-        va: mm::VAddr,
-        perms: mm::Permissions,
-    ) -> Result<(), Error>;
-
-    fn add_invalid_entry(
-        &mut self,
-        mm: &mut mm::MemoryManager,
-        vaddr: mm::VAddr,
-    ) -> Result<(), Error>;
+    fn add_invalid_entry(&mut self, vaddr: mm::VAddr) -> Result<(), Error>;
 
     fn reload(&mut self);
     fn disable(&mut self);
@@ -62,7 +45,7 @@ mod tests {
 
     struct PagingImplDummy {}
     impl PagingImpl for PagingImplDummy {
-        fn new<'alloc>(_mm: &mut mm::MemoryManager) -> &'alloc mut Self {
+        fn new<'alloc>() -> &'alloc mut Self {
             unreachable!("We will never use this, we just need the compiler to be happy");
         }
 
@@ -71,16 +54,6 @@ mod tests {
         }
 
         fn map(
-            &mut self,
-            _mm: &mut mm::MemoryManager,
-            _pa: mm::PAddr,
-            _va: mm::VAddr,
-            _perms: mm::Permissions,
-        ) -> Result<(), Error> {
-            unreachable!("We will never use this, we just need the compiler to be happy");
-        }
-
-        fn map_noalloc(
             &mut self,
             _pa: mm::PAddr,
             _va: mm::VAddr,

@@ -1,10 +1,18 @@
 #![no_std]
 #![feature(naked_functions)]
 #![feature(fn_align)]
+#![feature(const_mut_refs)]
+#![feature(slice_ptr_get)]
+#![feature(const_ptr_as_ref)]
+#![feature(const_slice_from_raw_parts_mut)]
+#![feature(iterator_try_collect)]
+#![feature(const_for)]
 
 pub mod arch;
 pub mod device_tree;
+pub mod globals;
 pub mod kernel_console;
+mod lock;
 pub mod mm;
 pub mod paging;
 mod utils;
@@ -31,3 +39,4 @@ cfg_if::cfg_if! {
 static_assertions::assert_impl_all!(ArchImpl: arch::Architecture);
 static_assertions::assert_impl_all!(InterruptsImpl: arch::ArchitectureInterrupts);
 static_assertions::assert_impl_all!(PagingImpl: paging::PagingImpl);
+static_assertions::assert_impl_all!(ConsoleImpl: drivers::Console);
