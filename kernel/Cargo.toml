@@ -40,10 +40,8 @@ panic = "abort"
 panic = "abort"
 
 [features]
-aarch64 = []
 aarch64_pgt48oa = []
 
-riscv64 = []
 riscv64_sv39 = []
 
 arm = []

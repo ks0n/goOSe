@@ -1,4 +1,4 @@
-#[cfg(all(feature = "aarch64", feature = "riscv64"))]
+#[cfg(all(target_arch = "aarch64", target_arch = "riscv64"))]
 compile_error!("Only a single architecture feature must enabled at once !");
 
 #[cfg(target_arch = "aarch64")]

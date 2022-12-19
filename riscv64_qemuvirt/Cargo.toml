@@ -6,4 +6,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-kernel = { path = "../kernel", features = ["riscv64", "riscv64_sv39"] }
+kernel = { path = "../kernel", features = ["riscv64_sv39"] }
