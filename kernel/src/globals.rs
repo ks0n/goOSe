@@ -2,8 +2,8 @@ use crate::lock::Lock;
 
 use crate::mm;
 
-use drivers::init_cell::InitCell;
 use drivers::Console;
+use utils::init_cell::InitCell;
 
 static NULL_CONSOLE: drivers::null_uart::NullUart = drivers::null_uart::NullUart::new();
 

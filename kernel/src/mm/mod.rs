@@ -5,7 +5,6 @@ use crate::device_tree::DeviceTree;
 use crate::globals;
 use crate::paging;
 use crate::paging::PagingImpl as _;
-use crate::utils;
 use drivers::Driver;
 
 use bitflags::bitflags;

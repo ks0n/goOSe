@@ -1,6 +1,7 @@
-use super::lock::Lock;
 use super::Console;
 use super::Driver;
+
+use utils::lock::Lock;
 
 pub struct Pl011 {
     inner: Lock<Pl011Inner>,
