@@ -1,40 +1,34 @@
-# name: Doc
-# 
-# on: pull_request
-# 
-# jobs:
-#   doc_riscv64:
-#     runs-on: ubuntu-latest
-#     env:
-#       TARGET: riscv64gc-unknown-none-elf
-#       BIN: riscv64_qemuvirt
-#     steps:
-#       - uses: actions/checkout@v2
-# 
-#       - uses: actions-rs/toolchain@v1
-#         with:
-#             toolchain: nightly
-#             target: ${{ env.TARGET }}
-#             components: clippy
-#             override: true
-# 
-#       - name: Build doc
-#         run: cargo doc --target ${{ env.TARGET }} --bin ${{ env.BIN }}
-# 
-#   doc_aarch64:
-#     runs-on: ubuntu-latest
-#     env:
-#       TARGET: aarch64-unknown-none
-#       BIN: aarch64_qemuvirt
-#     steps:
-#       - uses: actions/checkout@v2
-# 
-#       - uses: actions-rs/toolchain@v1
-#         with:
-#             toolchain: nightly
-#             target: ${{ env.TARGET }}
-#             components: clippy
-#             override: true
-# 
-#       - name: Build doc
-#         run: cargo doc --target ${{ env.TARGET }} --bin ${{ env.BIN }}
+name: Doc
+
+on: pull_request
+
+jobs:
+  doc_riscv64:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: riscv64gc-unknown-none-elf
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+            toolchain: nightly
+            targets: ${{ env.TARGET }}
+
+      - name: Build doc
+        run: cd kernel && cargo doc --target ${{ env.TARGET }} --all-features
+
+  doc_aarch64:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: aarch64-unknown-none
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+            toolchain: nightly
+            targets: ${{ env.TARGET }}
+
+      - name: Build doc
+        run: cd kernel && cargo doc --target ${{ env.TARGET }} --all-features
