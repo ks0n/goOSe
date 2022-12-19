@@ -2,9 +2,6 @@
 
 #![no_std]
 
-pub mod init_cell;
-mod lock;
-
 pub mod ns16550;
 pub mod null_uart;
 pub mod pl011;

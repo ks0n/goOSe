@@ -15,7 +15,6 @@ pub mod kernel_console;
 mod lock;
 pub mod mm;
 pub mod paging;
-mod utils;
 
 // TODO: redo the unit tests with Mockall
 // pub mod kernel_tests;
