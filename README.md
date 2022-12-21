@@ -39,6 +39,10 @@ You also need to select which board to use with `--bin`:
 - A rust nightly toolchain
 - Clang compiler (for tests)
 
+#### Nix
+If you use Nix you can run `nix develop` to get a shell with everything needed
+to test GoOSe
+
 ### Build
 ```console
 $ cargo build --bin <bin_here> --target <triplet_here>
