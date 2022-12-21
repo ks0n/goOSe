@@ -1,3 +1,5 @@
+use fdt::node::FdtNode;
+
 pub struct DeviceTree {
     addr: usize,
     dtb: fdt::Fdt<'static>,
@@ -46,5 +48,10 @@ impl DeviceTree {
                 f(&mut regions);
             }
         }
+    }
+
+    pub fn console_node(&self) -> Option<FdtNode> {
+        let chosen = self.dtb.chosen();
+        chosen.stdout()
     }
 }

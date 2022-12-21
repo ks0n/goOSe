@@ -1,5 +1,4 @@
 use crate::globals;
-use crate::kprintln;
 use crate::mm;
 use crate::paging;
 use crate::paging::Error;

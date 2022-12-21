@@ -2,13 +2,16 @@ use crate::lock::Lock;
 
 use crate::mm;
 
-use drivers::Console;
 use utils::init_cell::InitCell;
+use utils::init_once::InitOnce;
+
+use alloc::sync::Arc;
 
 static NULL_CONSOLE: drivers::null_uart::NullUart = drivers::null_uart::NullUart::new();
 
-pub static EARLYINIT_CONSOLE: InitCell<&'static (dyn drivers::Console + Sync)> = InitCell::new(&NULL_CONSOLE);
-pub static CONSOLE: InitCell<&'static (dyn drivers::Console + Sync)> = InitCell::new(&NULL_CONSOLE);
+pub static EARLYINIT_CONSOLE: InitCell<&'static (dyn drivers::Console + Sync)> =
+    InitCell::new(&NULL_CONSOLE);
+pub static CONSOLE: InitOnce<Arc<dyn drivers::Console + Sync + Send>> = InitOnce::new();
 pub static PHYSICAL_MEMORY_MANAGER: Lock<mm::PhysicalMemoryManager> =
     Lock::new(mm::PhysicalMemoryManager::new());
 
@@ -32,17 +35,9 @@ impl KernelState {
 pub static mut STATE: KernelState = KernelState::EarlyInit;
 
 pub fn set_earlyinit_console(new_console: &'static (dyn drivers::Console + Sync)) {
-    CONSOLE.set(|console| *console = new_console);
+    EARLYINIT_CONSOLE.set(|console| *console = new_console);
 }
 
 pub fn get_earlyinit_console() -> &'static dyn drivers::Console {
-    *CONSOLE.get()
-}
-
-pub fn set_console(new_console: &'static (dyn drivers::Console + Sync)) {
-    CONSOLE.set(|console| *console = new_console);
-}
-
-pub fn get_console() -> &'static dyn drivers::Console {
-    *CONSOLE.get()
+    *EARLYINIT_CONSOLE.get()
 }
