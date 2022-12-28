@@ -19,9 +19,21 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     kernel::arch::aarch64::Aarch64::disable_fp_trap();
 
     static PL011: Pl011 = Pl011::new(0x0900_0000);
-    kernel::globals::set_console(&PL011);
+    kernel::globals::set_earlyinit_console(&PL011);
 
     kernel::kprintln!("hello, I am GoOSe!");
+
+    let device_tree = kernel::device_tree::DeviceTree::new(DTB_ADDR);
+
+    kernel::globals::PHYSICAL_MEMORY_MANAGER
+        .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096));
+    kernel::mm::map_address_space(&device_tree, &[&PL011]);
+
+    kernel::kprintln!("PMM has been initialized with the device tree... check");
+    kernel::kprintln!(
+        "kernel's address space has been mapped into the kernel's pagetable... check"
+    );
+    kernel::kprintln!("Kernel initialization should be about done.");
 
     let mut gic = GicV2::new(0x8000000, 0x8010000);
     gic.enable(30); // Physical timer
