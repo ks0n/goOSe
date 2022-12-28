@@ -1,50 +1,44 @@
-# name: Tests
-#
-# on: pull_request
-#
-# jobs:
-#   tests_riscv64:
-#     runs-on: ubuntu-22.04
-#     env:
-#       TARGET: riscv64gc-unknown-none-elf
-#       BIN: riscv64_qemuvirt
-#     steps:
-#       - uses: actions/checkout@v2
-#
-#       - uses: actions-rs/toolchain@v1
-#         with:
-#             toolchain: nightly
-#             target: ${{ env.TARGET }}
-#             override: true
-#
-#       - name: Install qemu
-#         run: sudo apt-get update && sudo apt-get install qemu-system-misc opensbi
-#
-#       - name: Build fixtures
-#         run: make -C kernel/fixtures $TARGET
-#
-#       - name: cargo test
-#         run: cargo test --release --target ${{ env.TARGET }} --bin ${{ env.BIN }}
-#
-#   tests_aarch64:
-#     runs-on: ubuntu-22.04
-#     env:
-#       TARGET: aarch64-unknown-none
-#       BIN: aarch64_qemuvirt
-#     steps:
-#       - uses: actions/checkout@v2
-#
-#       - uses: actions-rs/toolchain@v1
-#         with:
-#             toolchain: nightly
-#             target: ${{ env.TARGET }}
-#             override: true
-#
-#       - name: Install qemu
-#         run: sudo apt-get update && sudo apt-get install qemu-system-arm
-#
-#       - name: Build fixtures
-#         run: make -C kernel/fixtures $TARGET
-#
-#       - name: cargo test
-#         run: cargo test --release --target ${{ env.TARGET }} --bin ${{ env.BIN }}
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      main
+
+jobs:
+  test_riscv64:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: riscv64gc-unknown-none-elf
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+            toolchain: nightly
+            components: clippy
+            targets: ${{ env.TARGET }}
+
+      - name: Install qemu
+        run: sudo apt-get update && sudo apt-get install qemu-system-misc opensbi
+
+      - run: cd riscv64_qemuvirt && cargo run
+
+  test_aarch64:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: aarch64-unknown-none
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+            toolchain: nightly
+            components: clippy
+            targets: ${{ env.TARGET }}
+
+      - name: Install qemu
+        run: sudo apt-get update && sudo apt-get install qemu-system-arm
+
+      - run: cd aarch64_qemuvirt && cargo run
