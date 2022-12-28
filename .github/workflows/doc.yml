@@ -1,6 +1,10 @@
 name: Doc
 
-on: pull_request
+on:
+  pull_request:
+  push:
+    branches:
+      master
 
 jobs:
   doc_riscv64:

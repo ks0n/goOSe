@@ -1,6 +1,10 @@
 name: Clippy
 
-on: pull_request
+on:
+  pull_request:
+  push:
+    branches:
+      main
 
 jobs:
   clippy_riscv64:
