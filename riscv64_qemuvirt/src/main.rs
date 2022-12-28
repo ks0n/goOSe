@@ -18,7 +18,7 @@ pub const UART_INTERRUPT_NUMBER: u16 = 10;
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     static NS16550: Ns16550 = Ns16550::new(UART_ADDR);
-    kernel::globals::set_console(&NS16550);
+    kernel::globals::set_earlyinit_console(&NS16550);
 
     kernel::kprintln!("GoOSe is booting");
 
@@ -48,6 +48,8 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     kernel::mm::map_address_space(&device_tree, &[&NS16550, &qemu_exit]);
 
     kernel::kprintln!("[OK] Setup virtual memory");
+
+    let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree);
 
     let mut interrupts = kernel::interrupt_manager::InterruptManager::new();
     interrupts.init_interrupts();

@@ -5,7 +5,11 @@ use crate::globals;
 use drivers::Console;
 
 fn write(data: &str) {
-    globals::get_console().write(data);
+    if globals::CONSOLE.is_initialized() {
+        globals::CONSOLE.get().unwrap().write(data);
+    } else {
+        globals::get_earlyinit_console().write(data);
+    }
 }
 
 struct KernelConsoleWriter;

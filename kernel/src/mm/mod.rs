@@ -1,6 +1,8 @@
 mod physical_memory_manager;
 pub use physical_memory_manager::{AllocatorError, PhysicalMemoryManager};
 
+mod binary_buddy_allocator;
+
 use crate::device_tree::DeviceTree;
 use crate::globals;
 use crate::paging;
@@ -201,6 +203,17 @@ pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) {
                 }
             })
     });
+
+    let (dt_start, dt_end) = device_tree.memory_region();
+    for base in (dt_start..dt_end).step_by(page_size) {
+        page_table
+            .map(
+                PAddr::from(base),
+                VAddr::from(base),
+                Permissions::READ | Permissions::WRITE,
+            )
+            .unwrap();
+    }
 
     map_kernel_rwx(page_table);
 

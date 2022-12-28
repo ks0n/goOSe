@@ -1,7 +1,11 @@
 use super::Console;
+use super::ConsoleMatcher;
 use super::Driver;
 
 use utils::lock::Lock;
+
+pub extern crate alloc;
+use alloc::boxed::Box;
 
 pub struct Pl011 {
     inner: Lock<Pl011Inner>,
@@ -56,4 +60,13 @@ impl Pl011 {
             inner: Lock::new(Pl011Inner::new(base)),
         }
     }
+
+    pub fn boxed(base: usize) -> Box<dyn Console + Send + Sync> {
+        Box::new(Self::new(base))
+    }
 }
+
+pub(crate) static MATCHER: ConsoleMatcher = ConsoleMatcher {
+    compatibles: &["arm,pl011"],
+    constructor: Pl011::boxed,
+};
