@@ -10,6 +10,7 @@ compile_error!("Must be compiled as riscv64");
 use core::arch::asm;
 use kernel::drivers::ns16550::*;
 use kernel::drivers::plic;
+use kernel::drivers::qemuexit::QemuExit;
 
 pub const UART_ADDR: usize = 0x1000_0000;
 pub const UART_INTERRUPT_NUMBER: u16 = 10;
@@ -29,6 +30,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     let arch = kernel::arch::riscv64::Riscv64::new();
     let device_tree = kernel::device_tree::DeviceTree::new(device_tree_ptr);
+    let qemu_exit = QemuExit::new();
 
     // Enable Serial interrupts
     plic::init(plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
@@ -43,7 +45,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     kernel::globals::PHYSICAL_MEMORY_MANAGER
         .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096));
-    kernel::mm::map_address_space(&device_tree, &[&NS16550]);
+    kernel::mm::map_address_space(&device_tree, &[&NS16550, &qemu_exit]);
 
     kernel::kprintln!("[OK] Setup virtual memory");
 
@@ -52,9 +54,6 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     kernel::kprintln!("[OK] Enable interrupts");
 
-    loop {
-        unsafe {
-            asm!("wfi");
-        }
-    }
+    kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
+    qemu_exit.exit_success();
 }
