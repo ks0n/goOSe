@@ -6,6 +6,7 @@ compile_error!("Must be compiled as aarch64");
 
 use kernel::drivers::gicv2::GicV2;
 use kernel::drivers::pl011::Pl011;
+use kernel::drivers::qemuexit::QemuExit;
 use kernel::drivers::Console;
 use kernel::paging::PagingImpl;
 
@@ -37,6 +38,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     };
 
     let device_tree = kernel::device_tree::DeviceTree::new(DTB_ADDR);
+    let qemu_exit = QemuExit::new();
 
     kernel::globals::PHYSICAL_MEMORY_MANAGER
         .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096));
@@ -57,7 +59,8 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
         );
     });
     let uart = Pl011::new(0x0450_0000);
-    uart.write("Uart remaped, if you see this, it works !!!");
+    uart.write("Uart remaped, if you see this, it works !!!\n");
 
-    loop {}
+    kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
+    qemu_exit.exit_success();
 }
