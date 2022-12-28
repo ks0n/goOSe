@@ -29,11 +29,11 @@ impl QemuExit {
         };
     }
 
-    pub fn exit_success(&self) {
+    pub fn exit_success(&self) -> ! {
         self.inner.exit_success();
     }
 
-    pub fn exit_failure(&self) {
+    pub fn exit_failure(&self) -> ! {
         self.inner.exit_failure();
     }
 }
