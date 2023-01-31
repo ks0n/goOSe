@@ -1,3 +1,5 @@
+use super::Error;
+
 use fdt::node::FdtNode;
 
 pub struct DeviceTree {
@@ -7,14 +9,14 @@ pub struct DeviceTree {
 }
 
 impl DeviceTree {
-    pub fn new(device_tree_ptr: usize) -> Self {
-        let dtb = unsafe { fdt::Fdt::from_ptr(device_tree_ptr as *const u8).unwrap() };
+    pub fn new(device_tree_ptr: usize) -> Result<Self, Error> {
+        let dtb = unsafe { fdt::Fdt::from_ptr(device_tree_ptr as *const u8)? };
 
-        Self {
+        Ok(Self {
             addr: device_tree_ptr,
             dtb,
             total_size: dtb.total_size(),
-        }
+        })
     }
 
     pub fn memory_region(&self) -> (usize, usize) {
@@ -42,7 +44,8 @@ impl DeviceTree {
             Some(reserved_memory) => {
                 let mut regions = reserved_memory
                     .children()
-                    .flat_map(|child| child.reg().unwrap())
+                    .flat_map(|child| child.reg())
+                    .flatten()
                     .map(|region| (region.starting_address as usize, region.size.unwrap_or(0)));
 
                 f(&mut regions);

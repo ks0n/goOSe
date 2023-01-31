@@ -33,11 +33,12 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
         asm::barrier::dsb(asm::barrier::SY);
     };
 
-    let device_tree = kernel::device_tree::DeviceTree::new(DTB_ADDR);
+    let device_tree = kernel::device_tree::DeviceTree::new(DTB_ADDR).unwrap();
     let qemu_exit = QemuExit::new();
 
     kernel::globals::PHYSICAL_MEMORY_MANAGER
-        .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096));
+        .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096))
+        .unwrap();
     kernel::mm::map_address_space(&device_tree, &[&PL011]);
 
     kernel::kprintln!("PMM has been initialized with the device tree... check");
@@ -46,7 +47,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     );
     kernel::kprintln!("Kernel bootstrap should be about done.");
 
-    let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree);
+    let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree).unwrap();
 
     // let mut gic = GicV2::new(0x8000000, 0x8010000);
     // gic.enable(30); // Physical timer

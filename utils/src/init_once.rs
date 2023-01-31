@@ -1,6 +1,11 @@
 use core::cell::UnsafeCell;
 use core::sync::atomic::{self, AtomicBool};
 
+#[derive(Debug)]
+pub enum Error {
+    AlreadyInitialized,
+}
+
 pub struct InitOnce<T: Sized> {
     locked: AtomicBool,
     val: UnsafeCell<Option<T>>,
@@ -14,9 +19,9 @@ impl<T: Sync> InitOnce<T> {
         }
     }
 
-    pub fn set(&self, val: T) -> Result<(), &'static str> {
+    pub fn set(&self, val: T) -> Result<(), Error> {
         if self.is_initialized() {
-            return Err("the InitOnce is already initialized");
+            return Err(Error::AlreadyInitialized);
         }
 
         while self

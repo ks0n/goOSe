@@ -7,6 +7,7 @@ use crate::device_tree::DeviceTree;
 use crate::globals;
 use crate::paging;
 use crate::paging::PagingImpl as _;
+use crate::Error;
 use drivers::Driver;
 
 use bitflags::bitflags;
@@ -125,16 +126,11 @@ fn map_kernel_rwx(pagetable: &mut crate::PagingImpl) {
 pub struct KernelPageTable(&'static mut crate::PagingImpl);
 
 impl KernelPageTable {
-    pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), paging::Error> {
+    pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), Error> {
         self.0.map(PAddr::from(addr), VAddr::from(addr), perms)
     }
 
-    pub fn map(
-        &mut self,
-        paddr: usize,
-        vaddr: usize,
-        perms: Permissions,
-    ) -> Result<(), paging::Error> {
+    pub fn map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) -> Result<(), Error> {
         self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
     }
 
@@ -149,8 +145,8 @@ impl KernelPageTable {
 pub struct UserPageTable(&'static mut crate::PagingImpl);
 
 impl UserPageTable {
-    pub fn new() -> Result<Self, paging::Error> {
-        let page_table = crate::PagingImpl::new();
+    pub fn new() -> Result<Self, Error> {
+        let page_table = crate::PagingImpl::new()?;
 
         // TODO: do we really need this:
         // - aarch64
@@ -160,12 +156,7 @@ impl UserPageTable {
         Ok(UserPageTable(page_table))
     }
 
-    pub fn map(
-        &mut self,
-        paddr: usize,
-        vaddr: usize,
-        perms: Permissions,
-    ) -> Result<(), paging::Error> {
+    pub fn map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) -> Result<(), Error> {
         self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
     }
 
@@ -185,8 +176,7 @@ impl UserPageTable {
     }
 }
 
-pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) {
-    // TODO: return a result from map_address_space !!!
+pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) -> Result<(), Error> {
     let page_table: &mut crate::PagingImpl = globals::KERNEL_PAGETABLE.lock(|pt| pt);
 
     let page_size = crate::PagingImpl::get_page_size();
@@ -206,13 +196,11 @@ pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) {
 
     let (dt_start, dt_end) = device_tree.memory_region();
     for base in (dt_start..dt_end).step_by(page_size) {
-        page_table
-            .map(
-                PAddr::from(base),
-                VAddr::from(base),
-                Permissions::READ | Permissions::WRITE,
-            )
-            .unwrap();
+        page_table.map(
+            PAddr::from(base),
+            VAddr::from(base),
+            Permissions::READ | Permissions::WRITE,
+        )?;
     }
 
     map_kernel_rwx(page_table);
@@ -250,4 +238,6 @@ pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) {
 
     unsafe { globals::STATE = globals::KernelState::MmuEnabledInit };
     page_table.reload();
+
+    Ok(())
 }

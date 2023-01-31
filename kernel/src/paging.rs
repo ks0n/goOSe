@@ -1,20 +1,8 @@
 use super::mm;
 use core::num::TryFromIntError;
 
-#[derive(Debug)]
-pub enum Error {
-    CannotMapNoAlloc, // TODO: put in the mm::{PAddr, VAddr}
-    InvalidConversion(TryFromIntError),
-}
-
-impl From<TryFromIntError> for Error {
-    fn from(tfie: TryFromIntError) -> Self {
-        Self::InvalidConversion(tfie)
-    }
-}
-
 pub trait PagingImpl {
-    fn new() -> &'static mut Self;
+    fn new() -> Result<&'static mut Self, crate::Error>;
 
     fn get_page_size() -> usize;
 
@@ -30,9 +18,14 @@ pub trait PagingImpl {
         ((addr + page_size - 1) / page_size) * page_size
     }
 
-    fn map(&mut self, pa: mm::PAddr, va: mm::VAddr, perms: mm::Permissions) -> Result<(), Error>;
+    fn map(
+        &mut self,
+        pa: mm::PAddr,
+        va: mm::VAddr,
+        perms: mm::Permissions,
+    ) -> Result<(), crate::Error>;
 
-    fn add_invalid_entry(&mut self, vaddr: mm::VAddr) -> Result<(), Error>;
+    fn add_invalid_entry(&mut self, vaddr: mm::VAddr) -> Result<(), crate::Error>;
 
     fn reload(&mut self);
     fn disable(&mut self);
