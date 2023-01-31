@@ -3,6 +3,7 @@ use crate::globals;
 use crate::mm;
 use crate::mm::PAddr;
 use crate::paging::PagingImpl as _;
+use crate::Error;
 use core::mem;
 
 /// A range similar to core::ops::Range but that is copyable.
@@ -74,6 +75,7 @@ impl PhysicalPage {
 
 #[derive(Debug)]
 pub enum AllocatorError {
+    NotEnoughMemoryForMetadata,
     OutOfMemory,
 }
 
@@ -239,7 +241,11 @@ impl PhysicalMemoryManager {
     }
 
     /// Initialize a [`PageAllocator`] from the device tree.
-    pub fn init_from_device_tree(&mut self, device_tree: &DeviceTree, page_size: usize) {
+    pub fn init_from_device_tree(
+        &mut self,
+        device_tree: &DeviceTree,
+        page_size: usize,
+    ) -> Result<(), AllocatorError> {
         let available_regions = Self::available_memory_regions::<10>(device_tree, page_size);
 
         assert!(
@@ -257,7 +263,8 @@ impl PhysicalMemoryManager {
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();
         let pages_needed = Self::align_up(metadata_size, page_size) / page_size;
 
-        let metadata_addr = Self::find_large_region(&available_regions, metadata_size).unwrap();
+        let metadata_addr = Self::find_large_region(&available_regions, metadata_size)
+            .ok_or(AllocatorError::NotEnoughMemoryForMetadata)?;
 
         let metadata: &mut [PhysicalPage] =
             unsafe { core::slice::from_raw_parts_mut(metadata_addr as *mut _, page_count) };
@@ -281,6 +288,8 @@ impl PhysicalMemoryManager {
 
         self.metadata = metadata;
         self.page_size = page_size;
+
+        Ok(())
     }
 
     pub fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
@@ -319,7 +328,7 @@ impl PhysicalMemoryManager {
         Err(AllocatorError::OutOfMemory)
     }
 
-    pub fn alloc_rw_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
+    pub fn alloc_rw_pages(&mut self, page_count: usize) -> Result<PAddr, Error> {
         // If there is a kernel pagetable, identity map the pages.
         // Not sure this is the best idea, but I would say it follows the
         // principle of least astonishment.
@@ -331,15 +340,15 @@ impl PhysicalMemoryManager {
                 for page_addr in
                     (addr..(addr + page_count * self.page_size())).step_by(self.page_size())
                 {
-                    kernel_pt
-                        .map(
-                            page_addr.into(),
-                            page_addr.into(),
-                            mm::Permissions::READ | mm::Permissions::WRITE,
-                        )
-                        .unwrap();
+                    kernel_pt.map(
+                        page_addr.into(),
+                        page_addr.into(),
+                        mm::Permissions::READ | mm::Permissions::WRITE,
+                    )? // TODO: unmap all mapped pages if one map fails.
                 }
-            });
+
+                Ok::<(), Error>(())
+            })?;
         }
 
         // Bit weird, when we have a KERNEL_PAGETABLE this is a VAddr, but PAddr

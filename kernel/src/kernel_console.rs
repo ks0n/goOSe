@@ -6,6 +6,7 @@ use drivers::Console;
 
 fn write(data: &str) {
     if globals::CONSOLE.is_initialized() {
+        // Safety: we know CONSOLE has something because it is initialized.
         globals::CONSOLE.get().unwrap().write(data);
     } else {
         globals::get_earlyinit_console().write(data);
@@ -23,7 +24,7 @@ impl fmt::Write for KernelConsoleWriter {
 }
 
 pub fn print_fmt(args: fmt::Arguments) {
-    KernelConsoleWriter.write_fmt(args).unwrap_or(());
+    KernelConsoleWriter.write_fmt(args).unwrap();
 }
 
 #[panic_handler]

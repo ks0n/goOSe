@@ -1,7 +1,6 @@
 use crate::globals;
 use crate::mm;
 use crate::paging;
-use crate::paging::Error;
 use crate::paging::PagingImpl;
 
 use cortex_a::asm::barrier;
@@ -80,7 +79,8 @@ impl VAddr {
 
 impl From<mm::VAddr> for VAddr {
     fn from(paddr: mm::VAddr) -> Self {
-        let val = usize::from(paddr).try_into().unwrap();
+        assert_eq!(usize::BITS, u64::BITS);
+        let val = usize::from(paddr) as u64;
         Self(unsafe { core::mem::transmute::<u64, ReadOnly<u64, VAddrInner::Register>>(val) })
     }
 }
@@ -89,7 +89,8 @@ pub struct PAddr(u64);
 
 impl From<mm::PAddr> for PAddr {
     fn from(paddr: mm::PAddr) -> Self {
-        Self(usize::from(paddr).try_into().unwrap())
+        assert_eq!(usize::BITS, u64::BITS);
+        Self(usize::from(paddr) as u64)
     }
 }
 
@@ -105,6 +106,8 @@ impl TableDescriptor {
     fn get_next_level(&mut self) -> &mut PageTable {
         let raw_pgt = (self.0.read(TableDescriptorInner::DEST) << 12) as *mut PageTable;
 
+        // Safety: there is no conceivable way for us to know if this pointer is valid.
+        // If the pointer in our pagetable are invalid, then we're lost...
         unsafe { raw_pgt.as_mut().unwrap() }
     }
 
@@ -229,7 +232,7 @@ impl PageTable {
         paddr: PAddr,
         vaddr: VAddr,
         perms: mm::Permissions,
-    ) -> Result<&mut TableEntry, paging::Error> {
+    ) -> Result<&mut TableEntry, crate::Error> {
         let mut pagetable = self;
 
         for lvl in 0..=3 {
@@ -249,7 +252,7 @@ impl PageTable {
 
             let descriptor = unsafe { &mut content.descriptor };
             if descriptor.is_invalid() {
-                let new_page_table = PageTable::new();
+                let new_page_table = PageTable::new()?;
                 descriptor.set_next_level(new_page_table);
             }
 
@@ -261,11 +264,10 @@ impl PageTable {
 }
 
 impl PagingImpl for PageTable {
-    fn new() -> &'static mut Self {
-        // FIXME: No unwrap here
-        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_rw_pages(1).unwrap());
+    fn new() -> Result<&'static mut Self, crate::Error> {
+        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_rw_pages(1))?;
         let page_table: *mut PageTable = page.into();
-        // FIXME: Do not unwrap either
+        // Safety: the PMM gave us the memory, it should be a valid pointer.
         let page_table = unsafe { page_table.as_mut().unwrap() };
 
         page_table
@@ -273,20 +275,25 @@ impl PagingImpl for PageTable {
             .iter_mut()
             .for_each(|content| unsafe { &mut content.descriptor }.set_invalid());
 
-        page_table
+        Ok(page_table)
     }
 
     fn get_page_size() -> usize {
         4096
     }
 
-    fn map(&mut self, pa: mm::PAddr, va: mm::VAddr, perms: mm::Permissions) -> Result<(), Error> {
+    fn map(
+        &mut self,
+        pa: mm::PAddr,
+        va: mm::VAddr,
+        perms: mm::Permissions,
+    ) -> Result<(), crate::Error> {
         self.map_inner(pa.into(), va.into(), perms)?;
 
         Ok(())
     }
 
-    fn add_invalid_entry(&mut self, vaddr: mm::VAddr) -> Result<(), Error> {
+    fn add_invalid_entry(&mut self, vaddr: mm::VAddr) -> Result<(), crate::Error> {
         let entry = self.map_inner(
             PAddr(0x0A0A_0A0A_0A0A_0A0A),
             vaddr.into(),
