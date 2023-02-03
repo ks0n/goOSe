@@ -29,7 +29,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     }
 
     let arch = kernel::arch::riscv64::Riscv64::new();
-    let device_tree = kernel::device_tree::DeviceTree::new(device_tree_ptr);
+    let device_tree = kernel::device_tree::DeviceTree::new(device_tree_ptr).unwrap();
     let qemu_exit = QemuExit::new();
 
     // Enable Serial interrupts
@@ -44,12 +44,13 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     plic.set_threshold(0);
 
     kernel::globals::PHYSICAL_MEMORY_MANAGER
-        .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096));
+        .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096))
+        .unwrap();
     kernel::mm::map_address_space(&device_tree, &[&NS16550, &qemu_exit]);
 
     kernel::kprintln!("[OK] Setup virtual memory");
 
-    let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree);
+    let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree).unwrap();
 
     let mut interrupts = kernel::interrupt_manager::InterruptManager::new();
     interrupts.init_interrupts();
