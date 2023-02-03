@@ -1,8 +1,8 @@
 use crate::globals;
 use crate::mm;
 use crate::paging;
-use crate::paging::Error;
 use crate::paging::PagingImpl;
+use crate::Error;
 use core::arch::asm;
 use core::convert::TryInto;
 use modular_bitfield::{bitfield, prelude::*};
@@ -180,7 +180,7 @@ impl PageTable {
         paddr: PAddr,
         vaddr: VAddr,
         perms: mm::Permissions,
-    ) -> Result<&mut PageTableEntry, paging::Error> {
+    ) -> Result<&mut PageTableEntry, Error> {
         let mut pagetable = self;
 
         for level in (0..=2).rev() {
@@ -203,7 +203,7 @@ impl PageTable {
                 let new_page_table = PageTable::new();
 
                 // Set new PageTable as target of this entry
-                pte.set_target(new_page_table as *mut PageTable);
+                pte.set_target(new_page_table? as *mut PageTable);
                 pte.set_valid();
             }
 
@@ -216,18 +216,18 @@ impl PageTable {
 }
 
 impl PagingImpl for PageTable {
-    fn new() -> &'static mut Self {
+    fn new() -> Result<&'static mut Self, Error> {
         // FIXME: No unwrap here
-        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_pages(1).unwrap());
+        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_pages(1))?;
 
         let page_table: *mut PageTable = page.into();
 
-        // FIXME: Do not unwrap either
+        // Safety: the PMM gave us the memory, it should be a valid pointer.
         let page_table = unsafe { page_table.as_mut().unwrap() };
 
         page_table.entries.iter_mut().for_each(|pte| pte.clear());
 
-        page_table
+        Ok(page_table)
     }
 
     fn get_page_size() -> usize {
