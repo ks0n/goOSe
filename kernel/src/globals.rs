@@ -2,6 +2,8 @@ use crate::lock::Lock;
 
 use crate::mm;
 
+use crate::drivers;
+use crate::utils;
 use utils::init_cell::InitCell;
 use utils::init_once::InitOnce;
 
@@ -14,8 +16,6 @@ pub static EARLYINIT_CONSOLE: InitCell<&'static (dyn drivers::Console + Sync)> =
 pub static CONSOLE: InitOnce<Arc<dyn drivers::Console + Sync + Send>> = InitOnce::new();
 pub static PHYSICAL_MEMORY_MANAGER: Lock<mm::PhysicalMemoryManager> =
     Lock::new(mm::PhysicalMemoryManager::new());
-
-pub static KERNEL_PAGETABLE: Lock<crate::PagingImpl> = Lock::new(crate::PagingImpl::zeroed());
 
 pub enum KernelState {
     EarlyInit,

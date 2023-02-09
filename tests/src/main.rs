@@ -16,5 +16,5 @@ extern "C" fn eh_personality() {}
 #[no_mangle]
 #[repr(align(0x1000))]
 pub extern "C" fn _start() -> u8 {
-    0 as u8
+    0u8
 }

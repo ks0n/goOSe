@@ -26,9 +26,7 @@ unsafe impl GlobalAlloc for BinaryBuddyAllocator {
             } else {
                 layout.size() / pmm.page_size() + 1
             };
-            pmm.alloc_rw_pages(page_count)
-                .unwrap_or(0usize.into())
-                .into()
+            pmm.alloc_rw_pages(page_count).unwrap_or(0usize.into()) as *mut u8
         })
     }
 

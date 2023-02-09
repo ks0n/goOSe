@@ -1,10 +1,10 @@
 use crate::device_tree::DeviceTree;
 use crate::globals;
+use crate::hal;
 use crate::mm;
-use crate::mm::PAddr;
-use crate::paging::PagingImpl as _;
 use crate::Error;
 use core::mem;
+use hal_core::mm::{PageMap, Permissions, VAddr};
 
 /// A range similar to core::ops::Range but that is copyable.
 /// The range is half-open, inclusive below, exclusive above, ie. [start; end[
@@ -54,10 +54,6 @@ impl PhysicalPage {
 
     fn is_allocated(&self) -> bool {
         self.kind == PageKind::Allocated
-    }
-
-    fn is_free(&self) -> bool {
-        self.kind == PageKind::Free
     }
 
     fn set_allocated(&mut self) {
@@ -259,6 +255,10 @@ impl PhysicalMemoryManager {
             "Expected region bounds to be aligned to the page size (won't be possible to allocate pages otherwise)"
         );
 
+        for (i, reg) in available_regions.iter().flatten().enumerate() {
+            crate::kprintln!("region {}: {:X?}", i, reg);
+        }
+
         let page_count = Self::count_pages(&available_regions, page_size);
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();
         let pages_needed = Self::align_up(metadata_size, page_size) / page_size;
@@ -292,7 +292,7 @@ impl PhysicalMemoryManager {
         Ok(())
     }
 
-    pub fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
+    pub fn alloc_pages(&mut self, page_count: usize) -> Result<usize, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
         let mut last_page_base: usize = 0;
@@ -314,6 +314,7 @@ impl PhysicalMemoryManager {
             }
 
             consecutive_pages += 1;
+            last_page_base = page.base;
 
             if consecutive_pages == page_count {
                 self.metadata[first_page_index..=i]
@@ -321,14 +322,14 @@ impl PhysicalMemoryManager {
                     .for_each(|page| page.set_allocated());
                 self.metadata[i].set_last();
 
-                return Ok(PAddr::from(self.metadata[first_page_index].base));
+                return Ok(self.metadata[first_page_index].base);
             }
         }
 
         Err(AllocatorError::OutOfMemory)
     }
 
-    pub fn alloc_rw_pages(&mut self, page_count: usize) -> Result<PAddr, Error> {
+    pub fn alloc_rw_pages(&mut self, page_count: usize) -> Result<usize, Error> {
         // If there is a kernel pagetable, identity map the pages.
         // Not sure this is the best idea, but I would say it follows the
         // principle of least astonishment.
@@ -336,24 +337,15 @@ impl PhysicalMemoryManager {
         let addr: usize = first_page.into();
 
         if unsafe { globals::STATE.is_mmu_enabled() } {
-            globals::KERNEL_PAGETABLE.lock(|kernel_pt| {
-                for page_addr in
-                    (addr..(addr + page_count * self.page_size())).step_by(self.page_size())
-                {
-                    kernel_pt.map(
-                        page_addr.into(),
-                        page_addr.into(),
-                        mm::Permissions::READ | mm::Permissions::WRITE,
-                    )? // TODO: unmap all mapped pages if one map fails.
-                }
-
-                Ok::<(), Error>(())
-            })?;
+            hal::mm::current().identity_map_range(VAddr::new(addr), page_count, Permissions::READ | Permissions::WRITE, |_| {
+                // The mmu is enabled, therefore we already mapped all DRAM into the kernel's pagetable as
+                // invalid entries.
+                // Pagetable must only modify existing entries and not allocate.
+                panic!("alloc_rw_pages: pagetable tried to allocate memory when mapping it's rw_pages")
+            }).expect("mapping in this case should never fail as illustrated by the comment above...");
         }
 
-        // Bit weird, when we have a KERNEL_PAGETABLE this is a VAddr, but PAddr
-        // otherwise.
-        Ok(PAddr::from(addr))
+        Ok(addr)
     }
 
     pub fn page_size(&self) -> usize {

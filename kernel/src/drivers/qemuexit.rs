@@ -1,7 +1,7 @@
 use qemu_exit;
 use qemu_exit::QEMUExit;
 
-use crate::Driver;
+use super::Driver;
 
 #[cfg(target_arch = "riscv64")]
 const RISCV64_BASE_ADDRESS: usize = 0x100000;

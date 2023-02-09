@@ -1,11 +1,15 @@
 use alloc::{boxed::Box, collections::LinkedList, sync::Arc};
 
 use super::device_tree::DeviceTree;
+use super::drivers::{self, Matcher};
 use super::error::Error;
 use super::globals;
-use super::mm;
-use super::paging::PagingImpl as _;
 use drivers::{Console, Driver};
+use fdt::node::FdtNode;
+
+use crate::hal;
+use crate::mm::alloc_pages_for_hal;
+use hal_core::mm::{PageMap, Permissions};
 
 pub struct DriverManager {
     drivers: LinkedList<Arc<dyn Driver>>,
@@ -33,7 +37,9 @@ impl DriverManager {
 
         map_dt_regions(&cons_node)?;
 
-        if let Some(cons_driver) = self.find_console(&cons_node) {
+        if let Some(cons_driver) =
+            self.find_driver::<dyn Console + Sync + Send>(&cons_node, drivers::CONSOLE_MATCHERS)
+        {
             self.register_console(cons_driver)?;
             Ok(())
         } else {
@@ -42,23 +48,29 @@ impl DriverManager {
         }
     }
 
-    pub fn find_console(
-        &self,
-        cons_node: &fdt::node::FdtNode,
-    ) -> Option<Box<dyn Console + Send + Sync>> {
-        let console_base = cons_node.reg()?.next()?.starting_address as usize;
-
-        // TODO: I'm not sure we are handling/parsing the compat string very well ^^
-        let compatible = cons_node
+    fn extract_compatibles<'a>(node: &'a FdtNode) -> impl Iterator<Item = &'a str> {
+        let compatible = node
             .properties()
             .find(|prop| prop.name == "compatible")
             .and_then(|some_prop| some_prop.as_str())
             .unwrap_or("");
-        let compatibles = compatible.split('\0');
+        compatible.split('\0')
+    }
 
-        for compatible in compatibles {
-            if let Some(cons_driver) = drivers::matching_console_driver(compatible) {
-                return Some(cons_driver(console_base));
+    pub fn find_driver<T: ?Sized>(
+        &self,
+        node: &FdtNode,
+        matchers: &[&Matcher<T>],
+    ) -> Option<Box<T>> {
+        for compat in Self::extract_compatibles(node) {
+            let matching_constructor = matchers
+                .iter()
+                .find(|matcher| matcher.matches(compat))
+                .map(|matcher| matcher.constructor);
+            if let Some(constructor) = matching_constructor {
+                if let Ok(driver) = constructor(&mut node.reg()?) {
+                    return Some(driver);
+                }
             }
         }
 
@@ -78,43 +90,39 @@ impl DriverManager {
     }
 }
 
-fn map_dt_regions(node: &fdt::node::FdtNode) -> Result<(), Error> {
-    let pagesize = crate::PagingImpl::get_page_size();
-
+fn map_dt_regions(node: &FdtNode) -> Result<(), Error> {
     if let Some(reg) = node.reg() {
         for memory_region in reg {
             let start = memory_region.starting_address as usize;
             let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
 
-            for page in (start..start + size).step_by(pagesize) {
-                globals::KERNEL_PAGETABLE.lock(|pagetable| {
-                    pagetable.map(
-                        page.into(),
-                        page.into(),
-                        mm::Permissions::READ | mm::Permissions::WRITE,
-                    )
-                })?;
-                // TODO: if the above fails, we should just try? but also unmap the already mapped
-                // stuff before returning an Error.
-            }
+            assert!(size % hal::mm::PAGE_SIZE == 0);
+            hal::mm::current().identity_map_range(
+                start.into(),
+                size / hal::mm::PAGE_SIZE,
+                Permissions::READ | Permissions::WRITE,
+                alloc_pages_for_hal,
+            )?;
         }
     }
 
     Ok(())
 }
 
-fn unmap_dt_regions(node: &fdt::node::FdtNode) -> Result<(), Error> {
-    let pagesize = crate::PagingImpl::get_page_size();
+fn unmap_dt_regions(node: &FdtNode) -> Result<(), Error> {
+    let pagesize = hal::mm::PAGE_SIZE;
 
     if let Some(reg) = node.reg() {
         for memory_region in reg {
             let start = memory_region.starting_address as usize;
             let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
+            assert!(size % hal::mm::PAGE_SIZE == 0);
 
+            let kernel_pt = hal::mm::current();
             for page in (start..start + size).step_by(pagesize) {
-                globals::KERNEL_PAGETABLE.lock(|pagetable| {
-                    pagetable.add_invalid_entry(page.into()).unwrap();
-                });
+                kernel_pt
+                    .add_invalid_entry(page.into(), |_| unreachable!())
+                    .unwrap();
             }
         }
     }

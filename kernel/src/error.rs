@@ -1,6 +1,6 @@
 use super::mm;
-use super::paging;
-use utils::init_once;
+
+use crate::utils::init_once;
 
 #[derive(Debug)]
 pub enum Error {
@@ -10,6 +10,7 @@ pub enum Error {
     FdtError(fdt::FdtError),
     InitOnce(init_once::Error),
     Allocator(mm::AllocatorError),
+    Hal(hal_core::Error),
 }
 
 impl From<init_once::Error> for Error {
@@ -27,5 +28,11 @@ impl From<fdt::FdtError> for Error {
 impl From<mm::AllocatorError> for Error {
     fn from(e: mm::AllocatorError) -> Self {
         Self::Allocator(e)
+    }
+}
+
+impl From<hal_core::Error> for Error {
+    fn from(e: hal_core::Error) -> Self {
+        Self::Hal(e)
     }
 }
