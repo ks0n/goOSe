@@ -5,6 +5,7 @@ use super::error::Error;
 use super::globals;
 use super::mm;
 use super::paging::PagingImpl as _;
+use super::drivers;
 use drivers::{Console, Driver};
 
 pub struct DriverManager {

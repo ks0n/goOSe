@@ -1,6 +1,6 @@
 use super::mm;
 use super::paging;
-use utils::init_once;
+use crate::utils::init_once;
 
 #[derive(Debug)]
 pub enum Error {

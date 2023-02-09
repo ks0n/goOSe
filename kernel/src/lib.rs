@@ -12,6 +12,9 @@
 
 pub extern crate alloc;
 
+pub mod drivers;
+mod utils;
+
 pub mod error;
 pub use error::Error;
 
@@ -26,8 +29,6 @@ pub mod paging;
 
 // TODO: redo the unit tests with Mockall
 // pub mod kernel_tests;
-
-pub use drivers;
 
 // TODO: cleanup how we handle features
 cfg_if::cfg_if! {

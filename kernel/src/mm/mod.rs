@@ -8,6 +8,8 @@ use crate::globals;
 use crate::paging;
 use crate::paging::PagingImpl as _;
 use crate::Error;
+
+use crate::drivers;
 use drivers::Driver;
 
 use bitflags::bitflags;
@@ -75,8 +77,8 @@ impl<T> core::convert::From<&PAddr> for *mut T {
 pub fn is_kernel_page(base: usize) -> bool {
     let (kernel_start, kernel_end) = unsafe {
         (
-            utils::external_symbol_value(&KERNEL_START),
-            utils::external_symbol_value(&KERNEL_END),
+            crate::utils::external_symbol_value(&KERNEL_START),
+            crate::utils::external_symbol_value(&KERNEL_END),
         )
     };
 
@@ -86,8 +88,8 @@ pub fn is_kernel_page(base: usize) -> bool {
 pub fn kernel_memory_region() -> (usize, usize) {
     unsafe {
         (
-            utils::external_symbol_value(&KERNEL_START),
-            utils::external_symbol_value(&KERNEL_END),
+            crate::utils::external_symbol_value(&KERNEL_START),
+            crate::utils::external_symbol_value(&KERNEL_END),
         )
     }
 }
@@ -108,8 +110,8 @@ pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
 
 fn map_kernel_rwx(pagetable: &mut crate::PagingImpl) {
     let page_size = crate::PagingImpl::get_page_size();
-    let kernel_start = unsafe { utils::external_symbol_value(&KERNEL_START) };
-    let kernel_end = unsafe { utils::external_symbol_value(&KERNEL_END) };
+    let kernel_start = unsafe { crate::utils::external_symbol_value(&KERNEL_START) };
+    let kernel_end = unsafe { crate::utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
 
     for addr in (kernel_start..kernel_end_align).step_by(page_size) {

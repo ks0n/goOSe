@@ -2,6 +2,8 @@ use crate::lock::Lock;
 
 use crate::mm;
 
+use crate::utils;
+use crate::drivers;
 use utils::init_cell::InitCell;
 use utils::init_once::InitOnce;
 

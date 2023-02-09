@@ -2,7 +2,7 @@ use core::fmt::{self, Write};
 
 use crate::globals;
 
-use drivers::Console;
+use crate::drivers::Console;
 
 fn write(data: &str) {
     if globals::CONSOLE.is_initialized() {

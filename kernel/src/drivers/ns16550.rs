@@ -5,7 +5,7 @@ use super::Console;
 use super::ConsoleMatcher;
 use super::Driver;
 
-use utils::lock::Lock;
+use crate::utils::lock::Lock;
 
 pub extern crate alloc;
 use alloc::boxed::Box;
@@ -81,7 +81,7 @@ impl Console for Ns16550 {
     }
 }
 
-pub(crate) static MATCHER: ConsoleMatcher = ConsoleMatcher {
+pub(super) static MATCHER: ConsoleMatcher = ConsoleMatcher {
     compatibles: &["ns16550a"],
     constructor: |base| Box::new(Ns16550::new(base)),
 };

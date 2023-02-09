@@ -2,7 +2,7 @@ use super::Console;
 use super::ConsoleMatcher;
 use super::Driver;
 
-use utils::lock::Lock;
+use crate::utils::lock::Lock;
 
 pub extern crate alloc;
 use alloc::boxed::Box;
@@ -66,7 +66,7 @@ impl Pl011 {
     }
 }
 
-pub(crate) static MATCHER: ConsoleMatcher = ConsoleMatcher {
+pub(super) static MATCHER: ConsoleMatcher = ConsoleMatcher {
     compatibles: &["arm,pl011"],
     constructor: Pl011::boxed,
 };
