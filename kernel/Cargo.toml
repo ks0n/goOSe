@@ -7,8 +7,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-utils = { path = "../utils" }
-drivers = { path = "../drivers" }
 cfg-if = "1.0"
 static_assertions = "1.1"
 once_cell = { version = "1.17", default-features = false }
@@ -17,16 +15,23 @@ bitflags = "2.1"
 fdt = "0.1"
 spin = "0.9"
 goblin = { version = "0.6", default-features = false, features = ["elf64"] }
+qemu-exit = "3.0"
+hal_core = { path = "../hal_core" }
+staticvec = { version = "0.11.9", default-features = false }
+tests = { path = "../tests", artifact = "bin" }
+align-data = "0.1"
 
 [dev-dependencies]
 
 [target.riscv64gc-unknown-none-elf.dependencies]
 sbi = "0.2"
 riscv = "0.10"
+hal_riscv64 = { path = "../hal_riscv64" }
 
 [target.aarch64-unknown-none.dependencies]
 tock-registers = "0.8"
 cortex-a = "8.1"
+hal_aarch64 = { path = "../hal_aarch64" }
 
 [profile.dev]
 panic = "abort"

@@ -2,8 +2,9 @@
 
 members = [
     "kernel",
-    "drivers",
-    "utils",
+    "hal_core",
+    "hal_aarch64",
+    "hal_riscv64",
     "aarch64_qemuvirt",
     "riscv64_qemuvirt",
     "tests",

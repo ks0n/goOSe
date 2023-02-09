@@ -2,7 +2,7 @@ use core::fmt::{self, Write};
 
 use crate::globals;
 
-use drivers::Console;
+use crate::hal;
 
 fn write(data: &str) {
     if globals::CONSOLE.is_initialized() {
@@ -31,6 +31,8 @@ pub fn print_fmt(args: fmt::Arguments) {
 #[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     crate::kprintln!("\x1b[31mkernel panic\x1b[0m: {}", info);
+
+    crate::kprintln!("hal panic info: {:X?}", hal::panic_info());
 
     loop {
         use core::arch::asm;

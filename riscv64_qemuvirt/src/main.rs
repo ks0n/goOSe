@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(naked_functions)]
 // #![feature(custom_test_frameworks)]
 // #![test_runner(kernel::super::kernel_tests::runner)]
 // #![reexport_test_harness_main = "ktests_launch"]
@@ -9,7 +10,6 @@ compile_error!("Must be compiled as riscv64");
 
 use core::arch::asm;
 use kernel::drivers::ns16550::*;
-use kernel::drivers::plic;
 use kernel::drivers::qemuexit::QemuExit;
 use kernel::executable::elf::Elf;
 
@@ -17,7 +17,6 @@ use align_data::{include_aligned, Align4K};
 
 pub const UART_ADDR: usize = 0x1000_0000;
 pub const UART_INTERRUPT_NUMBER: u16 = 10;
-static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS"));
 
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
@@ -32,45 +31,42 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
         ktests_launch();
     }
 
-    let arch = kernel::arch::riscv64::Riscv64::new();
+    unsafe {
+        kernel::hal::irq::init_exception_handlers();
+    }
+
     let device_tree = kernel::device_tree::DeviceTree::new(device_tree_ptr).unwrap();
-    let qemu_exit = QemuExit::new();
+    kernel::generic_main::generic_main(device_tree, &[&NS16550]);
 
-    // Enable Serial interrupts
-    plic::init(plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
-    let plic = plic::get();
-    if let Err(e) = plic.set_priority(UART_INTERRUPT_NUMBER, 1) {
-        kernel::kprintln!("{}", e);
-    }
-    if let Err(e) = plic.enable_interrupt(UART_INTERRUPT_NUMBER, 0) {
-        kernel::kprintln!("{}", e);
-    }
-    plic.set_threshold(0);
+    unreachable!();
 
-    kernel::globals::PHYSICAL_MEMORY_MANAGER
-        .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096))
-        .unwrap();
-    kernel::mm::map_address_space(&device_tree, &[&NS16550, &qemu_exit]);
-
-    kernel::kprintln!("[OK] Setup virtual memory");
-
-    let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree).unwrap();
-
-    let mut interrupts = kernel::interrupt_manager::InterruptManager::new();
-    interrupts.init_interrupts();
-
-    kernel::kprintln!("[OK] Enable interrupts");
-
-    let test_bin = Elf::from_bytes(TEST_BIN);
-    kernel::kprintln!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS"));
-    test_bin.load().unwrap();
-    kernel::kprintln!("[OK] Elf loaded");
-    let entry_point: extern "C" fn() -> u8 =
-        unsafe { core::mem::transmute(test_bin.get_entry_point()) };
-    kernel::kprintln!("[OK] Elf loaded, entry point is {:?}", entry_point);
-    entry_point();
-    kernel::kprintln!("[OK] Returned for Elf");
-
-    kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
-    qemu_exit.exit_success();
+    // let qemu_exit = QemuExit::new();
+    //
+    // // Enable Serial interrupts
+    // plic::init(plic::QEMU_VIRT_PLIC_BASE_ADDRESS);
+    // let plic = plic::get();
+    // if let Err(e) = plic.set_priority(UART_INTERRUPT_NUMBER, 1) {
+    //     kernel::kprintln!("{}", e);
+    // }
+    // if let Err(e) = plic.enable_interrupt(UART_INTERRUPT_NUMBER, 0) {
+    //     kernel::kprintln!("{}", e);
+    // }
+    // plic.set_threshold(0);
+    //
+    // kernel::globals::PHYSICAL_MEMORY_MANAGER
+    //     .lock(|pmm| pmm.init_from_device_tree(&device_tree, 4096))
+    //     .unwrap();
+    // kernel::mm::map_address_space(&device_tree, &[&NS16550, &qemu_exit]);
+    //
+    // kernel::kprintln!("[OK] Setup virtual memory");
+    //
+    // let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree).unwrap();
+    //
+    // let mut interrupts = kernel::interrupt_manager::InterruptManager::new();
+    // interrupts.init_interrupts();
+    //
+    // kernel::kprintln!("[OK] Enable interrupts");
+    //
+    // kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
+    // qemu_exit.exit_success();
 }

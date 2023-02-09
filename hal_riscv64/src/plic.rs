@@ -1,9 +1,4 @@
-//! Driver fot the RISC-V Platform-Level Interrupt Controller
-//! <https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc>
-
-use super::Driver;
-
-pub const QEMU_VIRT_PLIC_BASE_ADDRESS: usize = 0xc000000;
+use hal_core::Error;
 
 const PLIC_ENABLE_OFFSET: usize = 0x002080;
 const PLIC_THRESHOLD_OFFSET: usize = 0x201000;
@@ -18,14 +13,12 @@ static mut PLIC: Option<Plic> = None;
 
 pub struct Plic {
     base_register_address: usize,
-    source_handler: [fn(); PLIC_NUMBER_SOURCES as usize],
 }
 
 impl Plic {
     pub fn new(base_register_address: usize) -> Plic {
         Self {
             base_register_address,
-            source_handler: [not_registered; PLIC_NUMBER_SOURCES as usize],
         }
     }
 
@@ -81,47 +74,19 @@ impl Plic {
 
     pub fn complete(&self, source: u32) {
         unsafe {
+            // XXX: this isn't hart specific ?
             let addr = (self.base_register_address + PLIC_CLAIM_OFFSET) as *mut u32;
             addr.write_volatile(source);
         }
     }
 
-    pub fn _register_handler(&mut self, id: u16, handler: fn()) {
-        self.source_handler[id as usize] = handler;
+    fn get_int(&self) -> Result<u32, Error> {
+        let source = self.claim();
+
+        Ok(source)
     }
-}
 
-pub fn init(base_register_address: usize) {
-    unsafe {
-        PLIC = Some(Plic::new(base_register_address));
+    fn clear_int(&self, int: u32) {
+        self.complete(int);
     }
-}
-
-pub fn get() -> &'static mut Plic {
-    let plic = unsafe { &mut PLIC };
-
-    match plic.as_mut() {
-        Some(plic_ref) => plic_ref,
-        None => unreachable!("PLIC should have been initialized at this point"),
-    }
-}
-
-fn not_registered() {}
-
-impl Driver for Plic {
-    fn get_address_range(&self) -> Option<(usize, usize)> {
-        // Base address + max register offset
-        Some((self.base_register_address, 0x3FFFFFC))
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn plic_handler() {
-    let plic = get();
-
-    let source = plic.claim();
-
-    plic.source_handler[source as usize]();
-
-    plic.complete(source);
 }

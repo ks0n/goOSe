@@ -1,12 +1,57 @@
-use crate::arch::riscv64::registers;
-use crate::arch::ArchitectureInterrupts;
-use crate::kprintln;
-use drivers::plic::plic_handler;
+use hal_core::{
+    mm::{PageAllocFn, PageMap, Permissions, VAddr},
+    Error, TimerCallbackFn,
+};
+
+use super::mm;
+use super::plic::Plic;
+use super::registers;
+
+use riscv::asm::delay;
 
 use core::arch::asm;
+use core::ptr;
+use core::sync::atomic::{AtomicPtr, Ordering};
 
 use riscv;
 use sbi;
+
+pub fn init_exception_handlers() {
+    registers::set_stvec(trap_handler as usize);
+}
+
+static mut IRQ_CHIP: Option<Plic> = None;
+
+pub fn init_irq_chip(_dt_node: (), alloc: PageAllocFn) -> Result<(), Error> {
+    // TODO map the dt_node
+    let base = 0xc000000;
+    let max_offset = 0x3FFFFFC;
+
+    mm::current().identity_map_range(
+        VAddr::new(base),
+        max_offset / mm::PAGE_SIZE + 1,
+        Permissions::READ | Permissions::WRITE,
+        alloc,
+    )?;
+    unsafe {
+        IRQ_CHIP = Some(Plic::new(base));
+    }
+
+    Ok(())
+}
+
+static TIMER_CALLBACK: AtomicPtr<TimerCallbackFn> = AtomicPtr::new(ptr::null_mut());
+
+pub fn set_timer_handler(h: TimerCallbackFn) {
+    TIMER_CALLBACK.store(h as *mut _, Ordering::Relaxed);
+}
+
+pub fn set_timer(ticks: usize) -> Result<(), Error> {
+    let target_time = riscv::register::time::read() + ticks;
+    sbi::timer::set_timer(target_time as u64).unwrap();
+
+    Ok(())
+}
 
 #[derive(Debug, Copy, Clone)]
 enum InterruptType {
@@ -116,9 +161,6 @@ impl From<u64> for TrapType {
     }
 }
 
-#[no_mangle]
-static mut g_higher_trap_handler: *const () = 0 as *const ();
-
 static mut INTERRUPT_VECTOR: &[extern "C" fn()] = &[
     undefined_handler,
     undefined_handler,
@@ -129,52 +171,15 @@ static mut INTERRUPT_VECTOR: &[extern "C" fn()] = &[
     undefined_handler,
     undefined_handler,
     undefined_handler,
-    plic_handler,
+    supervisor_external_interrupt_handler,
 ];
-
-pub struct Interrupts {}
-
-impl Interrupts {
-    pub fn set_higher_trap_handler(
-        &mut self,
-        higher_trap_handler: extern "C" fn(cause: u64) -> u64,
-    ) {
-        unsafe {
-            g_higher_trap_handler = higher_trap_handler as *const ();
-        }
-    }
-}
-
-impl ArchitectureInterrupts for Interrupts {
-    fn new() -> Self {
-        Self {}
-    }
-
-    fn init_interrupts(&mut self) {
-        // Set the trap handler
-        self.set_higher_trap_handler(trap_dispatch);
-        registers::set_stvec(trap_handler as usize);
-
-        // Then enable the interrupts sources
-        registers::set_sstatus_sie();
-        registers::set_sie_ssie();
-        registers::set_sie_seie();
-        registers::set_sie_stie();
-    }
-
-    fn set_timer(&mut self, delay: usize) {
-        let target_time = riscv::register::time::read() + delay;
-        sbi::timer::set_timer(target_time as u64).unwrap();
-    }
-}
 
 /// Dispatch interrupts and exceptions
 /// Returns 0 if it was synchronous, 1 otherwise
+#[no_mangle]
 extern "C" fn trap_dispatch(cause: u64) -> u64 {
     match TrapType::from(cause) {
         TrapType::Interrupt(itype) => {
-            kprintln!("Interrupt '{:#?}' triggered", itype);
-
             let exception_code: u64 = itype.into();
             unsafe { INTERRUPT_VECTOR[exception_code as usize]() };
 
@@ -190,13 +195,22 @@ extern "C" fn trap_dispatch(cause: u64) -> u64 {
     }
 }
 
+extern "C" fn supervisor_external_interrupt_handler() {
+    todo!("fwd the external int to the irq_chip or smthing...");
+}
+
 extern "C" fn undefined_handler() {
     panic!("Interruption is not handled yet");
 }
 
 extern "C" fn timer_handler() {
-    kprintln!("Timer!!");
-    sbi::timer::set_timer(u64::MAX).unwrap();
+    let timer_ptr = TIMER_CALLBACK.load(Ordering::Relaxed);
+    if !timer_ptr.is_null() {
+        unsafe {
+            let timer: fn() = core::mem::transmute::<_, fn()>(timer_ptr);
+            timer();
+        }
+    }
 }
 
 #[naked]
@@ -246,8 +260,7 @@ unsafe extern "C" fn trap_handler() {
         // csrr a5, sstatus
 
         csrr a0, scause
-        ld t0, g_higher_trap_handler
-        jalr t0
+        jal trap_dispatch
 
         bne a0, x0, 1f
 

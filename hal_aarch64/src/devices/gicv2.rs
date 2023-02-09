@@ -2,6 +2,8 @@ use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 use tock_registers::register_bitfields;
 use tock_registers::registers::{ReadOnly, ReadWrite};
 
+use hal_core::Error;
+
 pub struct GicV2 {
     pub distributor: &'static GicDistributor,
     pub cpu: &'static GicCpu,
@@ -32,6 +34,17 @@ impl GicV2 {
         self.distributor
             .CTLR
             .modify(GICD_CTLR::EnableGrp0::Enable + GICD_CTLR::EnableGrp1::Enable);
+    }
+
+    pub fn get_int(&mut self) -> Result<u32, Error> {
+        let intno = self.cpu.IAR.get();
+
+        Ok(intno)
+    }
+
+    pub fn clear_int(&mut self, int: u32) {
+        // TODO: check (maybe in the TRM) if this could fail / give an error.
+        self.cpu.EOIR.modify(GICC_EOIR::EOIINTID.val(int));
     }
 
     pub fn nlines(&self) -> usize {
@@ -69,6 +82,8 @@ impl GicV2 {
 
         // TODO: this should be moved somewhere else so other cores can run it.
         self.init_cpu();
+
+        self.enable_interrupts();
     }
 
     fn init_cpu(&self) {
@@ -83,13 +98,16 @@ impl GicV2 {
         );
     }
 
-    pub fn enable(&mut self, line: usize) {
+    pub fn enable_line(&mut self, line: u32) -> Result<(), Error> {
+        let line = line as usize;
         let enable_reg_index = line >> 5;
         let enable_bit: u32 = 1u32 << (line % 32);
 
         self.distributor.ISENABLER[enable_reg_index]
             .set(self.distributor.ISENABLER[enable_reg_index].get() | enable_bit);
         self.distributor.IPRIORITYR[line].set(0x80);
+
+        Ok(())
     }
 }
 
@@ -194,7 +212,7 @@ pub struct GicCpu {
     /// Interrupt Acknowledge Register
     pub IAR: ReadWrite<u32>,
     /// End of Interrupt Register
-    pub EOIR: ReadWrite<u32>,
+    pub EOIR: ReadWrite<u32, GICC_EOIR::Register>,
     /// Running Priority Register
     pub RPR: ReadWrite<u32>,
     /// Highest Priority Pending Interrupt Register

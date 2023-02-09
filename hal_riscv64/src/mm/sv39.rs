@@ -1,11 +1,9 @@
-use crate::globals;
-use crate::mm;
-use crate::paging;
-use crate::paging::PagingImpl;
-use crate::Error;
 use core::arch::asm;
 use core::convert::TryInto;
 use modular_bitfield::{bitfield, prelude::*};
+
+use hal_core::mm::{self, PageAllocFn, PageEntry, PageMap};
+use hal_core::Error;
 
 #[repr(C)]
 pub struct VAddr {
@@ -14,7 +12,8 @@ pub struct VAddr {
 
 impl From<mm::VAddr> for VAddr {
     fn from(vaddr: mm::VAddr) -> Self {
-        Self::from_u64(usize::from(vaddr).try_into().unwrap())
+        assert_eq!(usize::BITS, u64::BITS);
+        Self::from_u64(vaddr.val as u64)
     }
 }
 
@@ -53,7 +52,8 @@ pub struct PAddr {
 
 impl From<mm::PAddr> for PAddr {
     fn from(paddr: mm::PAddr) -> Self {
-        Self::from_u64(usize::from(paddr).try_into().unwrap())
+        assert_eq!(usize::BITS, u64::BITS);
+        Self::from_u64(paddr.val as u64)
     }
 }
 
@@ -91,7 +91,7 @@ impl PAddr {
 
 #[repr(u64)]
 #[bitfield]
-struct PageTableEntry {
+pub struct PageTableEntry {
     v: B1,
     r: B1,
     w: B1,
@@ -113,14 +113,7 @@ struct PageTableEntry {
 }
 
 impl PageTableEntry {
-    const fn new_invalid() -> Self {
-        let mut pte = Self::new();
-        pte.clear();
-
-        pte
-    }
-
-    const fn clear(&mut self) {
+    fn clear(&mut self) {
         *self = PageTableEntry::from_bytes([0u8; 8])
     }
 
@@ -157,30 +150,42 @@ impl PageTableEntry {
     }
 }
 
+impl PageEntry for PageTableEntry {
+    fn set_invalid(&mut self) {
+        self.set_v(0);
+    }
+}
+
 #[repr(align(0x1000))]
 pub struct PageTable {
     entries: [PageTableEntry; 512],
 }
 
-impl PageTable {
-    pub const fn zeroed() -> Self {
-        #[allow(clippy::uninit_assumed_init)]
-        let mut entries: [PageTableEntry; 512] =
-            unsafe { core::mem::MaybeUninit::uninit().assume_init() };
-        let mut i = 0;
-        while i < entries.len() {
-            entries[i] = PageTableEntry::new_invalid();
-            i += 1;
-        }
-        Self { entries }
+impl PageMap for PageTable {
+    const PAGE_SIZE: usize = 4096;
+    type Entry = PageTableEntry;
+
+    fn new(alloc: PageAllocFn) -> Result<&'static mut Self, Error> {
+        let page = alloc(1);
+
+        let page_table = page.ptr_cast::<PageTable>();
+        // Safety: the PMM gave us the memory, it should be a valid pointer.
+        let page_table = unsafe { page_table.as_mut().unwrap() };
+
+        page_table.entries.iter_mut().for_each(|pte| pte.clear());
+
+        Ok(page_table)
     }
 
-    fn map_inner(
+    fn map(
         &mut self,
-        paddr: PAddr,
-        vaddr: VAddr,
+        va: mm::VAddr,
+        pa: mm::PAddr,
         perms: mm::Permissions,
-    ) -> Result<&mut PageTableEntry, Error> {
+        alloc: PageAllocFn,
+    ) -> Result<&mut Self::Entry, Error> {
+        let paddr: PAddr = pa.into();
+        let vaddr: VAddr = va.into();
         let mut pagetable = self;
 
         for level in (0..=2).rev() {
@@ -200,7 +205,7 @@ impl PageTable {
 
             // If the entry is not valid we will need to allocate a new PageTable
             if !pte.is_valid() {
-                let new_page_table = PageTable::new();
+                let new_page_table = PageTable::new(alloc);
 
                 // Set new PageTable as target of this entry
                 pte.set_target(new_page_table? as *mut PageTable);
@@ -215,62 +220,8 @@ impl PageTable {
     }
 }
 
-impl PagingImpl for PageTable {
-    fn new() -> Result<&'static mut Self, Error> {
-        // FIXME: No unwrap here
-        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_rw_pages(1))?;
-
-        let page_table: *mut PageTable = page.into();
-
-        // Safety: the PMM gave us the memory, it should be a valid pointer.
-        let page_table = unsafe { page_table.as_mut().unwrap() };
-
-        page_table.entries.iter_mut().for_each(|pte| pte.clear());
-
-        Ok(page_table)
-    }
-
-    fn get_page_size() -> usize {
-        4096
-    }
-
-    fn map(&mut self, pa: mm::PAddr, va: mm::VAddr, perms: mm::Permissions) -> Result<(), Error> {
-        self.map_inner(pa.into(), va.into(), perms)?;
-
-        Ok(())
-    }
-
-    fn add_invalid_entry(&mut self, vaddr: mm::VAddr) -> Result<(), Error> {
-        let pte = self.map_inner(
-            PAddr::from_u64(0x0A0A_0A0A_0A0A_0A0A),
-            vaddr.into(),
-            mm::Permissions::READ,
-        )?;
-
-        pte.set_v(0);
-
-        Ok(())
-    }
-
-    fn reload(&mut self) {
-        load_pt(self)
-    }
-
-    fn disable(&mut self) {
-        let satp = Satp::new()
-            .with_ppn(0)
-            .with_asid(0)
-            .with_mode(SatpMode::Bare as u8);
-
-        unsafe {
-            asm!("csrw satp, {}", in(reg)u64::from(satp));
-            asm!("sfence.vma");
-        }
-    }
-}
-
 #[repr(u8)]
-pub enum SatpMode {
+pub(crate) enum SatpMode {
     Bare = 0,
     Sv39 = 8,
     _Sv48 = 9,
@@ -280,7 +231,7 @@ pub enum SatpMode {
 
 #[repr(u64)]
 #[bitfield]
-pub struct Satp {
+pub(crate) struct Satp {
     #[skip(getters)]
     ppn: B44,
     #[skip(getters)]
@@ -289,17 +240,11 @@ pub struct Satp {
     mode: B4,
 }
 
-pub fn load_pt(pt: &PageTable) {
-    let pt_addr = pt as *const PageTable as usize;
-    let ppn = pt_addr >> 12;
-
-    let satp = Satp::new()
-        .with_ppn(ppn as u64)
-        .with_asid(0)
-        .with_mode(SatpMode::Sv39 as u8);
-
-    unsafe {
-        asm!("csrw satp, {}", in(reg)u64::from(satp));
-        asm!("sfence.vma");
+impl Satp {
+    pub fn with_values(ppn: u64, asid: u16, mode: SatpMode) -> Self {
+        Satp::new()
+            .with_ppn(ppn)
+            .with_asid(asid)
+            .with_mode(mode as u8)
     }
 }

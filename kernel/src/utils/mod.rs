@@ -1,5 +1,3 @@
-#![no_std]
-
 pub mod init_cell;
 pub mod init_once;
 pub mod lock;

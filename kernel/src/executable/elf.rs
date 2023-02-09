@@ -1,15 +1,22 @@
 use core::iter::Iterator;
 
 use crate::globals;
-use crate::kprintln;
 use crate::mm;
-use crate::paging::PagingImpl;
 use crate::Error;
 
 use goblin;
 use goblin::elf::header::header64::Header;
 use goblin::elf::program_header::program_header64::ProgramHeader;
 use goblin::elf::program_header::*;
+
+use crate::hal;
+use hal_core::mm::{PAddr, PageMap, Permissions, VAddr};
+
+fn align_down(addr: usize, page_size: usize) -> usize {
+    let page_mask = !(page_size - 1);
+
+    addr & page_mask
+}
 
 pub struct Elf<'a> {
     data: &'a [u8],
@@ -59,9 +66,8 @@ impl<'a> Elf<'a> {
     }
 
     pub fn load(&self) -> Result<(), Error> {
-        let pagetable = globals::KERNEL_PAGETABLE.lock(|pt| pt);
         let pmm = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm);
-        let page_size = pmm.page_size();
+        let page_size = hal::mm::PAGE_SIZE;
 
         for segment in self.segments() {
             if segment.p_type != PT_LOAD {
@@ -76,7 +82,7 @@ impl<'a> Elf<'a> {
             let physical_pages = pmm.alloc_rw_pages(pages_needed).unwrap();
             let virtual_pages = segment.p_paddr as *mut u8;
             let offset_in_page =
-                (virtual_pages as usize) - crate::PagingImpl::align_down(virtual_pages as usize);
+                (virtual_pages as usize) - align_down(virtual_pages as usize, page_size);
 
             let segment_data_src_addr = ((self.data.as_ptr() as usize) + p_offset) as *const u8;
             let segment_data_dst_addr = (usize::from(physical_pages) + offset_in_page) as *mut u8;
@@ -102,37 +108,38 @@ impl<'a> Elf<'a> {
             for i in 0..pages_needed {
                 let page_offset = i * page_size;
                 // FIXME: No unwrap
-                pagetable
+                hal::mm::current()
                     .map(
-                        mm::PAddr::from(usize::from(physical_pages) + page_offset),
-                        mm::VAddr::from(
-                            crate::PagingImpl::align_down(virtual_pages as usize) + page_offset,
-                        ),
+                        VAddr::new(align_down(virtual_pages as usize, page_size) + page_offset),
+                        PAddr::new(usize::from(physical_pages) + page_offset),
                         perms,
+                        |count| {
+                            mm::alloc_pages_raw(count)
+                                .expect("failure on page allocator passed during elf loading")
+                        },
                     )
                     .unwrap();
             }
         }
 
-        pagetable.reload();
         Ok(())
     }
 }
 
-/// Convert ELF p_flags permissions to mm::Permissions
-fn elf_to_mm_permissions(elf_permsission: u32) -> mm::Permissions {
-    let mut perms = mm::Permissions::empty();
+/// Convert ELF p_flags permissions to Permissions
+fn elf_to_mm_permissions(elf_permsission: u32) -> Permissions {
+    let mut perms = Permissions::empty();
 
     if elf_permsission & PF_R != 0 {
-        perms |= mm::Permissions::READ;
+        perms |= Permissions::READ;
     }
 
     if elf_permsission & PF_W != 0 {
-        perms |= mm::Permissions::WRITE;
+        perms |= Permissions::WRITE;
     }
 
     if elf_permsission & PF_X != 0 {
-        perms |= mm::Permissions::EXECUTE;
+        perms |= Permissions::EXECUTE;
     }
 
     perms
