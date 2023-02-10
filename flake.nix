@@ -24,6 +24,10 @@
             }))
             qemu
           ];
+
+          shellHook = ''
+            export PS1="(goOSe) $PS1"
+          '';
         };
       }
     );

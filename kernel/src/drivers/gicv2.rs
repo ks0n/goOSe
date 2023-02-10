@@ -2,12 +2,63 @@ use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 use tock_registers::register_bitfields;
 use tock_registers::registers::{ReadOnly, ReadWrite};
 
+use crate::Error;
+use crate::lock::Lock;
+use crate::irq::{self, IrqLine, IrqChip, Interrupt};
+
 pub struct GicV2 {
+    inner: Lock<GicV2Inner>,
+}
+
+impl GicV2 {
+    pub fn new(distributor_base: usize, cpu_base: usize) -> Self {
+        Self { inner: Lock::new(GicV2Inner::new(distributor_base, cpu_base)) }
+    }
+
+    pub fn enable_interrupts(&self) {
+        self.inner.lock(|gic| gic.enable_interrupts());
+    }
+}
+
+fn interrupt_to_line(int: Interrupt) -> u32 {
+    match int {
+        Interrupt::PhysicalTimer => 30,
+    }
+}
+
+impl IrqChip for GicV2 {
+    fn enable(&self, int: Interrupt) -> Result<(), Error> {
+        // TODO: handle if it is already enabled, etc...
+
+        self.inner.lock(|gic| gic.enable_line(interrupt_to_line(int)));
+
+        Ok(())
+    }
+
+    fn get_int(&self) -> Result<Interrupt, Error> {
+        let intno = self.inner.lock(|gic| gic.cpu.IAR.get());
+
+        match intno {
+            30 => Ok(Interrupt::PhysicalTimer),
+            _ => Err(Error::InvalidIrqLine(intno as usize)),
+        }
+    }
+
+    fn clear_int(&self, int: Interrupt) {
+        // TODO: check (maybe in the TRM) if this could fail / give an error.
+        let gic = self.inner.lock(|gic| gic);
+        
+        gic.cpu.EOIR.modify(GICC_EOIR::EOIINTID.val(interrupt_to_line(int)));
+    }
+}
+
+
+struct GicV2Inner {
     pub distributor: &'static GicDistributor,
     pub cpu: &'static GicCpu,
 }
 
-impl GicV2 {
+impl GicV2Inner {
     pub fn new(distributor_base: usize, cpu_base: usize) -> Self {
         let distributor = unsafe {
             (distributor_base as *const GicDistributor)
@@ -83,7 +134,8 @@ impl GicV2 {
         );
     }
 
-    pub fn enable(&mut self, line: usize) {
+    pub fn enable_line(&mut self, line: u32) {
+        let line = line as usize;
         let enable_reg_index = line >> 5;
         let enable_bit: u32 = 1u32 << (line % 32);
 
@@ -92,6 +144,10 @@ impl GicV2 {
         self.distributor.IPRIORITYR[line].set(0x80);
     }
 }
+
+// TODO: is this sound ?
+unsafe impl Send for GicV2Inner {}
+unsafe impl Sync for GicV2Inner {}
 
 #[repr(C)]
 #[allow(non_snake_case)]
@@ -194,7 +250,7 @@ pub struct GicCpu {
     /// Interrupt Acknowledge Register
     pub IAR: ReadWrite<u32>,
     /// End of Interrupt Register
-    pub EOIR: ReadWrite<u32>,
+    pub EOIR: ReadWrite<u32, GICC_EOIR::Register>,
     /// Running Priority Register
     pub RPR: ReadWrite<u32>,
     /// Highest Priority Pending Interrupt Register

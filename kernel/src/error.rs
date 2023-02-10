@@ -1,6 +1,7 @@
 use super::mm;
 use super::paging;
 use crate::utils::init_once;
+use super::irq;
 
 #[derive(Debug)]
 pub enum Error {
@@ -10,6 +11,9 @@ pub enum Error {
     FdtError(fdt::FdtError),
     InitOnce(init_once::Error),
     Allocator(mm::AllocatorError),
+    InvalidIrqLine(irq::IrqLine),
+    IrqAlreadyEnabled(irq::IrqLine),
+    UnexpectedIrq(irq::IrqLine),
 }
 
 impl From<init_once::Error> for Error {

@@ -9,8 +9,13 @@ use kernel::drivers::pl011::Pl011;
 use kernel::drivers::qemuexit::QemuExit;
 use kernel::drivers::Console;
 use kernel::paging::PagingImpl;
+use kernel::irq::IrqManager;
+use kernel::drivers::gicv2::GicV2;
 
+use core::arch::asm;
 use cortex_a::asm;
+use cortex_a::registers::*;
+use tock_registers::interfaces::Writeable;
 
 const DTB_ADDR: usize = 0x4000_0000;
 
@@ -49,9 +54,40 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
 
     let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree).unwrap();
 
-    // let mut gic = GicV2::new(0x8000000, 0x8010000);
-    // gic.enable(30); // Physical timer
-    // gic.enable_interrupts();
+    kernel::globals::KERNEL_PAGETABLE
+        .lock(|pagetable| {
+            pagetable.map(
+                0x0800_0000.into(),
+                0x0800_0000.into(),
+                kernel::mm::Permissions::READ | kernel::mm::Permissions::WRITE,
+            ).unwrap();
+            pagetable.map(
+                0x0801_0000.into(),
+                0x0801_0000.into(),
+                kernel::mm::Permissions::READ | kernel::mm::Permissions::WRITE,
+            ).unwrap();
+        });
+    let mut gic = GicV2::new(0x800_0000, 0x801_0000);
+    gic.enable(27, || kernel::kprintln!("")).unwrap(); // Virtual timer
+    gic.enable_interrupts();
+
+    if true {
+        // IRQ
+        DAIF.write(DAIF::D::Unmasked + DAIF::A::Unmasked + DAIF::I::Unmasked + DAIF::F::Unmasked);
+        kernel::kprintln!("setting CNTV_CTL_EL0");
+        unsafe { asm!("msr CNTV_CTL_EL0, {}", in(reg) 0b001u64) };
+        // CNTV_CTL_EL0.write(
+        //     CNTV_CTL_EL0::ENABLE::SET + CNTV_CTL_EL0::IMASK::CLEAR + CNTV_CTL_EL0::ISTATUS::CLEAR,
+        // );
+        kernel::kprintln!("setting CNTV_CVAL_EL0");
+        unsafe { asm!("msr CNTV_CVAL_EL0, xzr") };
+        CNTV_TVAL_EL0.set(10000);
+    } else {
+        // // Synchronous exception
+        // unsafe {
+        //     asm!("svc 42");
+        // }
+    }
 
     kernel::kprintln!("Testing the remapping capabilities of our pagetable...");
     kernel::globals::KERNEL_PAGETABLE
@@ -67,5 +103,6 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     uart.write("Uart remaped, if you see this, it works !!!\n");
 
     kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
-    qemu_exit.exit_success();
+    loop {}
+    // qemu_exit.exit_success();
 }

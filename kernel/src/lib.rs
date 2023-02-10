@@ -26,6 +26,7 @@ pub mod kernel_console;
 mod lock;
 pub mod mm;
 pub mod paging;
+pub mod irq;
 
 // TODO: redo the unit tests with Mockall
 // pub mod kernel_tests;
@@ -44,6 +45,6 @@ cfg_if::cfg_if! {
 }
 
 static_assertions::assert_impl_all!(ArchImpl: arch::Architecture);
-static_assertions::assert_impl_all!(InterruptsImpl: arch::ArchitectureInterrupts);
+// static_assertions::assert_impl_all!(InterruptsImpl: arch::ArchitectureInterrupts);
 static_assertions::assert_impl_all!(PagingImpl: paging::PagingImpl);
 static_assertions::assert_impl_all!(ConsoleImpl: drivers::Console);

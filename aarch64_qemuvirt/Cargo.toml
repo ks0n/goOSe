@@ -9,3 +9,4 @@ edition = "2021"
 kernel = { path = "../kernel", features = ["aarch64_pgt48oa"] }
 
 cortex-a = "7.4.0"
+tock-registers = "0.7.0"

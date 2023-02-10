@@ -1,6 +1,7 @@
 use crate::lock::Lock;
 
 use crate::mm;
+use crate::irq::IrqChip;
 
 use crate::utils;
 use crate::drivers;
@@ -14,6 +15,7 @@ static NULL_CONSOLE: drivers::null_uart::NullUart = drivers::null_uart::NullUart
 pub static EARLYINIT_CONSOLE: InitCell<&'static (dyn drivers::Console + Sync)> =
     InitCell::new(&NULL_CONSOLE);
 pub static CONSOLE: InitOnce<Arc<dyn drivers::Console + Sync + Send>> = InitOnce::new();
+pub static IRQ_CHIP: InitOnce<Arc<dyn IrqChip + Sync + Send>> = InitOnce::new();
 pub static PHYSICAL_MEMORY_MANAGER: Lock<mm::PhysicalMemoryManager> =
     Lock::new(mm::PhysicalMemoryManager::new());
 
