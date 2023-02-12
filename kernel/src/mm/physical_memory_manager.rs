@@ -314,6 +314,7 @@ impl PhysicalMemoryManager {
             }
 
             consecutive_pages += 1;
+            last_page_base = page.base;
 
             if consecutive_pages == page_count {
                 self.metadata[first_page_index..=i]
