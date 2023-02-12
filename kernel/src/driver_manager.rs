@@ -112,10 +112,9 @@ fn unmap_dt_regions(node: &fdt::node::FdtNode) -> Result<(), Error> {
             let start = memory_region.starting_address as usize;
             let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
 
+            let kernel_pt = globals::KERNEL_PAGETABLE.lock(|pt| pt);
             for page in (start..start + size).step_by(pagesize) {
-                globals::KERNEL_PAGETABLE.lock(|pagetable| {
-                    pagetable.add_invalid_entry(page.into()).unwrap();
-                });
+                kernel_pt.add_invalid_entry(page.into())?;
             }
         }
     }
