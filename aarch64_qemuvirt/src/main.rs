@@ -9,13 +9,14 @@ use kernel::drivers::pl011::Pl011;
 use kernel::drivers::qemuexit::QemuExit;
 use kernel::drivers::Console;
 use kernel::paging::PagingImpl;
-use kernel::irq::IrqManager;
+use kernel::irq::{self, IrqChip, Interrupt};
 use kernel::drivers::gicv2::GicV2;
+use kernel::alloc::sync::Arc;
 
 use core::arch::asm;
 use cortex_a::asm;
 use cortex_a::registers::*;
-use tock_registers::interfaces::Writeable;
+use tock_registers::interfaces::{ReadWriteable, Writeable};
 
 const DTB_ADDR: usize = 0x4000_0000;
 
@@ -29,7 +30,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     kernel::kprintln!("hello, I am GoOSe!");
 
     unsafe {
-        kernel::arch::aarch64::Aarch64::init_el1_interrupts();
+        kernel::arch::aarch64::Aarch64::init_el1_exception_handlers();
     }
 
     unsafe {
@@ -53,6 +54,8 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     kernel::kprintln!("Kernel bootstrap should be about done.");
 
     let _drvmgr = kernel::driver_manager::DriverManager::with_devices(&device_tree).unwrap();
+    // drvmgr.get_console();
+    // drvmgr.get_irq_manager();
 
     kernel::globals::KERNEL_PAGETABLE
         .lock(|pagetable| {
@@ -67,26 +70,20 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
                 kernel::mm::Permissions::READ | kernel::mm::Permissions::WRITE,
             ).unwrap();
         });
-    let mut gic = GicV2::new(0x800_0000, 0x801_0000);
-    gic.enable(27, || kernel::kprintln!("")).unwrap(); // Virtual timer
+    let mut gic = Arc::new(GicV2::new(0x800_0000, 0x801_0000));
+    gic.enable(Interrupt::PhysicalTimer);
     gic.enable_interrupts();
+    kernel::globals::IRQ_CHIP.set(gic);
 
     if true {
         // IRQ
-        DAIF.write(DAIF::D::Unmasked + DAIF::A::Unmasked + DAIF::I::Unmasked + DAIF::F::Unmasked);
-        kernel::kprintln!("setting CNTV_CTL_EL0");
-        unsafe { asm!("msr CNTV_CTL_EL0, {}", in(reg) 0b001u64) };
-        // CNTV_CTL_EL0.write(
-        //     CNTV_CTL_EL0::ENABLE::SET + CNTV_CTL_EL0::IMASK::CLEAR + CNTV_CTL_EL0::ISTATUS::CLEAR,
-        // );
-        kernel::kprintln!("setting CNTV_CVAL_EL0");
-        unsafe { asm!("msr CNTV_CVAL_EL0, xzr") };
-        CNTV_TVAL_EL0.set(10000);
+        kernel::arch::aarch64::Aarch64::unmask_interrupts();
+        kernel::arch::aarch64::Aarch64::set_timer(50_000);
     } else {
-        // // Synchronous exception
-        // unsafe {
-        //     asm!("svc 42");
-        // }
+        // Synchronous exception
+        unsafe {
+            asm!("svc 42");
+        }
     }
 
     kernel::kprintln!("Testing the remapping capabilities of our pagetable...");
@@ -102,7 +99,6 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     let uart = Pl011::new(0x0450_0000);
     uart.write("Uart remaped, if you see this, it works !!!\n");
 
-    kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
-    loop {}
-    // qemu_exit.exit_success();
+    kernel::kprintln!("[OK] GoOSe shuting down, bye!");
+    qemu_exit.exit_success();
 }
