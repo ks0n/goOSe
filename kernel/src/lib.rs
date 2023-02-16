@@ -27,6 +27,7 @@ mod lock;
 pub mod mm;
 pub mod paging;
 pub mod irq;
+pub mod generic_main;
 
 // TODO: redo the unit tests with Mockall
 // pub mod kernel_tests;

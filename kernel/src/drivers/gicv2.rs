@@ -14,10 +14,6 @@ impl GicV2 {
     pub fn new(distributor_base: usize, cpu_base: usize) -> Self {
         Self { inner: Lock::new(GicV2Inner::new(distributor_base, cpu_base)) }
     }
-
-    pub fn enable_interrupts(&self) {
-        self.inner.lock(|gic| gic.enable_interrupts());
-    }
 }
 
 fn interrupt_to_line(int: Interrupt) -> u32 {
@@ -120,6 +116,8 @@ impl GicV2Inner {
 
         // TODO: this should be moved somewhere else so other cores can run it.
         self.init_cpu();
+
+        self.enable_interrupts();
     }
 
     fn init_cpu(&self) {

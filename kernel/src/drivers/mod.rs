@@ -1,7 +1,5 @@
 //! This module stores all drivers strictly necessary for the kernel.
 
-#![no_std]
-
 extern crate alloc;
 use alloc::boxed::Box;
 

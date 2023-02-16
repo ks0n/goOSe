@@ -12,6 +12,9 @@ pub mod riscv64;
 
 pub trait Architecture {
     unsafe extern "C" fn _start() -> !;
+    fn unmask_interrupts();
+    fn set_timer(count: usize);
+    fn disable_timer();
 }
 
 pub trait ArchitectureInterrupts {

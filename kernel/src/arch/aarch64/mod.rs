@@ -32,6 +32,24 @@ impl Architecture for Aarch64 {
             options(noreturn)
         );
     }
+
+    fn unmask_interrupts() {
+        DAIF.write(DAIF::A::Unmasked + DAIF::I::Unmasked + DAIF::F::Unmasked);
+    }
+
+    fn set_timer(delay: usize) {
+        CNTP_TVAL_EL0.set(delay as u64);
+
+        unsafe { asm::barrier::isb(asm::barrier::SY) };
+
+        CNTP_CTL_EL0.write(
+            CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR + CNTP_CTL_EL0::ISTATUS::CLEAR,
+        );
+    }
+
+    fn disable_timer() {
+        CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR);
+    }
 }
 
 impl Aarch64 {
@@ -45,24 +63,6 @@ impl Aarch64 {
             static el1_vector_table: core::cell::UnsafeCell<()>;
         }
         cortex_a::registers::VBAR_EL1.set(el1_vector_table.get() as u64);
-    }
-
-    pub fn unmask_interrupts() {
-        DAIF.write(DAIF::A::Unmasked + DAIF::I::Unmasked + DAIF::F::Unmasked);
-    }
-
-    pub fn set_timer(delay: usize) {
-        CNTP_TVAL_EL0.set(delay as u64);
-
-        unsafe { asm::barrier::isb(asm::barrier::SY) };
-
-        CNTP_CTL_EL0.write(
-            CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR + CNTP_CTL_EL0::ISTATUS::CLEAR,
-        );
-    }
-
-    pub fn disable_timer() {
-        CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR);
     }
 }
 
