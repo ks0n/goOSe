@@ -1,10 +1,15 @@
+use alloc::boxed::Box;
+
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 use tock_registers::register_bitfields;
 use tock_registers::registers::{ReadOnly, ReadWrite};
 
-use crate::Error;
+use crate::drivers::{Driver, IrqChipMatcher};
+use crate::irq::{self, Interrupt, IrqChip, IrqLine};
 use crate::lock::Lock;
-use crate::irq::{self, IrqLine, IrqChip, Interrupt};
+use crate::Error;
+
+use fdt::standard_nodes::MemoryRegion;
 
 pub struct GicV2 {
     inner: Lock<GicV2Inner>,
@@ -12,7 +17,9 @@ pub struct GicV2 {
 
 impl GicV2 {
     pub fn new(distributor_base: usize, cpu_base: usize) -> Self {
-        Self { inner: Lock::new(GicV2Inner::new(distributor_base, cpu_base)) }
+        Self {
+            inner: Lock::new(GicV2Inner::new(distributor_base, cpu_base)),
+        }
     }
 }
 
@@ -26,7 +33,8 @@ impl IrqChip for GicV2 {
     fn enable(&self, int: Interrupt) -> Result<(), Error> {
         // TODO: handle if it is already enabled, etc...
 
-        self.inner.lock(|gic| gic.enable_line(interrupt_to_line(int)));
+        self.inner
+            .lock(|gic| gic.enable_line(interrupt_to_line(int)));
 
         Ok(())
     }
@@ -43,11 +51,18 @@ impl IrqChip for GicV2 {
     fn clear_int(&self, int: Interrupt) {
         // TODO: check (maybe in the TRM) if this could fail / give an error.
         let gic = self.inner.lock(|gic| gic);
-        
-        gic.cpu.EOIR.modify(GICC_EOIR::EOIINTID.val(interrupt_to_line(int)));
+
+        gic.cpu
+            .EOIR
+            .modify(GICC_EOIR::EOIINTID.val(interrupt_to_line(int)));
     }
 }
 
+impl Driver for GicV2 {
+    fn get_address_range(&self) -> Option<(usize, usize)> {
+        todo!();
+    }
+}
 
 struct GicV2Inner {
     pub distributor: &'static GicDistributor,
@@ -299,3 +314,13 @@ register_bitfields! {u32,
         CPUID OFFSET(10) NUMBITS(3) [],
     ],
 }
+
+pub(super) const MATCHER: IrqChipMatcher = IrqChipMatcher {
+    compatibles: &["arm,cortex-a15-gic"],
+    constructor: |reg| {
+        Ok(Box::new(GicV2::new(
+            reg.next().unwrap().starting_address as usize,
+            reg.next().unwrap().starting_address as usize,
+        )))
+    },
+};

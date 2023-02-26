@@ -42,4 +42,5 @@ type IrqChipMatcher = Matcher<dyn crate::irq::IrqChip + Send + Sync>;
 pub const CONSOLE_MATCHERS: &[&ConsoleMatcher] = &[&pl011::MATCHER, &ns16550::MATCHER];
 
 pub(super) const IRQ_CHIP_MATCHERS: &[&IrqChipMatcher] = &[
+    &gicv2::MATCHER
 ];
