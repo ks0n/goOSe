@@ -13,6 +13,8 @@ pub mod gicv2;
 #[cfg(target_arch = "riscv64")]
 pub mod plic;
 
+use crate::Error;
+use fdt::standard_nodes::MemoryRegion;
 pub trait Driver {
     fn get_address_range(&self) -> Option<(usize, usize)>;
 }
@@ -21,30 +23,23 @@ pub trait Console: Driver {
     fn write(&self, data: &str);
 }
 
-struct ConsoleMatcher {
-    compatibles: &'static [&'static str],
-    constructor: fn(usize) -> Box<dyn Console + Send + Sync>,
+pub struct Matcher<T: ?Sized> {
+    pub compatibles: &'static [&'static str],
+    pub constructor: fn(&mut dyn Iterator<Item = MemoryRegion>) -> Result<Box<T>, Error>,
 }
 
-impl ConsoleMatcher {
-    fn matches(&self, compatible: &str) -> bool {
+impl<T: ?Sized> Matcher<T> {
+    pub fn matches(&self, compatible: &str) -> bool {
         self.compatibles
             .iter()
             .find(|&s| s == &compatible)
             .is_some()
     }
 }
+type ConsoleMatcher = Matcher<dyn Console + Send + Sync>;
+type IrqChipMatcher = Matcher<dyn crate::irq::IrqChip + Send + Sync>;
 
-pub fn matching_console_driver(
-    compatible: &str,
-) -> Option<fn(usize) -> Box<dyn Console + Send + Sync>> {
-    //Option<Box<dyn Console + Send + Sync>> {
-    static MATCHERS: [&ConsoleMatcher; 2] = [&pl011::MATCHER, &ns16550::MATCHER];
+pub const CONSOLE_MATCHERS: &[&ConsoleMatcher] = &[&pl011::MATCHER, &ns16550::MATCHER];
 
-    MATCHERS
-        .iter()
-        .find(|m| m.matches(compatible))
-        .map(|some| some.constructor)
-}
-
-
+pub(super) const IRQ_CHIP_MATCHERS: &[&IrqChipMatcher] = &[
+];

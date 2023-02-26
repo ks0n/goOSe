@@ -7,6 +7,8 @@ use crate::utils::lock::Lock;
 pub extern crate alloc;
 use alloc::boxed::Box;
 
+use fdt::standard_nodes::MemoryRegion;
+
 pub struct Pl011 {
     inner: Lock<Pl011Inner>,
 }
@@ -60,13 +62,13 @@ impl Pl011 {
             inner: Lock::new(Pl011Inner::new(base)),
         }
     }
-
-    pub fn boxed(base: usize) -> Box<dyn Console + Send + Sync> {
-        Box::new(Self::new(base))
-    }
 }
 
-pub(super) static MATCHER: ConsoleMatcher = ConsoleMatcher {
+pub(super) const MATCHER: ConsoleMatcher = ConsoleMatcher {
     compatibles: &["arm,pl011"],
-    constructor: Pl011::boxed,
+    constructor: |reg| {
+        Ok(Box::new(Pl011::new(
+            reg.next().unwrap().starting_address as usize,
+        )))
+    },
 };

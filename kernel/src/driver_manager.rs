@@ -1,12 +1,14 @@
 use alloc::{boxed::Box, collections::LinkedList, sync::Arc};
 
 use super::device_tree::DeviceTree;
+use super::drivers::{self, Matcher};
 use super::error::Error;
 use super::globals;
+use super::irq::IrqChip;
 use super::mm;
 use super::paging::PagingImpl as _;
-use super::drivers;
 use drivers::{Console, Driver};
+use fdt::node::FdtNode;
 
 pub struct DriverManager {
     drivers: LinkedList<Arc<dyn Driver>>,
@@ -23,6 +25,7 @@ impl DriverManager {
         let mut mgr = Self::new();
 
         mgr.do_console(dt)?;
+        mgr.do_irq_chip(dt)?;
 
         Ok(mgr)
     }
@@ -34,7 +37,9 @@ impl DriverManager {
 
         map_dt_regions(&cons_node)?;
 
-        if let Some(cons_driver) = self.find_console(&cons_node) {
+        if let Some(cons_driver) =
+            self.find_driver::<dyn Console + Sync + Send>(&cons_node, drivers::CONSOLE_MATCHERS)
+        {
             self.register_console(cons_driver)?;
             Ok(())
         } else {
@@ -43,23 +48,29 @@ impl DriverManager {
         }
     }
 
-    pub fn find_console(
-        &self,
-        cons_node: &fdt::node::FdtNode,
-    ) -> Option<Box<dyn Console + Send + Sync>> {
-        let console_base = cons_node.reg()?.next()?.starting_address as usize;
-
-        // TODO: I'm not sure we are handling/parsing the compat string very well ^^
-        let compatible = cons_node
+    fn extract_compatibles<'a>(node: &'a FdtNode) -> impl Iterator<Item = &'a str> {
+        let compatible = node
             .properties()
             .find(|prop| prop.name == "compatible")
             .and_then(|some_prop| some_prop.as_str())
             .unwrap_or("");
-        let compatibles = compatible.split('\0');
+        compatible.split('\0')
+    }
 
-        for compatible in compatibles {
-            if let Some(cons_driver) = drivers::matching_console_driver(compatible) {
-                return Some(cons_driver(console_base));
+    pub fn find_driver<T: ?Sized>(
+        &self,
+        node: &FdtNode,
+        matchers: &[&Matcher<T>],
+    ) -> Option<Box<T>> {
+        for compat in Self::extract_compatibles(node) {
+            let matching_constructor = matchers
+                .iter()
+                .find(|matcher| matcher.matches(compat))
+                .map(|matcher| matcher.constructor);
+            if let Some(constructor) = matching_constructor {
+                if let Ok(driver) = constructor(&mut node.reg()?) {
+                    return Some(driver);
+                }
             }
         }
 
@@ -74,12 +85,40 @@ impl DriverManager {
         Ok(())
     }
 
+    fn do_irq_chip(&mut self, dt: &DeviceTree) -> Result<(), Error> {
+        let intc_node = dt.interrupt_controller().ok_or(Error::DeviceNotFound(
+            "dtb doesn't have an interrupt controller",
+        ))?;
+
+        map_dt_regions(&intc_node)?;
+
+        if let Some(irq_chip_driver) = self.find_driver(&intc_node, drivers::IRQ_CHIP_MATCHERS) {
+            self.register_irq_chip(irq_chip_driver)?;
+            Ok(())
+        } else {
+            unmap_dt_regions(&intc_node)?;
+            Err(Error::NoMatchingDriver("irq_chip"))
+        }
+    }
+
+    fn find_irq_chip(&self, intc_node: &FdtNode) -> Option<Box<dyn IrqChip + Send + Sync>> {
+        todo!()
+    }
+
+    fn register_irq_chip(&mut self, irq_chip: Box<dyn IrqChip + Sync + Send>) -> Result<(), Error> {
+        let irq_chip: Arc<dyn IrqChip + Sync + Send> = Arc::from(irq_chip);
+        self.register_driver(irq_chip.clone());
+        globals::IRQ_CHIP.set(irq_chip.clone());
+
+        Ok(())
+    }
+
     fn register_driver(&mut self, drv: Arc<dyn Driver>) {
         self.drivers.push_back(drv);
     }
 }
 
-fn map_dt_regions(node: &fdt::node::FdtNode) -> Result<(), Error> {
+fn map_dt_regions(node: &FdtNode) -> Result<(), Error> {
     let pagesize = crate::PagingImpl::get_page_size();
 
     if let Some(reg) = node.reg() {
@@ -104,7 +143,7 @@ fn map_dt_regions(node: &fdt::node::FdtNode) -> Result<(), Error> {
     Ok(())
 }
 
-fn unmap_dt_regions(node: &fdt::node::FdtNode) -> Result<(), Error> {
+fn unmap_dt_regions(node: &FdtNode) -> Result<(), Error> {
     let pagesize = crate::PagingImpl::get_page_size();
 
     if let Some(reg) = node.reg() {

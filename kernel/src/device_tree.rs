@@ -57,4 +57,8 @@ impl DeviceTree {
         let chosen = self.dtb.chosen();
         chosen.stdout()
     }
+
+    pub fn interrupt_controller(&self) -> Option<FdtNode> {
+        self.dtb.find_node("/intc")
+    }
 }
