@@ -246,7 +246,7 @@ impl PhysicalMemoryManager {
         device_tree: &DeviceTree,
         page_size: usize,
     ) -> Result<(), AllocatorError> {
-        let available_regions = Self::available_memory_regions::<10>(device_tree, page_size);
+        let mut available_regions = Self::available_memory_regions::<10>(device_tree, page_size);
 
         assert!(
             available_regions
@@ -258,6 +258,10 @@ impl PhysicalMemoryManager {
                 ),
             "Expected region bounds to be aligned to the page size (won't be possible to allocate pages otherwise)"
         );
+
+        for (i, reg) in available_regions.iter().flatten().enumerate() {
+            crate::kprintln!("region {}: {:X?}", i, reg);
+        }
 
         let page_count = Self::count_pages(&available_regions, page_size);
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();

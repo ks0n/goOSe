@@ -45,7 +45,7 @@ impl core::convert::From<VAddr> for usize {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct PAddr {
     addr: usize,
 }

@@ -59,6 +59,20 @@ impl DeviceTree {
     }
 
     pub fn interrupt_controller(&self) -> Option<FdtNode> {
-        self.dtb.find_node("/intc")
+        // This is a funny one.
+        // There can be multiple interrupt controllers:
+        //   - on a "reguler" Aarch64 board, you just have a gic
+        //   - on a riscv board, you have a "root" irq chip that's part of the cpu and there is a
+        //     soc level interrupt controller "plic/aplic" (similar to gic).
+        //  Handling this properly requires more code which we will do in the future, but for
+        //  now... don't do anything particular to take care of the root irqchip and use a
+        //  heuristic to find the soc level interrupt controller.
+        let mut interrupt_controllers = self.dtb.all_nodes().filter(|node| node.property("interrupt-controller").is_some());
+
+        // The heuristic, the root irq chip doesn't have a reg property.
+        // Works on aarch64 and riscv64.
+        let interrupt_controller = interrupt_controllers.find(|intc| intc.reg().is_some());
+
+        interrupt_controller
     }
 }

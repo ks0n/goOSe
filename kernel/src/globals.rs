@@ -1,10 +1,10 @@
 use crate::lock::Lock;
 
-use crate::mm;
 use crate::irq::IrqChip;
+use crate::mm;
 
-use crate::utils;
 use crate::drivers;
+use crate::utils;
 use utils::init_cell::InitCell;
 use utils::init_once::InitOnce;
 

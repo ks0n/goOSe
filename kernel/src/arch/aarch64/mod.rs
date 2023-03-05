@@ -1,10 +1,10 @@
 use super::Architecture;
 use super::ArchitectureInterrupts;
+use crate::globals;
+use crate::irq::{self, Interrupt};
 use core::arch::asm;
 use cortex_a::{asm, registers::*};
 use tock_registers::interfaces::{ReadWriteable, Writeable};
-use crate::globals;
-use crate::irq::{self, Interrupt};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "aarch64_pgt48oa")] {
@@ -75,9 +75,7 @@ extern "C" fn sync_current_el_sp0() {
 
 #[no_mangle]
 extern "C" fn irq_current_el_sp0() {
-    let irq_mgr = globals::IRQ_CHIP
-        .get()
-        .unwrap();
+    let irq_mgr = globals::IRQ_CHIP.get().unwrap();
 
     let int = irq_mgr.get_int().unwrap();
 
@@ -86,8 +84,7 @@ extern "C" fn irq_current_el_sp0() {
             // Disable the timer in order to EOI it.
             Aarch64::disable_timer();
 
-            irq::generic_timer_irq()
-                .unwrap();
+            irq::generic_timer_irq().unwrap();
 
             irq_mgr.clear_int(int);
 
@@ -96,8 +93,6 @@ extern "C" fn irq_current_el_sp0() {
             CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::SET);
         }
     }
-
-
 }
 #[no_mangle]
 extern "C" fn fiq_current_el_sp0() {

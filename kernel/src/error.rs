@@ -1,7 +1,7 @@
+use super::irq;
 use super::mm;
 use super::paging;
 use crate::utils::init_once;
-use super::irq;
 
 #[derive(Debug)]
 pub enum Error {

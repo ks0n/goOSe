@@ -1,7 +1,8 @@
 use crate::arch::riscv64::registers;
 use crate::arch::ArchitectureInterrupts;
 use crate::kprintln;
-use drivers::plic::plic_handler;
+use crate::irq;
+use crate::globals;
 
 use core::arch::asm;
 
@@ -129,48 +130,12 @@ static mut INTERRUPT_VECTOR: &[extern "C" fn()] = &[
     undefined_handler,
     undefined_handler,
     undefined_handler,
-    plic_handler,
+    supervisor_external_interrupt_handler,
 ];
-
-pub struct Interrupts {}
-
-impl Interrupts {
-    pub fn set_higher_trap_handler(
-        &mut self,
-        higher_trap_handler: extern "C" fn(cause: u64) -> u64,
-    ) {
-        unsafe {
-            g_higher_trap_handler = higher_trap_handler as *const ();
-        }
-    }
-}
-
-impl ArchitectureInterrupts for Interrupts {
-    fn new() -> Self {
-        Self {}
-    }
-
-    fn init_interrupts(&mut self) {
-        // Set the trap handler
-        self.set_higher_trap_handler(trap_dispatch);
-        registers::set_stvec(trap_handler as usize);
-
-        // Then enable the interrupts sources
-        registers::set_sstatus_sie();
-        registers::set_sie_ssie();
-        registers::set_sie_seie();
-        registers::set_sie_stie();
-    }
-
-    fn set_timer(&mut self, delay: usize) {
-        let target_time = riscv::register::time::read() + delay;
-        sbi::timer::set_timer(target_time as u64).unwrap();
-    }
-}
 
 /// Dispatch interrupts and exceptions
 /// Returns 0 if it was synchronous, 1 otherwise
-extern "C" fn trap_dispatch(cause: u64) -> u64 {
+pub extern "C" fn trap_dispatch(cause: u64) -> u64 {
     match TrapType::from(cause) {
         TrapType::Interrupt(itype) => {
             kprintln!("Interrupt '{:#?}' triggered", itype);
@@ -190,13 +155,20 @@ extern "C" fn trap_dispatch(cause: u64) -> u64 {
     }
 }
 
+extern "C" fn supervisor_external_interrupt_handler() {
+    let irq_chip = globals::IRQ_CHIP.get().unwrap();
+
+    let source = irq_chip.get_int().unwrap();
+
+    irq_chip.clear_int(source);
+}
+
 extern "C" fn undefined_handler() {
     panic!("Interruption is not handled yet");
 }
 
 extern "C" fn timer_handler() {
-    kprintln!("Timer!!");
-    sbi::timer::set_timer(u64::MAX).unwrap();
+    irq::generic_timer_irq();
 }
 
 #[naked]

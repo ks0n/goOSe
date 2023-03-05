@@ -4,9 +4,9 @@
 #[cfg(not(target_arch = "aarch64"))]
 compile_error!("Must be compiled as aarch64");
 
+use core::arch::asm;
 use kernel::arch::aarch64::Aarch64;
 use kernel::drivers::pl011::Pl011;
-use core::arch::asm;
 
 const DTB_ADDR: usize = 0x4000_0000;
 

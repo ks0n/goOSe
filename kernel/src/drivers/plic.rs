@@ -1,7 +1,11 @@
 //! Driver fot the RISC-V Platform-Level Interrupt Controller
 //! <https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc>
 
-use super::Driver;
+use super::{Driver, IrqChipMatcher};
+use crate::irq::{Interrupt, IrqChip};
+use crate::Error;
+
+use alloc::boxed::Box;
 
 pub const QEMU_VIRT_PLIC_BASE_ADDRESS: usize = 0xc000000;
 
@@ -18,14 +22,12 @@ static mut PLIC: Option<Plic> = None;
 
 pub struct Plic {
     base_register_address: usize,
-    source_handler: [fn(); PLIC_NUMBER_SOURCES as usize],
 }
 
 impl Plic {
     pub fn new(base_register_address: usize) -> Plic {
         Self {
             base_register_address,
-            source_handler: [not_registered; PLIC_NUMBER_SOURCES as usize],
         }
     }
 
@@ -85,10 +87,6 @@ impl Plic {
             addr.write_volatile(source);
         }
     }
-
-    pub fn _register_handler(&mut self, id: u16, handler: fn()) {
-        self.source_handler[id as usize] = handler;
-    }
 }
 
 pub fn init(base_register_address: usize) {
@@ -97,14 +95,14 @@ pub fn init(base_register_address: usize) {
     }
 }
 
-pub fn get() -> &'static mut Plic {
-    let plic = unsafe { &mut PLIC };
-
-    match plic.as_mut() {
-        Some(plic_ref) => plic_ref,
-        None => unreachable!("PLIC should have been initialized at this point"),
-    }
-}
+// pub fn get() -> &'static mut Plic {
+//     let plic = unsafe { &mut PLIC };
+//
+//     match plic.as_mut() {
+//         Some(plic_ref) => plic_ref,
+//         None => unreachable!("PLIC should have been initialized at this point"),
+//     }
+// }
 
 fn not_registered() {}
 
@@ -115,13 +113,35 @@ impl Driver for Plic {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn plic_handler() {
-    let plic = get();
+impl IrqChip for Plic {
+    fn enable(&self, int: Interrupt) -> Result<(), Error> {
+        let id = match int {
+            Interrupt::PhysicalTimer => 10,
+        };
 
-    let source = plic.claim();
+        // TODO: read the hartid (MPIDR equivalent).
+        self.enable_interrupt(id, 0);
+        Ok(())
+    }
 
-    plic.source_handler[source as usize]();
+    fn get_int(&self) -> Result<Interrupt, Error> {
+        let source = self.claim();
+        match source {
+            10 => Ok(Interrupt::PhysicalTimer),
+            _ => Err(Error::InvalidIrqLine(source as usize)),
+        }
+    }
 
-    plic.complete(source);
+    fn clear_int(&self, int: Interrupt) {
+        let source = match int {
+            Interrupt::PhysicalTimer => 10,
+        };
+
+        self.complete(source);
+    }
 }
+
+pub(super) const MATCHER: IrqChipMatcher = IrqChipMatcher {
+    compatibles: &["riscv,plic0"],
+    constructor: |reg| Ok(Box::new(Plic::new(reg.next().unwrap().starting_address as usize))),
+};
