@@ -8,11 +8,14 @@ compile_error!("Must be compiled as aarch64");
 use kernel::drivers::pl011::Pl011;
 use kernel::drivers::qemuexit::QemuExit;
 use kernel::drivers::Console;
+use kernel::executable::elf::Elf;
 use kernel::paging::PagingImpl;
 
+use align_data::{include_aligned, Align4K};
 use cortex_a::asm;
 
 const DTB_ADDR: usize = 0x4000_0000;
+static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS"));
 
 #[no_mangle]
 extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
@@ -65,6 +68,16 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
         .unwrap();
     let uart = Pl011::new(0x0450_0000);
     uart.write("Uart remaped, if you see this, it works !!!\n");
+
+    let test_bin = Elf::from_bytes(TEST_BIN);
+    kernel::kprintln!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS"));
+    test_bin.load().unwrap();
+    kernel::kprintln!("[OK] Elf loaded");
+    let entry_point: extern "C" fn() -> u8 =
+        unsafe { core::mem::transmute(test_bin.get_entry_point()) };
+    kernel::kprintln!("[OK] Elf loaded, entry point is {:?}", entry_point);
+    entry_point();
+    kernel::kprintln!("[OK] Returned for Elf");
 
     kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
     qemu_exit.exit_success();

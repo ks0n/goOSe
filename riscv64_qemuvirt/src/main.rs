@@ -11,9 +11,13 @@ use core::arch::asm;
 use kernel::drivers::ns16550::*;
 use kernel::drivers::plic;
 use kernel::drivers::qemuexit::QemuExit;
+use kernel::executable::elf::Elf;
+
+use align_data::{include_aligned, Align4K};
 
 pub const UART_ADDR: usize = 0x1000_0000;
 pub const UART_INTERRUPT_NUMBER: u16 = 10;
+static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS"));
 
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
@@ -56,6 +60,16 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     interrupts.init_interrupts();
 
     kernel::kprintln!("[OK] Enable interrupts");
+
+    let test_bin = Elf::from_bytes(TEST_BIN);
+    kernel::kprintln!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS"));
+    test_bin.load().unwrap();
+    kernel::kprintln!("[OK] Elf loaded");
+    let entry_point: extern "C" fn() -> u8 =
+        unsafe { core::mem::transmute(test_bin.get_entry_point()) };
+    kernel::kprintln!("[OK] Elf loaded, entry point is {:?}", entry_point);
+    entry_point();
+    kernel::kprintln!("[OK] Returned for Elf");
 
     kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
     qemu_exit.exit_success();
