@@ -2,5 +2,4 @@
 target = "riscv64gc-unknown-none-elf"
 
 [target.riscv64gc-unknown-none-elf]
-rustflags = ["-C", "link-arg=-Triscv64_qemuvirt/src/riscv64_qemuvirt.ld"]
 runner = 'qemu-system-riscv64 -M virt -m 256M -nographic -kernel '
