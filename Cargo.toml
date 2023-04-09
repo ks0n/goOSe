@@ -6,4 +6,5 @@ members = [
     "utils",
     "aarch64_qemuvirt",
     "riscv64_qemuvirt",
+    "tests",
 ]
