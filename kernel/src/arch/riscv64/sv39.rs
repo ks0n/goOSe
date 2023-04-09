@@ -218,7 +218,7 @@ impl PageTable {
 impl PagingImpl for PageTable {
     fn new() -> Result<&'static mut Self, Error> {
         // FIXME: No unwrap here
-        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_pages(1))?;
+        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_rw_pages(1))?;
 
         let page_table: *mut PageTable = page.into();
 
