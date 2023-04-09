@@ -7,5 +7,7 @@ edition = "2021"
 
 [dependencies]
 kernel = { path = "../kernel", features = ["aarch64_pgt48oa"] }
+tests = { path = "../tests", artifact = "bin" }
+align-data = "0.1.0"
 
 cortex-a = "7.4.0"
