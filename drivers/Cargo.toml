@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 utils = { path = "../utils" }
 qemu-exit = "3.0"
-tock-registers = "0.7.x"
+tock-registers = "0.8"
