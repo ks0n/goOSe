@@ -18,6 +18,7 @@ extern "C" {
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug)]
     pub struct Permissions: u8 {
         const READ    = 0b00000001;
         const WRITE   = 0b00000010;
