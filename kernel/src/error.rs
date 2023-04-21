@@ -1,6 +1,6 @@
 use super::irq;
 use super::mm;
-use super::paging;
+
 use crate::utils::init_once;
 
 #[derive(Debug)]

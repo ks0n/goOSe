@@ -1,8 +1,8 @@
 use crate::arch::riscv64::registers;
 use crate::arch::ArchitectureInterrupts;
-use crate::kprintln;
-use crate::irq;
 use crate::globals;
+use crate::irq;
+use crate::kprintln;
 
 use core::arch::asm;
 

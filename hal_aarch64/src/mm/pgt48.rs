@@ -1,16 +1,18 @@
-use crate::globals;
-use crate::mm;
+// use crate::globals;
 
-use crate::paging::PagingImpl;
+// use crate::mm;
+use hal_core::{
+    Error,
+    mm::{self, PageEntry, PageMap, Permissions, PageAllocFn},
+};
+
+// use crate::paging::PagingImpl;
 
 use cortex_a::asm::barrier;
 use cortex_a::registers::*;
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 use tock_registers::register_bitfields;
 use tock_registers::registers::{ReadOnly, ReadWrite};
-
-use hal_core::mm::{Permissions};
-use hal_core::mm as hal_core_mm;
 
 register_bitfields! [u64,
     pub VAddrInner [
@@ -80,10 +82,10 @@ impl VAddr {
     }
 }
 
-impl From<hal_core_mm::VAddr> for VAddr {
-    fn from(paddr: hal_core_mm::VAddr) -> Self {
+impl From<mm::VAddr> for VAddr {
+    fn from(paddr: mm::VAddr) -> Self {
         assert_eq!(usize::BITS, u64::BITS);
-        let val = usize::from(paddr) as u64;
+        let val = paddr.val as u64;
         Self(unsafe { core::mem::transmute::<u64, ReadOnly<u64, VAddrInner::Register>>(val) })
     }
 }
@@ -93,7 +95,7 @@ pub struct PAddr(u64);
 impl From<mm::PAddr> for PAddr {
     fn from(paddr: mm::PAddr) -> Self {
         assert_eq!(usize::BITS, u64::BITS);
-        Self(usize::from(paddr) as u64)
+        Self(paddr.val as u64)
     }
 }
 
@@ -130,7 +132,7 @@ impl TableDescriptor {
     }
 }
 
-struct TableEntry(ReadWrite<u64, TableEntryInner::Register>);
+pub struct TableEntry(ReadWrite<u64, TableEntryInner::Register>);
 
 impl TableEntry {
     fn get_target(&self) -> u64 {
@@ -147,34 +149,30 @@ impl TableEntry {
         self.0.read(TableEntryInner::TYPE) == TableEntryInner::TYPE::INVALID_ENTRY.into()
     }
 
-    fn set_invalid(&mut self) {
-        self.0.write(TableEntryInner::TYPE::INVALID_ENTRY);
-    }
-
-    fn set_permissions(&mut self, perms: Permissions) {
+    fn set_permissions(&mut self, perms: mm::Permissions) {
         // TODO: Can we improve this?
-        if perms.contains(Permissions::USER) {
-            if perms.contains(Permissions::WRITE) {
+        if perms.contains(mm::Permissions::USER) {
+            if perms.contains(mm::Permissions::WRITE) {
                 self.0.modify(TableEntryInner::AP::U_RW_K_RW);
             } else {
                 self.0.modify(TableEntryInner::AP::U_R_K_R);
             }
 
             self.0.modify(TableEntryInner::PXN.val(1));
-            if perms.contains(Permissions::EXECUTE) {
+            if perms.contains(mm::Permissions::EXECUTE) {
                 self.0.modify(TableEntryInner::UXN.val(0));
             } else {
                 self.0.modify(TableEntryInner::UXN.val(1));
             }
         } else {
-            if perms.contains(Permissions::WRITE) {
+            if perms.contains(mm::Permissions::WRITE) {
                 self.0.modify(TableEntryInner::AP::U_NONE_K_RW);
             } else {
                 self.0.modify(TableEntryInner::AP::U_NONE_K_R);
             }
 
             self.0.modify(TableEntryInner::UXN.val(1));
-            if perms.contains(Permissions::EXECUTE) {
+            if perms.contains(mm::Permissions::EXECUTE) {
                 self.0.modify(TableEntryInner::PXN.val(0));
             } else {
                 self.0.modify(TableEntryInner::PXN.val(1));
@@ -198,6 +196,13 @@ impl TableEntry {
     }
 }
 
+impl PageEntry for TableEntry {
+    fn set_invalid(&mut self) {
+        self.0.write(TableEntryInner::TYPE::INVALID_ENTRY);
+    }
+}
+
+
 /// Depending on the level of the pagetable walk, the actual data (u64) needs to be interpreted
 /// differently: Descriptor for levels 0 to 2 and Entry for level 3
 union PageTableContent {
@@ -216,6 +221,7 @@ impl PageTableContent {
 pub struct PageTable {
     entries: [PageTableContent; 512],
 }
+// static_assertions::const_assert_eq!(mem::size_of(PageTableInner), 0x1000);
 
 impl PageTable {
     pub const fn zeroed() -> Self {
@@ -229,22 +235,44 @@ impl PageTable {
         }
         Self { entries }
     }
+}
 
-    fn map_inner(
+impl PageMap for PageTable {
+    const PAGE_SIZE: usize = 4096;
+    type Entry = TableEntry;
+
+    fn new(alloc: PageAllocFn) -> Result<&'static mut Self, Error> {
+        let page = alloc(1);
+        let page_table = page.ptr_cast::<PageTable>();
+        // Safety: the PMM gave us the memory, it should be a valid pointer.
+        let page_table: &mut PageTable = unsafe { page_table.as_mut().unwrap() };
+
+        page_table
+            .entries
+            .iter_mut()
+            .for_each(|content| unsafe { &mut content.descriptor }.set_invalid());
+
+        Ok(page_table)
+    }
+
+    fn map(
         &mut self,
-        paddr: PAddr,
-        vaddr: VAddr,
+        va: mm::VAddr,
+        pa: mm::PAddr,
         perms: Permissions,
-    ) -> Result<&mut TableEntry, crate::Error> {
+        alloc: PageAllocFn
+    ) -> Result<&mut TableEntry, Error> {
+        let va = VAddr::from(va);
+        let pa = PAddr::from(pa);
         let mut pagetable = self;
 
         for lvl in 0..=3 {
-            let offset = vaddr.get_level_offset(lvl);
+            let offset = va.get_level_offset(lvl);
             let content = &mut pagetable.entries[offset];
 
             if lvl == 3 {
                 let entry = unsafe { &mut content.entry };
-                entry.set_target(u64::from(&paddr));
+                entry.set_target(u64::from(&pa));
                 entry.set_permissions(perms);
                 entry.set_mair_index(0);
                 entry.set_shareable();
@@ -255,52 +283,22 @@ impl PageTable {
 
             let descriptor = unsafe { &mut content.descriptor };
             if descriptor.is_invalid() {
-                let new_page_table = PageTable::new()?;
+                let new_page_table = PageTable::new(alloc)?;
                 descriptor.set_next_level(new_page_table);
             }
 
             pagetable = descriptor.get_next_level();
         }
 
-        unreachable!("We should have returned by now");
-    }
-}
-
-impl PagingImpl for PageTable {
-    fn new() -> Result<&'static mut Self, crate::Error> {
-        let page = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_rw_pages(1))?;
-        let page_table: *mut PageTable = page.into();
-        // Safety: the PMM gave us the memory, it should be a valid pointer.
-        let page_table = unsafe { page_table.as_mut().unwrap() };
-
-        page_table
-            .entries
-            .iter_mut()
-            .for_each(|content| unsafe { &mut content.descriptor }.set_invalid());
-
-        Ok(page_table)
+        unreachable!("We should have reached lvl 3 and returned by now...");
     }
 
-    fn get_page_size() -> usize {
-        4096
-    }
-
-    fn map(
-        &mut self,
-        pa: mm::PAddr,
-        va: hal_core_mm::VAddr,
-        perms: Permissions,
-    ) -> Result<(), crate::Error> {
-        self.map_inner(pa.into(), va.into(), perms)?;
-
-        Ok(())
-    }
-
-    fn add_invalid_entry(&mut self, vaddr: hal_core_mm::VAddr) -> Result<(), crate::Error> {
-        let entry = self.map_inner(
-            PAddr(0x0A0A_0A0A_0A0A_0A0A),
-            vaddr.into(),
-            Permissions::READ,
+    fn add_invalid_entry(&mut self, va: mm::VAddr, alloc: PageAllocFn) -> Result<(), Error> {
+        let entry = self.map(
+            va,
+            mm::PAddr { val: 0x0A0A_0A0A_0A0A_0A0A },
+            mm::Permissions::READ,
+            alloc
         )?;
 
         entry.set_invalid();
@@ -308,50 +306,50 @@ impl PagingImpl for PageTable {
         Ok(())
     }
 
-    fn reload(&mut self) {
-        MAIR_EL1.write(
-            // Attribute 0 - NonCacheable normal DRAM. FIXME: enable cache?
-            MAIR_EL1::Attr0_Normal_Outer::NonCacheable + MAIR_EL1::Attr0_Normal_Inner::NonCacheable,
-        );
-        TTBR0_EL1.set_baddr((self as *const PageTable) as u64);
-        TCR_EL1.write(
-            TCR_EL1::TBI0::Used
-                + TCR_EL1::IPS::Bits_48
-                + TCR_EL1::TG0::KiB_4
-                // + TCR_EL1::SH0::Inner
-                + TCR_EL1::SH0::None
-                // + TCR_EL1::ORGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable
-                + TCR_EL1::ORGN0::NonCacheable
-                // + TCR_EL1::IRGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable
-                + TCR_EL1::IRGN0::NonCacheable
-                + TCR_EL1::EPD0::EnableTTBR0Walks
-                + TCR_EL1::A1::TTBR0
-                + TCR_EL1::T0SZ.val(16)
-                + TCR_EL1::EPD1::DisableTTBR1Walks,
-        );
+    // fn reload(&mut self) {
+    //     MAIR_EL1.write(
+    //         // Attribute 0 - NonCacheable normal DRAM. FIXME: enable cache?
+    //         MAIR_EL1::Attr0_Normal_Outer::NonCacheable + MAIR_EL1::Attr0_Normal_Inner::NonCacheable,
+    //     );
+    //     TTBR0_EL1.set_baddr((self as *const PageTable) as u64);
+    //     TCR_EL1.write(
+    //         TCR_EL1::TBI0::Used
+    //             + TCR_EL1::IPS::Bits_48
+    //             + TCR_EL1::TG0::KiB_4
+    //             // + TCR_EL1::SH0::Inner
+    //             + TCR_EL1::SH0::None
+    //             // + TCR_EL1::ORGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable
+    //             + TCR_EL1::ORGN0::NonCacheable
+    //             // + TCR_EL1::IRGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable
+    //             + TCR_EL1::IRGN0::NonCacheable
+    //             + TCR_EL1::EPD0::EnableTTBR0Walks
+    //             + TCR_EL1::A1::TTBR0
+    //             + TCR_EL1::T0SZ.val(16)
+    //             + TCR_EL1::EPD1::DisableTTBR1Walks,
+    //     );
+    //
+    //     unsafe {
+    //         barrier::isb(barrier::SY);
+    //     }
+    //
+    //     SCTLR_EL1.modify(SCTLR_EL1::M::Enable);
+    //
+    //     unsafe {
+    //         barrier::isb(barrier::SY);
+    //     }
+    // }
 
-        unsafe {
-            barrier::isb(barrier::SY);
-        }
-
-        SCTLR_EL1.modify(SCTLR_EL1::M::Enable);
-
-        unsafe {
-            barrier::isb(barrier::SY);
-        }
-    }
-
-    fn disable(&mut self) {
-        // let satp = Satp::new()
-        //     .with_ppn(0)
-        //     .with_asid(0)
-        //     .with_mode(SatpMode::Bare as u8);
-
-        // unsafe {
-        //     asm!("csrw satp, {}", in(reg)u64::from(satp));
-        //     asm!("sfence.vma");
-        // }
-
-        unimplemented!()
-    }
+    // fn disable(&mut self) {
+    //     // let satp = Satp::new()
+    //     //     .with_ppn(0)
+    //     //     .with_asid(0)
+    //     //     .with_mode(SatpMode::Bare as u8);
+    //
+    //     // unsafe {
+    //     //     asm!("csrw satp, {}", in(reg)u64::from(satp));
+    //     //     asm!("sfence.vma");
+    //     // }
+    //
+    //     unimplemented!()
+    // }
 }

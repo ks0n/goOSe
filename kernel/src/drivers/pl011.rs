@@ -7,7 +7,7 @@ use crate::utils::lock::Lock;
 pub extern crate alloc;
 use alloc::boxed::Box;
 
-use fdt::standard_nodes::MemoryRegion;
+
 
 pub struct Pl011 {
     inner: Lock<Pl011Inner>,

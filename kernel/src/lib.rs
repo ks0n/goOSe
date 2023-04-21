@@ -37,6 +37,7 @@ cfg_if::cfg_if! {
     if  #[cfg(target_arch = "aarch64")] {
         pub use arch::aarch64::{PagingImpl, ArchImpl};
         pub type ConsoleImpl = drivers::pl011::Pl011;
+        pub use hal_aarch64 as hal;
     } else if #[cfg(target_arch = "riscv64")] {
         pub use arch::riscv64::{PagingImpl, ArchImpl};
         pub type ConsoleImpl = drivers::ns16550::Ns16550;
@@ -45,7 +46,7 @@ cfg_if::cfg_if! {
     }
 }
 
-static_assertions::assert_impl_all!(ArchImpl: arch::Architecture);
+// static_assertions::assert_impl_all!(ArchImpl: arch::Architecture);
 // static_assertions::assert_impl_all!(InterruptsImpl: arch::ArchitectureInterrupts);
-static_assertions::assert_impl_all!(PagingImpl: paging::PagingImpl);
-static_assertions::assert_impl_all!(ConsoleImpl: drivers::Console);
+// static_assertions::assert_impl_all!(PagingImpl: paging::PagingImpl);
+// static_assertions::assert_impl_all!(ConsoleImpl: drivers::Console);

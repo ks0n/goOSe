@@ -67,7 +67,10 @@ impl DeviceTree {
         //  Handling this properly requires more code which we will do in the future, but for
         //  now... don't do anything particular to take care of the root irqchip and use a
         //  heuristic to find the soc level interrupt controller.
-        let mut interrupt_controllers = self.dtb.all_nodes().filter(|node| node.property("interrupt-controller").is_some());
+        let mut interrupt_controllers = self
+            .dtb
+            .all_nodes()
+            .filter(|node| node.property("interrupt-controller").is_some());
 
         // The heuristic, the root irq chip doesn't have a reg property.
         // Works on aarch64 and riscv64.

@@ -2,6 +2,8 @@ use crate::device_tree::DeviceTree;
 use crate::globals;
 use crate::mm;
 use crate::mm::PAddr;
+use hal_core::mm::{PageMap, VAddr, Permissions};
+use crate::hal;
 use crate::paging::PagingImpl as _;
 use crate::Error;
 use core::mem;
@@ -246,7 +248,7 @@ impl PhysicalMemoryManager {
         device_tree: &DeviceTree,
         page_size: usize,
     ) -> Result<(), AllocatorError> {
-        let mut available_regions = Self::available_memory_regions::<10>(device_tree, page_size);
+        let available_regions = Self::available_memory_regions::<10>(device_tree, page_size);
 
         assert!(
             available_regions
@@ -341,19 +343,12 @@ impl PhysicalMemoryManager {
         let addr: usize = first_page.into();
 
         if unsafe { globals::STATE.is_mmu_enabled() } {
-            globals::KERNEL_PAGETABLE.lock(|kernel_pt| {
-                for page_addr in
-                    (addr..(addr + page_count * self.page_size())).step_by(self.page_size())
-                {
-                    kernel_pt.map(
-                        page_addr.into(),
-                        page_addr.into(),
-                        mm::Permissions::READ | mm::Permissions::WRITE,
-                    )? // TODO: unmap all mapped pages if one map fails.
-                }
-
-                Ok::<(), Error>(())
-            })?;
+            hal::mm::current().identity_map_range(VAddr::new(addr), page_count, Permissions::READ | Permissions::WRITE, |_| {
+                // The mmu is enabled, therefore we already mapped all DRAM into the kernel's pagetable as
+                // invalid entries.
+                // Pagetable must only modify existing entries and not allocate.
+                panic!("alloc_rw_pages: pagetable tried to allocate memory when mapping it's rw_pages")
+            }).expect("mapping in this case should never fail as illustrated by the comment above...");
         }
 
         // Bit weird, when we have a KERNEL_PAGETABLE this is a VAddr, but PAddr

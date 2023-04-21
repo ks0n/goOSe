@@ -5,11 +5,11 @@ use tock_registers::register_bitfields;
 use tock_registers::registers::{ReadOnly, ReadWrite};
 
 use crate::drivers::{Driver, IrqChipMatcher};
-use crate::irq::{self, Interrupt, IrqChip, IrqLine};
+use crate::irq::{Interrupt, IrqChip};
 use crate::lock::Lock;
 use crate::Error;
 
-use fdt::standard_nodes::MemoryRegion;
+
 
 pub struct GicV2 {
     inner: Lock<GicV2Inner>,

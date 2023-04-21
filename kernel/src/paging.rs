@@ -1,5 +1,7 @@
 use super::mm;
-use core::num::TryFromIntError;
+
+
+use hal_core::mm::{Permissions, VAddr};
 
 pub trait PagingImpl {
     fn new() -> Result<&'static mut Self, crate::Error>;
@@ -21,11 +23,11 @@ pub trait PagingImpl {
     fn map(
         &mut self,
         pa: mm::PAddr,
-        va: mm::VAddr,
-        perms: mm::Permissions,
+        va: VAddr,
+        perms: Permissions,
     ) -> Result<(), crate::Error>;
 
-    fn add_invalid_entry(&mut self, vaddr: mm::VAddr) -> Result<(), crate::Error>;
+    fn add_invalid_entry(&mut self, vaddr: VAddr) -> Result<(), crate::Error>;
 
     fn reload(&mut self);
     fn disable(&mut self);
@@ -49,8 +51,8 @@ mod tests {
         fn map(
             &mut self,
             _pa: mm::PAddr,
-            _va: mm::VAddr,
-            _perms: mm::Permissions,
+            _va: VAddr,
+            _perms: Permissions,
         ) -> Result<(), Error> {
             unreachable!("We will never use this, we just need the compiler to be happy");
         }
@@ -58,7 +60,7 @@ mod tests {
         fn add_invalid_entry(
             &mut self,
             _mm: &mut mm::MemoryManager,
-            _vaddr: mm::VAddr,
+            _vaddr: VAddr,
         ) -> Result<(), Error> {
             unreachable!("We will never use this, we just need the compiler to be happy");
         }

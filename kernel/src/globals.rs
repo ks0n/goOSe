@@ -19,7 +19,7 @@ pub static IRQ_CHIP: InitOnce<Arc<dyn IrqChip + Sync + Send>> = InitOnce::new();
 pub static PHYSICAL_MEMORY_MANAGER: Lock<mm::PhysicalMemoryManager> =
     Lock::new(mm::PhysicalMemoryManager::new());
 
-pub static KERNEL_PAGETABLE: Lock<crate::PagingImpl> = Lock::new(crate::PagingImpl::zeroed());
+//pub static KERNEL_PAGETABLE: Lock<crate::PagingImpl> = Lock::new(crate::PagingImpl::zeroed());
 
 pub enum KernelState {
     EarlyInit,

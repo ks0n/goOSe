@@ -2,6 +2,8 @@
 
 members = [
     "kernel",
+    "hal_core",
+    "hal_aarch64",
     "aarch64_qemuvirt",
     "riscv64_qemuvirt",
 ]

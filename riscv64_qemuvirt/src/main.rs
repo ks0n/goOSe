@@ -8,10 +8,10 @@
 compile_error!("Must be compiled as riscv64");
 
 use core::arch::asm;
+use kernel::arch::riscv64::Riscv64;
 use kernel::drivers::ns16550::*;
 use kernel::drivers::plic;
 use kernel::drivers::qemuexit::QemuExit;
-use kernel::arch::riscv64::Riscv64;
 
 pub const UART_ADDR: usize = 0x1000_0000;
 pub const UART_INTERRUPT_NUMBER: u16 = 10;

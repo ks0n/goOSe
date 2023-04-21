@@ -143,5 +143,9 @@ impl IrqChip for Plic {
 
 pub(super) const MATCHER: IrqChipMatcher = IrqChipMatcher {
     compatibles: &["riscv,plic0"],
-    constructor: |reg| Ok(Box::new(Plic::new(reg.next().unwrap().starting_address as usize))),
+    constructor: |reg| {
+        Ok(Box::new(Plic::new(
+            reg.next().unwrap().starting_address as usize,
+        )))
+    },
 };

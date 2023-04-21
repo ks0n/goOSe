@@ -10,27 +10,12 @@ use super::drivers::{
 };
 use super::globals;
 use super::irq::{Interrupt, IrqChip};
-use super::mm::{self, Permissions};
+use super::mm::{self};
 use super::paging::PagingImpl as _;
 
-use alloc::sync::Arc;
+use crate::hal;
+use hal_core::mm::{PageMap, Permissions};
 
-// fn do_irq_chip() -> Arc<dyn IrqChip + Sync + Send> {
-//     globals::KERNEL_PAGETABLE
-//         .lock(|pagetable| {
-//             pagetable.map(
-//                 0x0800_0000.into(),
-//                 0x0800_0000.into(),
-//                 Permissions::READ | Permissions::WRITE,
-//             ).unwrap();
-//             pagetable.map(
-//                 0x0801_0000.into(),
-//                 0x0801_0000.into(),
-//                 Permissions::READ | Permissions::WRITE,
-//             ).unwrap();
-//         });
-//     Arc::new(GicV2::new(0x800_0000, 0x801_0000))
-// }
 
 pub fn generic_main<Arch: Architecture>(dt: DeviceTree, hacky_devices: &[&dyn Driver]) {
     // Memory init
@@ -73,15 +58,12 @@ fn test_timer_interrupt<Arch: Architecture>() {
 
 fn test_pagetable_remap() {
     crate::kprintln!("Testing the remapping capabilities of our pagetable...");
-    globals::KERNEL_PAGETABLE
-        .lock(|pagetable| {
-            pagetable.map(
-                0x0900_0000.into(),
-                0x0450_0000.into(),
+    hal::mm::current().map(
+                hal_core::mm::VAddr::new(0x0900_0000),
+                hal_core::mm::PAddr::new(0x0450_0000),
                 Permissions::READ | Permissions::WRITE,
-            )
-        })
-        .unwrap();
+                |_| unreachable!()
+    ).unwrap();
     let uart = Pl011::new(0x0450_0000);
     uart.write("Uart remaped, if you see this, it works !!!\n");
 }

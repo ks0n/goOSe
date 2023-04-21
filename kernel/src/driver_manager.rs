@@ -10,6 +10,9 @@ use super::paging::PagingImpl as _;
 use drivers::{Console, Driver};
 use fdt::node::FdtNode;
 
+use crate::hal;
+use hal_core::mm::{PageMap, Permissions};
+
 pub struct DriverManager {
     drivers: LinkedList<Arc<dyn Driver>>,
 }
@@ -101,7 +104,7 @@ impl DriverManager {
         }
     }
 
-    fn find_irq_chip(&self, intc_node: &FdtNode) -> Option<Box<dyn IrqChip + Send + Sync>> {
+    fn find_irq_chip(&self, _intc_node: &FdtNode) -> Option<Box<dyn IrqChip + Send + Sync>> {
         todo!()
     }
 
@@ -119,24 +122,13 @@ impl DriverManager {
 }
 
 fn map_dt_regions(node: &FdtNode) -> Result<(), Error> {
-    let pagesize = crate::PagingImpl::get_page_size();
-
     if let Some(reg) = node.reg() {
         for memory_region in reg {
             let start = memory_region.starting_address as usize;
             let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
 
-            for page in (start..start + size).step_by(pagesize) {
-                globals::KERNEL_PAGETABLE.lock(|pagetable| {
-                    pagetable.map(
-                        page.into(),
-                        page.into(),
-                        mm::Permissions::READ | mm::Permissions::WRITE,
-                    )
-                })?;
-                // TODO: if the above fails, we should just try? but also unmap the already mapped
-                // stuff before returning an Error.
-            }
+            assert!(size % hal::mm::PAGE_SIZE == 0);
+            hal::mm::current().identity_map_range(start.into(), size / hal::mm::PAGE_SIZE, Permissions::READ | Permissions::WRITE, |count| { mm::alloc_pages_raw(count).unwrap() });
         }
     }
 
@@ -144,16 +136,17 @@ fn map_dt_regions(node: &FdtNode) -> Result<(), Error> {
 }
 
 fn unmap_dt_regions(node: &FdtNode) -> Result<(), Error> {
-    let pagesize = crate::PagingImpl::get_page_size();
+    let pagesize = hal::mm::PAGE_SIZE;
 
     if let Some(reg) = node.reg() {
         for memory_region in reg {
             let start = memory_region.starting_address as usize;
             let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
+            assert!(size % hal::mm::PAGE_SIZE == 0);
 
-            let kernel_pt = globals::KERNEL_PAGETABLE.lock(|pt| pt);
+            let kernel_pt = hal::mm::current();
             for page in (start..start + size).step_by(pagesize) {
-                kernel_pt.add_invalid_entry(page.into())?;
+                kernel_pt.add_invalid_entry(page.into(), |_| unreachable!()).unwrap();
             }
         }
     }
