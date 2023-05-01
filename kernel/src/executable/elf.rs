@@ -1,7 +1,6 @@
 use core::iter::Iterator;
 
 use crate::mm;
-use crate::paging::PagingImpl;
 
 use goblin;
 use goblin::elf::header::header64::Header;

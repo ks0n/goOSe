@@ -1,10 +1,8 @@
 use crate::device_tree::DeviceTree;
 use crate::globals;
 use crate::mm;
-use crate::mm::PAddr;
 use hal_core::mm::{PageMap, VAddr, Permissions};
 use crate::hal;
-use crate::paging::PagingImpl as _;
 use crate::Error;
 use core::mem;
 
@@ -298,7 +296,7 @@ impl PhysicalMemoryManager {
         Ok(())
     }
 
-    pub fn alloc_pages(&mut self, page_count: usize) -> Result<PAddr, AllocatorError> {
+    pub fn alloc_pages(&mut self, page_count: usize) -> Result<usize, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
         let mut last_page_base: usize = 0;
@@ -328,14 +326,14 @@ impl PhysicalMemoryManager {
                     .for_each(|page| page.set_allocated());
                 self.metadata[i].set_last();
 
-                return Ok(PAddr::from(self.metadata[first_page_index].base));
+                return Ok(self.metadata[first_page_index].base);
             }
         }
 
         Err(AllocatorError::OutOfMemory)
     }
 
-    pub fn alloc_rw_pages(&mut self, page_count: usize) -> Result<PAddr, Error> {
+    pub fn alloc_rw_pages(&mut self, page_count: usize) -> Result<usize, Error> {
         // If there is a kernel pagetable, identity map the pages.
         // Not sure this is the best idea, but I would say it follows the
         // principle of least astonishment.
@@ -351,9 +349,7 @@ impl PhysicalMemoryManager {
             }).expect("mapping in this case should never fail as illustrated by the comment above...");
         }
 
-        // Bit weird, when we have a KERNEL_PAGETABLE this is a VAddr, but PAddr
-        // otherwise.
-        Ok(PAddr::from(addr))
+        Ok(addr)
     }
 
     pub fn page_size(&self) -> usize {

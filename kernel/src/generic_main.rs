@@ -10,7 +10,6 @@ use super::drivers::{
 };
 use super::globals;
 use super::irq::{Interrupt, IrqChip};
-use super::paging::PagingImpl as _;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::hal;

@@ -1,7 +1,5 @@
 use crate::globals;
 use crate::mm;
-use crate::paging;
-use crate::paging::PagingImpl;
 use crate::Error;
 use core::arch::asm;
 use core::convert::TryInto;

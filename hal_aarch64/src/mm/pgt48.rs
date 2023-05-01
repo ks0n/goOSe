@@ -6,8 +6,6 @@ use hal_core::{
     mm::{self, PageEntry, PageMap, Permissions, PageAllocFn},
 };
 
-// use crate::paging::PagingImpl;
-
 use cortex_a::asm::barrier;
 use cortex_a::registers::*;
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};

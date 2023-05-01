@@ -4,9 +4,7 @@ use super::device_tree::DeviceTree;
 use super::drivers::{self, Matcher};
 use super::error::Error;
 use super::globals;
-use super::irq::IrqChip;
 use super::mm;
-use super::paging::PagingImpl as _;
 use drivers::{Console, Driver};
 use fdt::node::FdtNode;
 
@@ -28,7 +26,6 @@ impl DriverManager {
         let mut mgr = Self::new();
 
         mgr.do_console(dt)?;
-        // mgr.do_irq_chip(dt)?;
 
         Ok(mgr)
     }
@@ -84,34 +81,6 @@ impl DriverManager {
         let cons: Arc<dyn Console + Sync + Send> = Arc::from(cons);
         self.register_driver(cons.clone());
         globals::CONSOLE.set(cons.clone())?;
-
-        Ok(())
-    }
-
-    fn do_irq_chip(&mut self, dt: &DeviceTree) -> Result<(), Error> {
-        let intc_node = dt.interrupt_controller().ok_or(Error::DeviceNotFound(
-            "dtb doesn't have an interrupt controller",
-        ))?;
-
-        map_dt_regions(&intc_node)?;
-
-        if let Some(irq_chip_driver) = self.find_driver(&intc_node, drivers::IRQ_CHIP_MATCHERS) {
-            self.register_irq_chip(irq_chip_driver)?;
-            Ok(())
-        } else {
-            unmap_dt_regions(&intc_node)?;
-            Err(Error::NoMatchingDriver("irq_chip"))
-        }
-    }
-
-    fn find_irq_chip(&self, _intc_node: &FdtNode) -> Option<Box<dyn IrqChip + Send + Sync>> {
-        todo!()
-    }
-
-    fn register_irq_chip(&mut self, irq_chip: Box<dyn IrqChip + Sync + Send>) -> Result<(), Error> {
-        let irq_chip: Arc<dyn IrqChip + Sync + Send> = Arc::from(irq_chip);
-        self.register_driver(irq_chip.clone());
-        globals::IRQ_CHIP.set(irq_chip.clone());
 
         Ok(())
     }
