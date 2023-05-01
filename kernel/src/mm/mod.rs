@@ -128,59 +128,63 @@ pub fn alloc_pages(count: usize) -> Result<&'static mut [u8], Error> {
     Ok(unsafe { slice::from_raw_parts_mut(addr.val as *mut _, count * page_size) })
 }
 
-pub struct KernelPageTable(&'static mut crate::PagingImpl);
-
-impl KernelPageTable {
-    pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), Error> {
-        self.0.map(PAddr::from(addr), VAddr::from(addr), perms)
-    }
-
-    pub fn map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) -> Result<(), Error> {
-        self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
-    }
-
-    pub fn reload(&mut self) {
-        self.0.reload()
-    }
-    pub fn disable(&mut self) {
-        self.0.disable()
-    }
+pub fn alloc_pages_for_hal(count: usize) -> hal_core::mm::PAddr {
+    alloc_pages_raw(count).expect("page allocation function passed to the hal has failed, critical...")
 }
 
-pub struct UserPageTable(&'static mut crate::PagingImpl);
+// pub struct KernelPageTable(&'static mut crate::PagingImpl);
+//
+// impl KernelPageTable {
+//     pub fn identity_map(&mut self, addr: usize, perms: Permissions) -> Result<(), Error> {
+//         self.0.map(PAddr::from(addr), VAddr::from(addr), perms)
+//     }
+//
+//     pub fn map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) -> Result<(), Error> {
+//         self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
+//     }
+//
+//     pub fn reload(&mut self) {
+//         self.0.reload()
+//     }
+//     pub fn disable(&mut self) {
+//         self.0.disable()
+//     }
+// }
 
-impl UserPageTable {
-    pub fn new() -> Result<Self, Error> {
-        todo!()
-        // let page_table = crate::PagingImpl::new()?;
-        //
-        // // TODO: do we really need this:
-        // // - aarch64
-        // //      thx to TTBR0_EL1/TTBR0_EL0 I don't see why we'd need it
-        // map_kernel_rwx(page_table);
-        //
-        // Ok(UserPageTable(page_table))
-    }
-
-    pub fn map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) -> Result<(), Error> {
-        self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
-    }
-
-    pub fn align_down(&self, addr: usize) -> usize {
-        crate::PagingImpl::align_down(addr)
-    }
-
-    pub fn align_up(&self, addr: usize) -> usize {
-        crate::PagingImpl::align_up(addr)
-    }
-
-    pub fn reload(&mut self) {
-        self.0.reload()
-    }
-    pub fn disable(&mut self) {
-        self.0.disable()
-    }
-}
+// pub struct UserPageTable(&'static mut crate::PagingImpl);
+//
+// impl UserPageTable {
+//     pub fn new() -> Result<Self, Error> {
+//         todo!()
+//         // let page_table = crate::PagingImpl::new()?;
+//         //
+//         // // TODO: do we really need this:
+//         // // - aarch64
+//         // //      thx to TTBR0_EL1/TTBR0_EL0 I don't see why we'd need it
+//         // map_kernel_rwx(page_table);
+//         //
+//         // Ok(UserPageTable(page_table))
+//     }
+//
+//     pub fn map(&mut self, paddr: usize, vaddr: usize, perms: Permissions) -> Result<(), Error> {
+//         self.0.map(PAddr::from(paddr), VAddr::from(vaddr), perms)
+//     }
+//
+//     pub fn align_down(&self, addr: usize) -> usize {
+//         crate::PagingImpl::align_down(addr)
+//     }
+//
+//     pub fn align_up(&self, addr: usize) -> usize {
+//         crate::PagingImpl::align_up(addr)
+//     }
+//
+//     pub fn reload(&mut self) {
+//         self.0.reload()
+//     }
+//     pub fn disable(&mut self) {
+//         self.0.disable()
+//     }
+// }
 
 pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) -> Result<(), Error> {
     let mut r_entries = StaticVec::<(usize, usize), 128>::new();

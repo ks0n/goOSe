@@ -35,7 +35,7 @@ pub mod paging;
 // TODO: cleanup how we handle features
 cfg_if::cfg_if! {
     if  #[cfg(target_arch = "aarch64")] {
-        pub use arch::aarch64::{PagingImpl, ArchImpl};
+        // pub use arch::aarch64::{PagingImpl, ArchImpl};
         pub type ConsoleImpl = drivers::pl011::Pl011;
         pub use hal_aarch64 as hal;
     } else if #[cfg(target_arch = "riscv64")] {

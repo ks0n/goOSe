@@ -1,18 +1,34 @@
 #![no_std]
 #![no_main]
 
+#![feature(naked_functions)]
+
 #[cfg(not(target_arch = "aarch64"))]
 compile_error!("Must be compiled as aarch64");
 
 use core::arch::asm;
-use kernel::arch::aarch64::Aarch64;
 use kernel::drivers::pl011::Pl011;
 
 const DTB_ADDR: usize = 0x4000_0000;
 
+#[naked]
+#[no_mangle]
+unsafe extern "C" fn _start() -> ! {
+    asm!(
+        "
+        adrp x9, STACK_START
+        msr spsel, xzr
+        mov sp, x9
+        b k_main
+        ",
+        options(noreturn)
+    );
+}
+
+
 #[no_mangle]
 extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
-    kernel::arch::aarch64::Aarch64::disable_fp_trap();
+    kernel::hal::cpu::disable_fp_trapping();
 
     static PL011: Pl011 = Pl011::new(0x0900_0000);
     kernel::globals::set_earlyinit_console(&PL011);
@@ -20,7 +36,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     kernel::kprintln!("hello, I am a goOSe! proud member of the gagelen !!!");
 
     unsafe {
-        kernel::arch::aarch64::Aarch64::init_el1_exception_handlers();
+        kernel::hal::irq::init_el1_exception_handlers();
     }
 
     unsafe {
@@ -30,7 +46,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
 
     let device_tree = kernel::device_tree::DeviceTree::new(DTB_ADDR).unwrap();
 
-    kernel::generic_main::generic_main::<Aarch64>(device_tree, &[&PL011]);
+    kernel::generic_main::generic_main(device_tree, &[&PL011]);
 
     unreachable!();
 }

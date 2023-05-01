@@ -28,7 +28,7 @@ impl DriverManager {
         let mut mgr = Self::new();
 
         mgr.do_console(dt)?;
-        mgr.do_irq_chip(dt)?;
+        // mgr.do_irq_chip(dt)?;
 
         Ok(mgr)
     }

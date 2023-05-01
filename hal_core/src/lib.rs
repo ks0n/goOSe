@@ -6,6 +6,12 @@ pub mod mm;
 pub enum Error {
 }
 
+pub type TimerCallbackFn = fn();
+
+pub enum Interrupt {
+    PhysicalTimer,
+}
+
 // /// A range similar to core::ops::Range but that is copyable.
 // /// The range is half-open, inclusive below, exclusive above, ie. [start; end[
 // #[derive(Debug, Copy, Clone, PartialEq)]
