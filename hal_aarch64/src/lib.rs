@@ -2,10 +2,27 @@
 
 #![feature(once_cell)]
 
+use cortex_a::{asm, registers::*};
+use tock_registers::interfaces::{Readable, ReadWriteable, Writeable};
+
+
 pub mod mm;
 pub mod irq;
 
 mod devices;
+
+#[derive(Debug)]
+pub struct PanicInfo {
+    esr_el1: u64,
+    elr_el1: u64,
+}
+
+pub fn panic_info() -> PanicInfo {
+    PanicInfo {
+        esr_el1: ESR_EL1.get(),
+        elr_el1: ELR_EL1.get(),
+    }
+}
 
 pub mod cpu {
     use cortex_a::{asm, registers::*};
