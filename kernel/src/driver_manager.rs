@@ -4,11 +4,11 @@ use super::device_tree::DeviceTree;
 use super::drivers::{self, Matcher};
 use super::error::Error;
 use super::globals;
-use super::mm;
 use drivers::{Console, Driver};
 use fdt::node::FdtNode;
 
 use crate::hal;
+use crate::mm::alloc_pages_for_hal;
 use hal_core::mm::{PageMap, Permissions};
 
 pub struct DriverManager {
@@ -97,7 +97,7 @@ fn map_dt_regions(node: &FdtNode) -> Result<(), Error> {
             let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
 
             assert!(size % hal::mm::PAGE_SIZE == 0);
-            hal::mm::current().identity_map_range(start.into(), size / hal::mm::PAGE_SIZE, Permissions::READ | Permissions::WRITE, |count| { mm::alloc_pages_raw(count).unwrap() });
+            hal::mm::current().identity_map_range(start.into(), size / hal::mm::PAGE_SIZE, Permissions::READ | Permissions::WRITE, alloc_pages_for_hal)?;
         }
     }
 

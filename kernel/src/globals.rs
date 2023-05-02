@@ -1,6 +1,5 @@
 use crate::lock::Lock;
 
-use crate::irq::IrqChip;
 use crate::mm;
 
 use crate::drivers;

@@ -5,7 +5,7 @@ use hal_core::{
 
 use cortex_a::asm::barrier;
 use cortex_a::registers::*;
-use tock_registers::interfaces::{Readable, Writeable, ReadWriteable};
+use tock_registers::interfaces::{Writeable, ReadWriteable};
 
 mod pgt48;
 
@@ -59,7 +59,12 @@ pub fn init_paging(
         )?
     }
 
-    unsafe { GPT.set(pt) };
+    // TODO: put into into the hal_core::Error
+    unsafe {
+        if GPT.set(pt).is_err() {
+            panic!("GPT is already set ?");
+        }
+    };
     unsafe { load_pagetable(current()); };
     // TODO: fuck `pt` is going to get dropped...
     // since pt is a reference, can't I ManuallyDrop it ?
@@ -67,7 +72,7 @@ pub fn init_paging(
     Ok(())
 }
 
-fn load_pagetable(pt: &'static mut PageTable) {
+unsafe fn load_pagetable(pt: &'static mut PageTable) {
     MAIR_EL1.write(
         // Attribute 0 - NonCacheable normal DRAM. FIXME: enable cache?
         MAIR_EL1::Attr0_Normal_Outer::NonCacheable + MAIR_EL1::Attr0_Normal_Inner::NonCacheable,

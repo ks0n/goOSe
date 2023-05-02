@@ -6,12 +6,11 @@ use crate::cpu;
 
 use crate::devices::gicv2::GicV2;
 
-use hal_core::{Interrupt, mm::{PageAllocFn, PageMap, Permissions, VAddr}};
+use hal_core::{mm::{PageAllocFn, PageMap, Permissions, VAddr}};
 use crate::mm;
 
 use tock_registers::interfaces::Writeable;
 
-const VIRTUAL_TIMER_LINE: u32 = 27;
 const PHYSICAL_TIMER_LINE: u32 = 30;
 
 pub unsafe fn init_el1_exception_handlers() {
@@ -67,8 +66,8 @@ static mut IRQ_CHIP: IrqChip = IrqChip::NoChip;
 
 pub fn init_irq_chip(_dt_node: (), alloc: PageAllocFn) -> Result<(), Error> {
     let (gicd_base, gicc_base) = (0x800_0000, 0x801_0000);
-    mm::current().identity_map_range(VAddr::new(gicd_base), 0x10_000 / mm::PAGE_SIZE, Permissions::READ | Permissions::WRITE, alloc);
-    mm::current().identity_map_range(VAddr::new(gicc_base), 0x10_000 / mm::PAGE_SIZE, Permissions::READ | Permissions::WRITE, alloc);
+    mm::current().identity_map_range(VAddr::new(gicd_base), 0x10_000 / mm::PAGE_SIZE, Permissions::READ | Permissions::WRITE, alloc)?;
+    mm::current().identity_map_range(VAddr::new(gicc_base), 0x10_000 / mm::PAGE_SIZE, Permissions::READ | Permissions::WRITE, alloc)?;
 
     unsafe {
         IRQ_CHIP = IrqChip::GicV2(

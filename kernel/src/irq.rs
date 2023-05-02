@@ -1,7 +1,5 @@
 use super::drivers::Driver;
 use super::Error;
-use crate::arch::Architecture;
-use core::sync::atomic::AtomicPtr;
 
 pub type IrqLine = usize;
 

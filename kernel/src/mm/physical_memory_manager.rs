@@ -56,10 +56,6 @@ impl PhysicalPage {
         self.kind == PageKind::Allocated
     }
 
-    fn is_free(&self) -> bool {
-        self.kind == PageKind::Free
-    }
-
     fn set_allocated(&mut self) {
         self.kind = PageKind::Allocated;
     }

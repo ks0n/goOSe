@@ -2,8 +2,6 @@ use core::fmt::{self, Write};
 
 use crate::globals;
 
-use crate::drivers::Console;
-
 fn write(data: &str) {
     if globals::CONSOLE.is_initialized() {
         // Safety: we know CONSOLE has something because it is initialized.

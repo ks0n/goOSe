@@ -118,7 +118,7 @@ pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) -> R
         regions.for_each(|region| rw_entries.try_push(region).unwrap());
     });
     let (dt_start, dt_end) = device_tree.memory_region();
-    rw_entries.try_push((dt_start, dt_end-dt_start));
+    rw_entries.try_push((dt_start, dt_end-dt_start)).unwrap();
 
     let (kernel_r, kernel_rw, kernel_rwx) = map_kernel_rwx();
     kernel_r.for_each(|entry| r_entries.try_push(entry).unwrap());
@@ -150,7 +150,7 @@ pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) -> R
 
     hal::mm::init_paging(r_entries.into_iter(), rw_entries.into_iter(), rwx_entries.into_iter(), pre_allocated_entries.into_iter(), |count| {
         alloc_pages_raw(count).expect("failure on page allocator passed to init_paging")
-    });
+    })?;
     unsafe { globals::STATE = globals::KernelState::MmuEnabledInit };
 
     Ok(())

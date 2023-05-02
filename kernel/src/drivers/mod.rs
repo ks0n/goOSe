@@ -8,9 +8,6 @@ pub mod null_uart;
 pub mod pl011;
 pub mod qemuexit;
 
-#[cfg(target_arch = "aarch64")]
-pub mod gicv2;
-
 #[cfg(target_arch = "riscv64")]
 pub mod plic;
 
@@ -39,13 +36,5 @@ impl<T: ?Sized> Matcher<T> {
     }
 }
 type ConsoleMatcher = Matcher<dyn Console + Send + Sync>;
-type IrqChipMatcher = Matcher<dyn crate::irq::IrqChip + Send + Sync>;
 
 pub const CONSOLE_MATCHERS: &[&ConsoleMatcher] = &[&pl011::MATCHER, &ns16550::MATCHER];
-
-pub(super) const IRQ_CHIP_MATCHERS: &[&IrqChipMatcher] = &[
-    #[cfg(target_arch = "aarch64")]
-    &gicv2::MATCHER,
-    #[cfg(target_arch = "riscv64")]
-    &plic::MATCHER,
-];

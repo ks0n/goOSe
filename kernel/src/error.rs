@@ -14,6 +14,7 @@ pub enum Error {
     InvalidIrqLine(irq::IrqLine),
     IrqAlreadyEnabled(irq::IrqLine),
     UnexpectedIrq(irq::IrqLine),
+    Hal(hal_core::Error),
 }
 
 impl From<init_once::Error> for Error {
@@ -31,5 +32,11 @@ impl From<fdt::FdtError> for Error {
 impl From<mm::AllocatorError> for Error {
     fn from(e: mm::AllocatorError) -> Self {
         Self::Allocator(e)
+    }
+}
+
+impl From<hal_core::Error> for Error {
+    fn from (e: hal_core::Error) -> Self {
+        Self::Hal(e)
     }
 }

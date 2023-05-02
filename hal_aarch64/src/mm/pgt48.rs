@@ -6,8 +6,6 @@ use hal_core::{
     mm::{self, PageEntry, PageMap, Permissions, PageAllocFn},
 };
 
-use cortex_a::asm::barrier;
-use cortex_a::registers::*;
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 use tock_registers::register_bitfields;
 use tock_registers::registers::{ReadOnly, ReadWrite};
@@ -133,18 +131,10 @@ impl TableDescriptor {
 pub struct TableEntry(ReadWrite<u64, TableEntryInner::Register>);
 
 impl TableEntry {
-    fn get_target(&self) -> u64 {
-        self.0.read(TableEntryInner::DEST) << 12
-    }
-
     fn set_target(&mut self, addr: u64) {
         let field = TableEntryInner::DEST.val(addr >> 12);
         self.0.modify(TableEntryInner::TYPE::TABLE_ENTRY);
         self.0.modify(field);
-    }
-
-    fn is_invalid(&self) -> bool {
-        self.0.read(TableEntryInner::TYPE) == TableEntryInner::TYPE::INVALID_ENTRY.into()
     }
 
     fn set_permissions(&mut self, perms: mm::Permissions) {
@@ -219,7 +209,6 @@ impl PageTableContent {
 pub struct PageTable {
     entries: [PageTableContent; 512],
 }
-// static_assertions::const_assert_eq!(mem::size_of(PageTableInner), 0x1000);
 
 impl PageTable {
     pub const fn zeroed() -> Self {
