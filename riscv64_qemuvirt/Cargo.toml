@@ -1,11 +1,9 @@
 [package]
 name = "riscv64_qemuvirt"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-kernel = { path = "../kernel", features = ["riscv64_sv39"] }
+gagelen = { path = "../kernel", features = ["riscv64_sv39"] }
 tests = { path = "../tests", artifact = "bin" }
 align-data = "0.1.0"

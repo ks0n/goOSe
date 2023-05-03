@@ -1,5 +1,5 @@
 {
-  description = "GoOSe devshell";
+  description = "Gagelen devshell";
 
   inputs = {
     nixpkgs.url      = "github:NixOS/nixpkgs/nixos-22.11";

@@ -95,7 +95,7 @@ pub fn init(device_tree_address: usize) {
 
 #[doc(hidden)]
 pub fn runner(tests: &[&dyn Testable]) {
-    kprintln!("\nRunning goOSe tests... Amount: {}\n", tests.len());
+    kprintln!("\nRunning Gagelen tests... Amount: {}\n", tests.len());
 
     let ctx = unsafe { TEST_CONTEXT.as_mut().unwrap() };
 

@@ -4,6 +4,8 @@
 #[cfg(not(target_arch = "aarch64"))]
 compile_error!("Must be compiled as aarch64");
 
+use gagelen as kernel;
+
 // use kernel::drivers::gicv2::GicV2;
 use kernel::drivers::pl011::Pl011;
 use kernel::drivers::qemuexit::QemuExit;
@@ -24,7 +26,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     static PL011: Pl011 = Pl011::new(0x0900_0000);
     kernel::globals::set_earlyinit_console(&PL011);
 
-    kernel::kprintln!("hello, I am GoOSe!");
+    kernel::kprintln!("hello, I am Gagelen!");
 
     unsafe {
         kernel::arch::aarch64::Aarch64::init_el1_interrupts();
@@ -79,6 +81,6 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     entry_point();
     kernel::kprintln!("[OK] Returned for Elf");
 
-    kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
+    kernel::kprintln!("[OK] Gagelen shuting down, bye bye!");
     qemu_exit.exit_success();
 }

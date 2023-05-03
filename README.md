@@ -1,4 +1,4 @@
-# goose
+# Gagelen
 
 A micro Kernel written in Rust. The goal is to have a small number of syscall 
 with a strong emphasis on IPC
@@ -41,7 +41,7 @@ You also need to select which board to use with `--bin`:
 
 #### Nix
 If you use Nix you can run `nix develop` to get a shell with everything needed
-to test GoOSe
+to test Gagelen
 
 ### Build
 ```console
@@ -58,7 +58,7 @@ $ cargo run --bin <bin_here> --target <triplet_here>
 ```
 
 ### Tests
-GoOSe also comes with unit tests that run directly on hardware and output the 
+Gagelen also comes with unit tests that run directly on hardware and output the 
 result over serial. When using Qemu, you can also have an exit code != 0 on 
 failure.
 
@@ -68,7 +68,7 @@ $ make -C kernel/fixtures <triplet_here>
 $ cargo tests --bin <bin_here> --target <triplet_here>
 ...
 ```
-:warning: **Tests might be slow to run as GoOSe is not really optimized. You can
+:warning: **Tests might be slow to run as Gagelen is not really optimized. You can
 append `--release` to the previous cargo command line to boost performance but 
 please be aware that some test might pass in debug and not in release. Feel 
 free to open an issue if you encounter such a case**

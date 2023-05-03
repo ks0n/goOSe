@@ -7,6 +7,8 @@
 #[cfg(not(target_arch = "riscv64"))]
 compile_error!("Must be compiled as riscv64");
 
+use gagelen as kernel;
+
 use core::arch::asm;
 use kernel::drivers::ns16550::*;
 use kernel::drivers::plic;
@@ -24,7 +26,7 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     static NS16550: Ns16550 = Ns16550::new(UART_ADDR);
     kernel::globals::set_earlyinit_console(&NS16550);
 
-    kernel::kprintln!("GoOSe is booting");
+    kernel::kprintln!("Gagelen is booting");
 
     #[cfg(test)]
     {
@@ -71,6 +73,6 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     entry_point();
     kernel::kprintln!("[OK] Returned for Elf");
 
-    kernel::kprintln!("[OK] GoOSe shuting down, bye bye!");
+    kernel::kprintln!("[OK] Gagelen shuting down, bye bye!");
     qemu_exit.exit_success();
 }
