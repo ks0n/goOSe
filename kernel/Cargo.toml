@@ -17,7 +17,7 @@ spin = "0.9"
 goblin = { version = "0.6", default-features = false, features = ["elf64"] }
 qemu-exit = "3.0"
 hal_core = { path = "../hal_core" }
-staticvec = { version = "0.11.9", default-features = false }
+arrayvec = { version = "0.7", default-features = false }
 tests = { path = "../tests", artifact = "bin" }
 align-data = "0.1"
 
