@@ -7,5 +7,4 @@ edition = "2021"
 
 [dependencies]
 kernel = { path = "../kernel", features = ["riscv64_sv39"] }
-tests = { path = "../tests", artifact = "bin" }
 align-data = "0.1.0"

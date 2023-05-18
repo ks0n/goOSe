@@ -18,12 +18,17 @@ use crate::executable::elf::Elf;
 use align_data::include_aligned;
 use align_data::Align4K;
 
-pub fn generic_main(dt: DeviceTree, hacky_devices: &[&dyn Driver]) {
+pub fn generic_main(dt: DeviceTree, hacky_devices: &[&dyn Driver]) -> ! {
+    let qemu_exit = QemuExit::new();
+    let qemu_exit_slice = [&qemu_exit as &dyn Driver];
+
+    let devices = hacky_devices.into_iter().chain(&qemu_exit_slice);
+
     // Memory init
     globals::PHYSICAL_MEMORY_MANAGER
         .lock(|pmm| pmm.init_from_device_tree(&dt, 4096))
         .unwrap();
-    map_address_space(&dt, hacky_devices).expect("failed to map the addres space");
+    map_address_space(&dt, devices).expect("failed to map the addres space");
 
     // Driver stuff
     // let _drvmgr = DriverManager::with_devices(&dt).unwrap();
@@ -40,13 +45,7 @@ pub fn generic_main(dt: DeviceTree, hacky_devices: &[&dyn Driver]) {
 
     crate::kprintln!("TESTS FINISHED SUCCESSFULY ✅");
 
-    loop {
-        unsafe {
-            core::arch::asm!("wfi");
-        }
-    }
-
-    QemuExit::new().exit_success();
+    qemu_exit.exit_success();
 }
 
 fn test_timer_interrupt() {

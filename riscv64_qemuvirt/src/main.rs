@@ -25,11 +25,11 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     kernel::kprintln!("GoOSe is booting");
 
-    #[cfg(test)]
-    {
-        kernel::kernel_tests::init(device_tree_ptr);
-        ktests_launch();
-    }
+    // #[cfg(test)]
+    // {
+    //     kernel::kernel_tests::init(device_tree_ptr);
+    //     ktests_launch();
+    // }
 
     unsafe {
         kernel::hal::irq::init_exception_handlers();

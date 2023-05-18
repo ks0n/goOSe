@@ -102,7 +102,10 @@ pub fn alloc_pages_for_hal(count: usize) -> hal_core::mm::PAddr {
         .expect("page allocation function passed to the hal has failed, critical...")
 }
 
-pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) -> Result<(), Error> {
+pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
+    device_tree: &DeviceTree,
+    drivers: I,
+) -> Result<(), Error> {
     let mut r_entries = ArrayVec::<(usize, usize), 128>::new();
     let mut rw_entries = ArrayVec::<(usize, usize), 128>::new();
     let mut rwx_entries = ArrayVec::<(usize, usize), 128>::new();
@@ -128,7 +131,7 @@ pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) -> R
     kernel_rw.for_each(|entry| rw_entries.try_push(entry).unwrap());
     kernel_rwx.for_each(|entry| rwx_entries.try_push(entry).unwrap());
 
-    for drv in drivers.iter() {
+    for drv in drivers {
         if let Some((base, len)) = drv.get_address_range() {
             rw_entries.try_push((base, len)).unwrap();
         }
