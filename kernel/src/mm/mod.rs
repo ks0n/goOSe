@@ -13,8 +13,8 @@ use hal_core::mm::{PageMap, Permissions, VAddr};
 use crate::drivers;
 use drivers::Driver;
 
+use arrayvec::ArrayVec;
 use core::{iter, slice};
-use staticvec::StaticVec;
 
 extern "C" {
     pub static KERNEL_START: usize;
@@ -103,10 +103,10 @@ pub fn alloc_pages_for_hal(count: usize) -> hal_core::mm::PAddr {
 }
 
 pub fn map_address_space(device_tree: &DeviceTree, drivers: &[&dyn Driver]) -> Result<(), Error> {
-    let mut r_entries = StaticVec::<(usize, usize), 128>::new();
-    let mut rw_entries = StaticVec::<(usize, usize), 128>::new();
-    let mut rwx_entries = StaticVec::<(usize, usize), 128>::new();
-    let mut pre_allocated_entries = StaticVec::<(usize, usize), 1024>::new();
+    let mut r_entries = ArrayVec::<(usize, usize), 128>::new();
+    let mut rw_entries = ArrayVec::<(usize, usize), 128>::new();
+    let mut rwx_entries = ArrayVec::<(usize, usize), 128>::new();
+    let mut pre_allocated_entries = ArrayVec::<(usize, usize), 1024>::new();
 
     // Add entries/descriptors in the pagetable for all of accessible memory regions.
     // That way in the future, mapping those entries won't require any memory allocations,
