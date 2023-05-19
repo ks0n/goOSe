@@ -20,6 +20,7 @@ hal_core = { path = "../hal_core" }
 arrayvec = { version = "0.7", default-features = false }
 tests = { path = "../tests", artifact = "bin" }
 align-data = "0.1"
+delog = "0.1.6"
 
 [dev-dependencies]
 

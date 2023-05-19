@@ -21,7 +21,7 @@ pub const UART_INTERRUPT_NUMBER: u16 = 10;
 #[no_mangle]
 extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
     static NS16550: Ns16550 = Ns16550::new(UART_ADDR);
-    kernel::globals::set_earlyinit_console(&NS16550);
+    kernel::kernel_console::set_earlyinit_console(&NS16550);
 
     kernel::kprintln!("GoOSe is booting");
 

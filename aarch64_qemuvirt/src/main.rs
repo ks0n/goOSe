@@ -15,7 +15,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     kernel::hal::cpu::disable_fp_trapping();
 
     static PL011: Pl011 = Pl011::new(0x0900_0000);
-    kernel::globals::set_earlyinit_console(&PL011);
+    kernel::kernel_console::set_earlyinit_console(&PL011);
 
     kernel::kprintln!("hello, I am a goOSe! proud member of the gagelen !!!");
 
