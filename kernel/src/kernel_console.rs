@@ -68,7 +68,7 @@ impl log::Log for KernelConsoleWriter {
 static KERNEL_CONSOLE_WRITER: KernelConsoleWriter = KernelConsoleWriter;
 
 pub fn init_logging() -> Result<(), Error> {
-    log::set_logger(&KERNEL_CONSOLE_WRITER);
+    log::set_logger(&KERNEL_CONSOLE_WRITER)?;
     log::set_max_level(LevelFilter::Trace);
 
     Ok(())
@@ -77,9 +77,9 @@ pub fn init_logging() -> Result<(), Error> {
 #[panic_handler]
 #[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    crate::kprintln!("\x1b[31mkernel panic\x1b[0m: {}", info);
+    error!("\x1b[31mkernel panic\x1b[0m: {}", info);
 
-    crate::kprintln!("hal panic info: {:X?}", hal::panic_info());
+    error!("hal panic info: {:X?}", hal::panic_info());
 
     loop {
         use core::arch::asm;

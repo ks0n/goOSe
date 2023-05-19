@@ -11,6 +11,7 @@ pub enum Error {
     InitOnce(init_once::Error),
     Allocator(mm::AllocatorError),
     Hal(hal_core::Error),
+    SetLoggerError(log::SetLoggerError),
 }
 
 impl From<init_once::Error> for Error {
@@ -34,5 +35,11 @@ impl From<mm::AllocatorError> for Error {
 impl From<hal_core::Error> for Error {
     fn from(e: hal_core::Error) -> Self {
         Self::Hal(e)
+    }
+}
+
+impl From<log::SetLoggerError> for Error {
+    fn from(e: log::SetLoggerError) -> Self {
+        Self::SetLoggerError(e)
     }
 }

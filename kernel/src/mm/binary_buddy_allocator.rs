@@ -2,6 +2,8 @@ use crate::globals;
 
 use core::alloc::{GlobalAlloc, Layout};
 
+use log::warn;
+
 pub struct BinaryBuddyAllocator;
 
 unsafe impl Sync for BinaryBuddyAllocator {}
@@ -31,7 +33,7 @@ unsafe impl GlobalAlloc for BinaryBuddyAllocator {
     }
 
     unsafe fn dealloc(&self, _: *mut u8, _: Layout) {
-        crate::kprintln!("[WARNING] dealloc is not implemented yet, freeing memory isn't supported by the allocator");
+        warn!("[WARNING] dealloc is not implemented yet, freeing memory isn't supported by the allocator");
     }
 }
 
