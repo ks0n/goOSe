@@ -2,7 +2,6 @@ use core::fmt::{self, Write};
 
 use crate::drivers::Console;
 use crate::Error;
-use crate::hal;
 
 use alloc::sync::Arc;
 
@@ -78,19 +77,6 @@ pub fn set_console(new_console: Arc<dyn Console + Sync + Send>) -> Result<(), Er
 
     // TODO: return an error if the error already was some (unless we consider it is ok)
     Ok(())
-}
-
-#[panic_handler]
-#[cfg(not(test))]
-fn panic(info: &core::panic::PanicInfo) -> ! {
-    error!("\x1b[31mkernel panic\x1b[0m: {}", info);
-
-    error!("hal panic info: {:X?}", hal::panic_info());
-
-    loop {
-        use core::arch::asm;
-        unsafe { asm!("wfi") }
-    }
 }
 
 #[macro_export]
