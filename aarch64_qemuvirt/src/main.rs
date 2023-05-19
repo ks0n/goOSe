@@ -10,6 +10,8 @@ use kernel::drivers::pl011::Pl011;
 
 const DTB_ADDR: usize = 0x4000_0000;
 
+use log::info;
+
 #[no_mangle]
 extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     kernel::hal::cpu::disable_fp_trapping();
@@ -17,7 +19,9 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     static PL011: Pl011 = Pl011::new(0x0900_0000);
     kernel::kernel_console::set_earlyinit_console(&PL011);
 
-    kernel::kprintln!("hello, I am a goOSe! proud member of the gagelen !!!");
+    kernel::kernel_console::init_logging().unwrap();
+
+    info!("hello, I am a goOSe! proud member of the gagelen !!!");
 
     unsafe {
         kernel::hal::irq::init_el1_exception_handlers();

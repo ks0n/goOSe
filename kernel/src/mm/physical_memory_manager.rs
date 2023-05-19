@@ -6,6 +6,8 @@ use crate::Error;
 use core::mem;
 use hal_core::mm::{PageMap, Permissions, VAddr};
 
+use log::debug;
+
 /// A range similar to core::ops::Range but that is copyable.
 /// The range is half-open, inclusive below, exclusive above, ie. [start; end[
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -256,7 +258,7 @@ impl PhysicalMemoryManager {
         );
 
         for (i, reg) in available_regions.iter().flatten().enumerate() {
-            crate::kprintln!("region {}: {:X?}", i, reg);
+            debug!("region {}: {:X?}", i, reg);
         }
 
         let page_count = Self::count_pages(&available_regions, page_size);

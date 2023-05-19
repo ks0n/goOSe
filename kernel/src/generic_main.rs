@@ -18,7 +18,10 @@ use crate::executable::elf::Elf;
 use align_data::include_aligned;
 use align_data::Align4K;
 
+use log::{info, trace};
+
 pub fn generic_main(dt: DeviceTree, hacky_devices: &[&dyn Driver]) -> ! {
+    info!("Entered generic_main");
     let qemu_exit = QemuExit::new();
     let qemu_exit_slice = [&qemu_exit as &dyn Driver];
 
@@ -43,7 +46,7 @@ pub fn generic_main(dt: DeviceTree, hacky_devices: &[&dyn Driver]) -> ! {
     test_pagetable_remap();
     test_elf_loader_basic();
 
-    crate::kprintln!("TESTS FINISHED SUCCESSFULY ✅");
+    info!("TESTS FINISHED SUCCESSFULY ✅");
 
     qemu_exit.exit_success();
 }
@@ -54,7 +57,7 @@ fn test_timer_interrupt() {
         static CNT: AtomicUsize = AtomicUsize::new(0);
         const NUM_INTERRUPTS: usize = 3;
 
-        crate::kprintln!(
+        info!(
             "Testing timer interrupts, waiting for {} interrupts",
             NUM_INTERRUPTS
         );
@@ -62,7 +65,7 @@ fn test_timer_interrupt() {
         hal::irq::set_timer(50_000).expect("failed to set timer for test");
 
         hal::irq::set_timer_handler(|| {
-            crate::kprintln!(".");
+            trace!(".");
 
             if CNT.fetch_add(1, Ordering::Relaxed) < NUM_INTERRUPTS {
                 hal::irq::set_timer(50_000)
@@ -74,7 +77,7 @@ fn test_timer_interrupt() {
 
         // TODO: restore the timer handler
         hal::cpu::clear_physical_timer();
-        crate::kprintln!("test_timer_interrupts ✅");
+        info!("test_timer_interrupts ✅");
     } else {
         // // Synchronous exception
         // unsafe {
@@ -84,7 +87,7 @@ fn test_timer_interrupt() {
 }
 
 fn test_pagetable_remap() {
-    crate::kprintln!("Testing the remapping capabilities of our pagetable...");
+    info!("Testing the remapping capabilities of our pagetable...");
     hal::mm::current()
         .map(
             hal_core::mm::VAddr::new(0x0450_0000),
@@ -95,19 +98,19 @@ fn test_pagetable_remap() {
         .unwrap();
     let uart = Pl011::new(0x0450_0000);
     uart.write("Uart remaped, if you see this, it works !!!\n");
-    crate::kprintln!("test_pagetable_remap ✅");
+    info!("test_pagetable_remap ✅");
 }
 
 fn test_elf_loader_basic() {
     static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS"));
 
     let test_bin = Elf::from_bytes(TEST_BIN);
-    crate::kprintln!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS"));
+    info!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS"));
     test_bin.load().unwrap();
-    crate::kprintln!("[OK] Elf loaded");
+    info!("[OK] Elf loaded");
     let entry_point: extern "C" fn() -> u8 =
         unsafe { core::mem::transmute(test_bin.get_entry_point()) };
-    crate::kprintln!("[OK] Elf loaded, entry point is {:?}", entry_point);
+    info!("[OK] Elf loaded, entry point is {:?}", entry_point);
     entry_point();
-    crate::kprintln!("[OK] Returned for Elf");
+    info!("[OK] Returned for Elf");
 }

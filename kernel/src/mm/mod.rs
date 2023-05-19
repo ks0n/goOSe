@@ -16,6 +16,8 @@ use drivers::Driver;
 use arrayvec::ArrayVec;
 use core::{iter, slice};
 
+use log::debug;
+
 extern "C" {
     pub static KERNEL_START: usize;
     pub static KERNEL_END: usize;
@@ -153,10 +155,10 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
         //      for now just crammed all memory regions as rw_entries a bit higher in the function.
     });
 
-    crate::kprintln!("r_entries: {:X?}", r_entries);
-    crate::kprintln!("rw_entries: {:X?}", rw_entries);
-    crate::kprintln!("rwx_entries: {:X?}", rwx_entries);
-    crate::kprintln!("pre_allocated_entries: {:X?}", pre_allocated_entries);
+    debug!("r_entries: {:X?}", r_entries);
+    debug!("rw_entries: {:X?}", rw_entries);
+    debug!("rwx_entries: {:X?}", rwx_entries);
+    debug!("pre_allocated_entries: {:X?}", pre_allocated_entries);
 
     hal::mm::init_paging(
         r_entries.into_iter(),
