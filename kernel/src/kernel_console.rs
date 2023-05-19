@@ -9,6 +9,8 @@ use crate::hal;
 
 use alloc::sync::Arc;
 
+use log::{error, Level, LevelFilter, Metadata, Record};
+
 static NULL_CONSOLE: NullUart = NullUart::new();
 
 pub static EARLYINIT_CONSOLE: InitCell<&'static (dyn Console + Sync)> =
@@ -34,6 +36,7 @@ fn write(data: &str) {
     }
 }
 
+#[derive(Debug)]
 struct KernelConsoleWriter;
 
 impl fmt::Write for KernelConsoleWriter {
@@ -46,6 +49,29 @@ impl fmt::Write for KernelConsoleWriter {
 
 pub fn print_fmt(args: fmt::Arguments) {
     KernelConsoleWriter.write_fmt(args).unwrap();
+}
+
+impl log::Log for KernelConsoleWriter {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Trace
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            crate::kprintln!("{} - {}", record.level(), record.args());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+static KERNEL_CONSOLE_WRITER: KernelConsoleWriter = KernelConsoleWriter;
+
+pub fn init_logging() -> Result<(), Error> {
+    log::set_logger(&KERNEL_CONSOLE_WRITER);
+    log::set_max_level(LevelFilter::Trace);
+
+    Ok(())
 }
 
 #[panic_handler]
