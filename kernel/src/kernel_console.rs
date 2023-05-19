@@ -1,8 +1,5 @@
 use core::fmt::{self, Write};
 
-use crate::utils::init_once::InitOnce;
-use crate::utils::init_cell::InitCell;
-use crate::drivers::null_uart::NullUart;
 use crate::drivers::Console;
 use crate::Error;
 use crate::hal;
@@ -10,54 +7,52 @@ use crate::hal;
 use alloc::sync::Arc;
 
 use log::{error, Level, LevelFilter, Metadata, Record};
+use spin::Mutex;
 
-static NULL_CONSOLE: NullUart = NullUart::new();
-
-pub static EARLYINIT_CONSOLE: InitCell<&'static (dyn Console + Sync)> =
-    InitCell::new(&NULL_CONSOLE);
-pub static CONSOLE: InitOnce<Arc<dyn Console + Sync + Send>> = InitOnce::new();
-
-pub fn set_earlyinit_console(new_console: &'static (dyn Console + Sync)) {
-    EARLYINIT_CONSOLE.set(|console| *console = new_console);
+struct KernelConsole {
+    earlyinit_console: Option<&'static (dyn Console + Sync)>,
+    console: Option<Arc<dyn Console + Sync + Send>>,
 }
 
-pub fn set_console(new_console: Arc<dyn Console + Sync + Send>) -> Result<(), Error> {
-    CONSOLE.set(new_console)?;
-
-    Ok(())
-}
-
-fn write(data: &str) {
-    if CONSOLE.is_initialized() {
-        // Safety: we know CONSOLE has something because it is initialized.
-        CONSOLE.get().unwrap().write(data);
-    } else {
-        EARLYINIT_CONSOLE.get().write(data);
+impl KernelConsole {
+    const fn new() -> Self {
+        Self {
+            earlyinit_console: None,
+            console: None,
+        }
     }
 }
 
-#[derive(Debug)]
-struct KernelConsoleWriter;
+static KERNEL_CONSOLE: Mutex<KernelConsole> = Mutex::new(KernelConsole::new());
 
-impl fmt::Write for KernelConsoleWriter {
+impl fmt::Write for KernelConsole {
     fn write_str(&mut self, data: &str) -> fmt::Result {
-        write(data);
+        if let Some(console) = &self.console {
+            console.write(data);
+        } else if let Some(earlyinit_console) = self.earlyinit_console {
+            earlyinit_console.write(data);
+        }
+        // We should return an Error in the `else` case but it not like we can tell the user with a
+        // print...
 
         Ok(())
     }
 }
 
-pub fn print_fmt(args: fmt::Arguments) {
-    KernelConsoleWriter.write_fmt(args).unwrap();
+fn print_fmt(args: fmt::Arguments) {
+    KERNEL_CONSOLE.lock().write_fmt(args).unwrap();
 }
 
-impl log::Log for KernelConsoleWriter {
+struct KernelLogger;
+
+impl log::Log for KernelLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= Level::Trace
     }
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
+            // kprintln will call into the KERNEL_CONSOLE
             crate::kprintln!("{} - {}", record.level(), record.args());
         }
     }
@@ -65,12 +60,23 @@ impl log::Log for KernelConsoleWriter {
     fn flush(&self) {}
 }
 
-static KERNEL_CONSOLE_WRITER: KernelConsoleWriter = KernelConsoleWriter;
+static KERNEL_LOGGER: KernelLogger = KernelLogger;
 
 pub fn init_logging() -> Result<(), Error> {
-    log::set_logger(&KERNEL_CONSOLE_WRITER)?;
+    log::set_logger(&KERNEL_LOGGER)?;
     log::set_max_level(LevelFilter::Trace);
 
+    Ok(())
+}
+
+pub fn set_earlyinit_console(new_console: &'static (dyn Console + Sync)) {
+    KERNEL_CONSOLE.lock().earlyinit_console = Some(new_console);
+}
+
+pub fn set_console(new_console: Arc<dyn Console + Sync + Send>) -> Result<(), Error> {
+    KERNEL_CONSOLE.lock().console = Some(new_console);
+
+    // TODO: return an error if the error already was some (unless we consider it is ok)
     Ok(())
 }
 
