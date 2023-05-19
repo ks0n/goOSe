@@ -1,15 +1,36 @@
 use core::fmt::{self, Write};
 
-use crate::globals;
-
+use crate::utils::init_once::InitOnce;
+use crate::utils::init_cell::InitCell;
+use crate::drivers::null_uart::NullUart;
+use crate::drivers::Console;
+use crate::Error;
 use crate::hal;
 
+use alloc::sync::Arc;
+
+static NULL_CONSOLE: NullUart = NullUart::new();
+
+pub static EARLYINIT_CONSOLE: InitCell<&'static (dyn Console + Sync)> =
+    InitCell::new(&NULL_CONSOLE);
+pub static CONSOLE: InitOnce<Arc<dyn Console + Sync + Send>> = InitOnce::new();
+
+pub fn set_earlyinit_console(new_console: &'static (dyn Console + Sync)) {
+    EARLYINIT_CONSOLE.set(|console| *console = new_console);
+}
+
+pub fn set_console(new_console: Arc<dyn Console + Sync + Send>) -> Result<(), Error> {
+    CONSOLE.set(new_console)?;
+
+    Ok(())
+}
+
 fn write(data: &str) {
-    if globals::CONSOLE.is_initialized() {
+    if CONSOLE.is_initialized() {
         // Safety: we know CONSOLE has something because it is initialized.
-        globals::CONSOLE.get().unwrap().write(data);
+        CONSOLE.get().unwrap().write(data);
     } else {
-        globals::get_earlyinit_console().write(data);
+        EARLYINIT_CONSOLE.get().write(data);
     }
 }
 

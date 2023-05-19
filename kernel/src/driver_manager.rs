@@ -3,7 +3,7 @@ use alloc::{boxed::Box, collections::LinkedList, sync::Arc};
 use super::device_tree::DeviceTree;
 use super::drivers::{self, Matcher};
 use super::error::Error;
-use super::globals;
+use super::kernel_console;
 use drivers::{Console, Driver};
 use fdt::node::FdtNode;
 
@@ -80,7 +80,7 @@ impl DriverManager {
     fn register_console(&mut self, cons: Box<dyn Console + Sync + Send>) -> Result<(), Error> {
         let cons: Arc<dyn Console + Sync + Send> = Arc::from(cons);
         self.register_driver(cons.clone());
-        globals::CONSOLE.set(cons.clone())?;
+        kernel_console::set_console(cons.clone())?;
 
         Ok(())
     }
