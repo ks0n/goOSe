@@ -20,7 +20,7 @@ use align_data::Align4K;
 
 use log::{info, trace};
 
-pub fn generic_main(dt: DeviceTree, hacky_devices: &[&dyn Driver]) -> ! {
+pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&dyn Driver]) -> ! {
     info!("Entered generic_main");
     let qemu_exit = QemuExit::new();
     let qemu_exit_slice = [&qemu_exit as &dyn Driver];
@@ -40,15 +40,20 @@ pub fn generic_main(dt: DeviceTree, hacky_devices: &[&dyn Driver]) -> ! {
 
     hal::cpu::unmask_interrupts();
 
-    // Shit-tier testing
-    test_timer_interrupt();
-    #[cfg(target_arch = "aarch64")]
-    test_pagetable_remap();
-    test_elf_loader_basic();
+    if LAUNCH_TESTS {
+        info!("Launching tests...");
+        // Shit-tier testing
+        test_timer_interrupt();
+        #[cfg(target_arch = "aarch64")]
+        test_pagetable_remap();
+        test_elf_loader_basic();
 
-    info!("TESTS FINISHED SUCCESSFULY ✅");
+        info!("TESTS FINISHED SUCCESSFULY ✅");
 
-    qemu_exit.exit_success();
+        qemu_exit.exit_success();
+    } else {
+        panic!("no scheduler to launch yet...");
+    }
 }
 
 fn test_timer_interrupt() {

@@ -10,6 +10,8 @@ use kernel::drivers::pl011::Pl011;
 
 const DTB_ADDR: usize = 0x4000_0000;
 
+const LAUNCH_TESTS: bool = cfg!(feature = "launch_tests");
+
 use log::info;
 
 #[no_mangle]
@@ -34,7 +36,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
 
     let device_tree = kernel::device_tree::DeviceTree::new(DTB_ADDR).unwrap();
 
-    kernel::generic_main::generic_main(device_tree, &[&PL011]);
+    kernel::generic_main::generic_main::<LAUNCH_TESTS>(device_tree, &[&PL011]);
 
     unreachable!();
 }
