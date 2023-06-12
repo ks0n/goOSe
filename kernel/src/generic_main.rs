@@ -62,7 +62,7 @@ fn test_timer_interrupt() {
             NUM_INTERRUPTS
         );
 
-        hal::irq::set_timer(50_000).expect("failed to set timer for test");
+        hal::cpu::clear_physical_timer();
 
         hal::irq::set_timer_handler(|| {
             trace!(".");
@@ -72,6 +72,8 @@ fn test_timer_interrupt() {
                     .expect("failed to set timer in the timer handler of the test");
             }
         });
+
+        hal::irq::set_timer(50_000).expect("failed to set timer for test");
 
         while CNT.load(Ordering::Relaxed) < NUM_INTERRUPTS {}
 
