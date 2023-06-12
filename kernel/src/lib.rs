@@ -27,6 +27,7 @@ pub mod kernel_console;
 mod lock;
 pub mod mm;
 mod panic;
+mod tests;
 
 // TODO: redo the unit tests with Mockall
 // pub mod kernel_tests;
