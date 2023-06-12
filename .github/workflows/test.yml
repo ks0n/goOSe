@@ -23,7 +23,7 @@ jobs:
       - name: Install qemu
         run: sudo apt-get update && sudo apt-get install qemu-system-misc opensbi
 
-      - run: cd riscv64_qemuvirt && cargo run
+      - run: cd riscv64_qemuvirt && cargo run -F launch_tests
 
   test_aarch64:
     runs-on: ubuntu-latest
@@ -41,4 +41,4 @@ jobs:
       - name: Install qemu
         run: sudo apt-get update && sudo apt-get install qemu-system-arm
 
-      - run: cd aarch64_qemuvirt && cargo run
+      - run: cd aarch64_qemuvirt && cargo run -F launch_tests
