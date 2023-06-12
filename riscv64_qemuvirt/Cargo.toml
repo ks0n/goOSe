@@ -9,3 +9,6 @@ edition = "2021"
 kernel = { path = "../kernel", features = ["riscv64_sv39"] }
 align-data = "0.1.0"
 log = "0.4"
+
+[features]
+launch_tests = []
