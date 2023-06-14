@@ -4,13 +4,6 @@
 	  hal users.
 - PMM is full of weirdness
 - Improve testing
-	- aarch64_qemuvirt
-		- launch the produced binary into qemu
-		- should go quickly over `generic_main` and we should have a `run_tests`
-		  function (for now it can just launch the test_pagetable_remap,
-			test_elf_loader, etc... functions)
-	- riscv64_qemuvirt
-		- do the same as aarch64
 	- kernel
 	  - since the kernel only contains runtime stuff, we could use mocking ?
 		- for exemple verify behavior of the PMM
