@@ -3,7 +3,6 @@ use log::{debug, info, trace};
 use core::slice;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use super::drivers::{pl011::Pl011, Console};
 use crate::executable::elf::Elf;
 use crate::hal;
 use crate::mm::{alloc_pages, alloc_pages_for_hal};

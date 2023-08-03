@@ -37,6 +37,4 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
     let device_tree = kernel::device_tree::DeviceTree::new(DTB_ADDR).unwrap();
 
     kernel::generic_main::generic_main::<LAUNCH_TESTS>(device_tree, &[&PL011]);
-
-    unreachable!();
 }

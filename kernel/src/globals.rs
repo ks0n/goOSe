@@ -2,13 +2,6 @@ use crate::lock::Lock;
 
 use crate::mm;
 
-use crate::drivers;
-use crate::utils;
-use utils::init_cell::InitCell;
-use utils::init_once::InitOnce;
-
-use alloc::sync::Arc;
-
 pub static PHYSICAL_MEMORY_MANAGER: Lock<mm::PhysicalMemoryManager> =
     Lock::new(mm::PhysicalMemoryManager::new());
 

@@ -1,7 +1,6 @@
 #![no_std]
 #![feature(fn_align)]
 #![feature(naked_functions)]
-#![feature(once_cell)]
 
 pub mod cpu;
 pub mod irq;

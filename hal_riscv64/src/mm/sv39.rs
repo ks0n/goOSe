@@ -1,5 +1,3 @@
-use core::arch::asm;
-use core::convert::TryInto;
 use modular_bitfield::{bitfield, prelude::*};
 
 use hal_core::mm::{self, PageAllocFn, PageEntry, PageMap};
@@ -93,9 +91,13 @@ impl PAddr {
 #[bitfield]
 pub struct PageTableEntry {
     v: B1,
+    #[skip(getters)]
     r: B1,
+    #[skip(getters)]
     w: B1,
+    #[skip(getters)]
     x: B1,
+    #[skip(getters)]
     u: B1,
     #[skip]
     g: B1,
@@ -222,7 +224,7 @@ impl PageMap for PageTable {
 
 #[repr(u8)]
 pub(crate) enum SatpMode {
-    Bare = 0,
+    _Bare = 0,
     Sv39 = 8,
     _Sv48 = 9,
     _Sv57 = 10,
