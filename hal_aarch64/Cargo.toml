@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 hal_core = { path = "../hal_core" }
-tock-registers = "0.7.x"
-cortex-a = "7.4.0"
+tock-registers = "0.8"
+cortex-a = "8.1"

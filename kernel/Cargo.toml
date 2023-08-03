@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 cfg-if = "1.0"
 static_assertions = "1.1"
-once_cell = { version = "1.17", default-features = false }
 modular-bitfield = "0.11"
 bitflags = "2.1"
 fdt = "0.1"
@@ -26,19 +25,12 @@ tests = { path = "../tests", artifact = "bin" }
 
 [target.riscv64gc-unknown-none-elf.dependencies]
 sbi = "0.2"
-riscv = "0.10"
 hal_riscv64 = { path = "../hal_riscv64" }
 
 [target.aarch64-unknown-none.dependencies]
 tock-registers = "0.8"
 cortex-a = "8.1"
 hal_aarch64 = { path = "../hal_aarch64" }
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
 
 [features]
 aarch64_pgt48oa = []
