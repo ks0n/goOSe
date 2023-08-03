@@ -1,11 +1,12 @@
 use log::{debug, info, trace};
 
+use core::slice;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use super::drivers::{pl011::Pl011, Console};
 use crate::executable::elf::Elf;
 use crate::hal;
-use crate::mm::alloc_pages_for_hal;
+use crate::mm::{alloc_pages, alloc_pages_for_hal};
 use hal_core::mm::{PageMap, Permissions};
 
 use align_data::include_aligned;
@@ -26,7 +27,6 @@ const TESTS: &[Test] = &[
         name: "timer interrupts",
         test: test_timer_interrupt,
     },
-    #[cfg(target_arch = "aarch64")]
     Test {
         name: "pagetable does remap",
         test: test_pagetable_remap,
@@ -97,16 +97,33 @@ fn test_timer_interrupt() -> TestResult {
 
 fn test_pagetable_remap() -> TestResult {
     info!("Testing the remapping capabilities of our pagetable...");
+
+    let page_src = alloc_pages(1).unwrap();
+    let dst_addr = 0x0450_0000;
+    let page_dst = unsafe { slice::from_raw_parts(dst_addr as *const u8, hal::mm::PAGE_SIZE) };
+    let deadbeef = [0xDE, 0xAD, 0xBE, 0xEF];
+
+    // Put data in source page
+    page_src[0..deadbeef.len()].copy_from_slice(&deadbeef);
+
+    // Remap source page to destination page
     hal::mm::current()
         .map(
-            hal_core::mm::VAddr::new(0x0450_0000),
-            hal_core::mm::PAddr::new(0x0900_0000),
+            hal_core::mm::VAddr::new(dst_addr),
+            hal_core::mm::PAddr::new(page_src.as_ptr() as usize),
             Permissions::READ | Permissions::WRITE,
             alloc_pages_for_hal,
         )
         .unwrap();
-    let uart = Pl011::new(0x0450_0000);
-    uart.write("Uart remaped, if you see this, it works !!!\n");
+
+    // Readback from destination page
+    for i in 0..deadbeef.len() {
+        if page_dst[i] != deadbeef[i] {
+            return TestResult::Failure;
+        }
+    }
+
+    info!("Remapping works");
 
     TestResult::Success
 }
