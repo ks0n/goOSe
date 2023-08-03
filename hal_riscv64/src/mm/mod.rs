@@ -2,7 +2,7 @@ use core::arch::asm;
 use core::cell::OnceCell;
 
 use hal_core::{
-    mm::{self, PageAllocFn, PageMap, Permissions, VAddr},
+    mm::{PageAllocFn, PageMap},
     Error, Range,
 };
 

@@ -5,7 +5,7 @@ use crate::Error;
 
 use alloc::sync::Arc;
 
-use log::{error, Level, LevelFilter, Metadata, Record};
+use log::{Level, LevelFilter, Metadata, Record};
 use spin::Mutex;
 
 struct KernelConsole {

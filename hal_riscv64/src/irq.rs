@@ -7,8 +7,6 @@ use super::mm;
 use super::plic::Plic;
 use super::registers;
 
-use riscv::asm::delay;
-
 use core::arch::asm;
 use core::ptr;
 use core::sync::atomic::{AtomicPtr, Ordering};

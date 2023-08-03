@@ -1,19 +1,11 @@
 #![no_std]
 #![no_main]
 #![feature(naked_functions)]
-// #![feature(custom_test_frameworks)]
-// #![test_runner(kernel::super::kernel_tests::runner)]
-// #![reexport_test_harness_main = "ktests_launch"]
 
 #[cfg(not(target_arch = "riscv64"))]
 compile_error!("Must be compiled as riscv64");
 
-use core::arch::asm;
 use kernel::drivers::ns16550::*;
-use kernel::drivers::qemuexit::QemuExit;
-use kernel::executable::elf::Elf;
-
-use align_data::{include_aligned, Align4K};
 
 use log::info;
 
@@ -31,18 +23,8 @@ extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
 
     info!("GoOSe is booting");
 
-    // #[cfg(test)]
-    // {
-    //     kernel::kernel_tests::init(device_tree_ptr);
-    //     ktests_launch();
-    // }
-
-    unsafe {
-        kernel::hal::irq::init_exception_handlers();
-    }
+    kernel::hal::irq::init_exception_handlers();
 
     let device_tree = kernel::device_tree::DeviceTree::new(device_tree_ptr).unwrap();
     kernel::generic_main::generic_main::<LAUNCH_TESTS>(device_tree, &[&NS16550]);
-
-    unreachable!();
 }

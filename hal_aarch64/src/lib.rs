@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(once_cell)]
 #![feature(naked_functions)]
 
 use cortex_a::registers::*;
@@ -13,6 +12,7 @@ pub mod mm;
 
 mod devices;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct PanicInfo {
     esr_el1: u64,
