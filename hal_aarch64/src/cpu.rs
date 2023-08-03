@@ -10,7 +10,7 @@ pub fn disable_fp_trapping() {
 pub fn set_physical_timer(delay: usize) {
     CNTP_TVAL_EL0.set(delay as u64);
 
-    unsafe { asm::barrier::isb(asm::barrier::SY) };
+    asm::barrier::isb(asm::barrier::SY);
 
     CNTP_CTL_EL0.write(
         CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR + CNTP_CTL_EL0::ISTATUS::CLEAR,

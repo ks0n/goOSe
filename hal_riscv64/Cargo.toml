@@ -9,4 +9,4 @@ edition = "2021"
 hal_core = { path = "../hal_core" }
 modular-bitfield = "0.11"
 sbi = "0.2.0"
-riscv = "0.8.0"
+riscv = "0.10"

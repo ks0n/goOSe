@@ -38,6 +38,7 @@ impl PAddr {
 }
 
 bitflags::bitflags! {
+    #[derive(Clone, Copy)]
     pub struct Permissions: u8 {
         const READ    = 0b00000001;
         const WRITE   = 0b00000010;

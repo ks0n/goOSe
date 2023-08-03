@@ -67,13 +67,9 @@ unsafe fn load_pagetable(pt: &'static mut PageTable) {
         + TCR_EL1::EPD1::DisableTTBR1Walks,
     );
 
-    unsafe {
-        barrier::isb(barrier::SY);
-    }
+    barrier::isb(barrier::SY);
 
     SCTLR_EL1.modify(SCTLR_EL1::M::Enable);
 
-    unsafe {
-        barrier::isb(barrier::SY);
-    }
+    barrier::isb(barrier::SY);
 }
