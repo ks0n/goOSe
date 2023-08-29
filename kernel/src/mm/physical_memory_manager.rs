@@ -4,33 +4,12 @@ use crate::hal;
 use crate::mm;
 use crate::Error;
 use core::mem;
-use hal_core::mm::{PageMap, Permissions, VAddr};
+use hal_core::{
+    mm::{PageMap, Permissions, VAddr},
+    AddressRange,
+};
 
 use log::debug;
-
-/// A range similar to core::ops::Range but that is copyable.
-/// The range is half-open, inclusive below, exclusive above, ie. [start; end[
-#[derive(Debug, Copy, Clone, PartialEq)]
-struct AddressRange<T: Copy> {
-    pub start: T,
-    pub end: T,
-}
-
-impl<T: Copy + core::cmp::PartialOrd + core::cmp::PartialEq + core::ops::Sub<Output = T>>
-    AddressRange<T>
-{
-    pub fn new(start: T, end: T) -> Self {
-        Self { start, end }
-    }
-
-    pub fn contains(&self, val: T) -> bool {
-        self.start <= val && val < self.end
-    }
-
-    pub fn size(&self) -> T {
-        self.end - self.start
-    }
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum PageKind {
@@ -84,7 +63,7 @@ pub struct PhysicalMemoryManager {
 }
 
 impl PhysicalMemoryManager {
-    fn count_pages(regions: &[Option<AddressRange<usize>>], page_size: usize) -> usize {
+    fn count_pages(regions: &[Option<AddressRange>], page_size: usize) -> usize {
         let total_memory_bytes: usize = regions
             .iter()
             .filter_map(|maybe_region| maybe_region.map(|region| region.size()))
@@ -93,10 +72,7 @@ impl PhysicalMemoryManager {
         total_memory_bytes / page_size
     }
 
-    fn find_large_region(
-        regions: &[Option<AddressRange<usize>>],
-        minimum_size: usize,
-    ) -> Option<usize> {
+    fn find_large_region(regions: &[Option<AddressRange>], minimum_size: usize) -> Option<usize> {
         regions
             .iter()
             .flatten()
@@ -136,10 +112,10 @@ impl PhysicalMemoryManager {
     }
 
     fn exclude_range<const MAX_REGIONS: usize>(
-        regions: &mut [Option<AddressRange<usize>>; MAX_REGIONS],
-        excluded: (usize, usize),
+        regions: &mut [Option<AddressRange>; MAX_REGIONS],
+        excluded: AddressRange,
     ) {
-        let (excl_start, excl_end) = excluded;
+        let (excl_start, excl_end) = (excluded.start, excluded.end);
 
         assert!(excl_start < excl_end);
 
@@ -160,7 +136,7 @@ impl PhysicalMemoryManager {
                     start: excl_end,
                     end: region.end,
                 };
-                regions[i] = Some(AddressRange::new(region.start, excl_start));
+                regions[i] = Some(AddressRange::new(region.start..excl_start));
 
                 // The exclusion in the middle causes a split of the current region, put the new region (the end part) somewhere there is a none.
                 *regions
@@ -169,10 +145,10 @@ impl PhysicalMemoryManager {
                     .expect("regions array is too small, increase MAX_REGIONS") = Some(new_region);
             } else if region.contains(excl_end) {
                 // Region to be removed is at the left (at the beginning) of the current region.
-                regions[i] = Some(AddressRange::new(excl_end, region.end));
+                regions[i] = Some(AddressRange::new(excl_end..region.end));
             } else if region.contains(excl_start) {
                 // Region to be removed is at the right (at the end) of the current region.
-                regions[i] = Some(AddressRange::new(region.start, excl_start));
+                regions[i] = Some(AddressRange::new(region.start..excl_start));
             }
         }
     }
@@ -180,7 +156,7 @@ impl PhysicalMemoryManager {
     fn available_memory_regions<const MAX_REGIONS: usize>(
         device_tree: &DeviceTree,
         page_size: usize,
-    ) -> [Option<AddressRange<usize>>; MAX_REGIONS] {
+    ) -> [Option<AddressRange>; MAX_REGIONS] {
         // First put all regions in the array.
         let mut all_regions = [None; MAX_REGIONS];
         device_tree.for_all_memory_regions(|regions| {
@@ -203,8 +179,9 @@ impl PhysicalMemoryManager {
         Self::exclude_range(&mut all_regions, device_tree.memory_region());
 
         device_tree.for_all_reserved_memory_regions(|reserved_regions| {
-            reserved_regions
-                .for_each(|(base, size)| Self::exclude_range(&mut all_regions, (base, base + size)))
+            reserved_regions.for_each(|(base, size)| {
+                Self::exclude_range(&mut all_regions, AddressRange::with_size(base, size))
+            })
         });
 
         // Re-align the regions, for exemple things we exclude are not always aligned to a page boundary.
@@ -377,34 +354,34 @@ mod tests {
 
     #[test_case]
     fn exclude_range_remove_in_the_middle(_ctx: &mut TestContext) {
-        let mut ranges = [Some(AddressRange::new(0x0, 0x1000)), None];
+        let mut ranges = [Some(AddressRange::new(0x0..0x1000)), None];
         PhysicalMemoryManager::exclude_range(&mut ranges, (0x500, 0x600));
 
-        assert_eq!(ranges[0], Some(AddressRange::new(0x0, 0x500)));
+        assert_eq!(ranges[0], Some(AddressRange::new(0x0..0x500)));
         assert_eq!(ranges[1], Some(AddressRange::new(0x600, 0x1000)));
     }
 
     #[test_case]
     fn exclude_range_remove_beginning(_ctx: &mut TestContext) {
-        let mut ranges = [Some(AddressRange::new(0x100, 0x1000)), None];
+        let mut ranges = [Some(AddressRange::new(0x100..0x1000)), None];
         PhysicalMemoryManager::exclude_range(&mut ranges, (0x0, 0x200));
 
-        assert_eq!(ranges[0], Some(AddressRange::new(0x200, 0x1000)));
+        assert_eq!(ranges[0], Some(AddressRange::new(0x200..0x1000)));
         assert!(ranges[1].is_none());
     }
 
     #[test_case]
     fn exclude_range_remove_ending(_ctx: &mut TestContext) {
-        let mut ranges = [Some(AddressRange::new(0x100, 0x1000)), None];
+        let mut ranges = [Some(AddressRange::new(0x100..0x1000)), None];
         PhysicalMemoryManager::exclude_range(&mut ranges, (0x800, 0x1000));
 
-        assert_eq!(ranges[0], Some(AddressRange::new(0x100, 0x800)));
+        assert_eq!(ranges[0], Some(AddressRange::new(0x100..0x800)));
         assert!(ranges[1].is_none());
     }
 
     #[test_case]
     fn exclude_range_overlaps_exactly(_ctx: &mut TestContext) {
-        let mut ranges = [Some(AddressRange::new(0x400_000, 0x800_000)), None];
+        let mut ranges = [Some(AddressRange::new(0x400_000..0x800_000)), None];
         PhysicalMemoryManager::exclude_range(&mut ranges, (0x400_000, 0x800_000));
 
         assert!(ranges[0].is_none());
@@ -413,10 +390,10 @@ mod tests {
 
     #[test_case]
     fn exclude_range_overlap_with_exact_beginning(_ctx: &mut TestContext) {
-        let mut ranges = [Some(AddressRange::new(0x400_000, 0x800_000)), None];
+        let mut ranges = [Some(AddressRange::new(0x400_000..0x800_000)), None];
         PhysicalMemoryManager::exclude_range(&mut ranges, (0x400_000, 0x401_000));
 
-        assert_eq!(ranges[0], Some(AddressRange::new(0x401_000, 0x800_000)));
+        assert_eq!(ranges[0], Some(AddressRange::new(0x401_000..0x800_000)));
         assert!(ranges[1].is_none());
     }
 }

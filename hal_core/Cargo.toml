@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 bitflags = "2.3"
+log = "0.4"

@@ -8,7 +8,8 @@ use crate::globals;
 
 use crate::hal;
 use crate::Error;
-use hal_core::mm::{PageMap, Permissions, VAddr};
+use hal_core::mm::{align_up, PageMap, Permissions, VAddr};
+use hal_core::AddressRange;
 
 use crate::drivers;
 use drivers::Driver;
@@ -34,13 +35,15 @@ pub fn is_kernel_page(base: usize) -> bool {
     base >= kernel_start && base < kernel_end
 }
 
-pub fn kernel_memory_region() -> (usize, usize) {
-    unsafe {
+pub fn kernel_memory_region() -> AddressRange {
+    let (start, end) = unsafe {
         (
             crate::utils::external_symbol_value(&KERNEL_START),
             crate::utils::external_symbol_value(&KERNEL_END),
         )
-    }
+    };
+
+    AddressRange::new(start..end)
 }
 
 pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
@@ -58,16 +61,16 @@ pub fn is_reserved_page(base: usize, device_tree: &DeviceTree) -> bool {
 }
 
 fn map_kernel_rwx() -> (
-    impl Iterator<Item = (usize, usize)>,
-    impl Iterator<Item = (usize, usize)>,
-    impl Iterator<Item = (usize, usize)>,
+    impl Iterator<Item = AddressRange>,
+    impl Iterator<Item = AddressRange>,
+    impl Iterator<Item = AddressRange>,
 ) {
     let page_size = hal::mm::PAGE_SIZE;
     let kernel_start = unsafe { crate::utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { crate::utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
 
-    let rwx_entries = iter::once((kernel_start, kernel_end_align - kernel_start));
+    let rwx_entries = iter::once(AddressRange::new(kernel_start..kernel_end_align));
 
     (iter::empty(), iter::empty(), rwx_entries)
 }
@@ -108,25 +111,37 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
     device_tree: &DeviceTree,
     drivers: I,
 ) -> Result<(), Error> {
-    let mut r_entries = ArrayVec::<(usize, usize), 128>::new();
-    let mut rw_entries = ArrayVec::<(usize, usize), 128>::new();
-    let mut rwx_entries = ArrayVec::<(usize, usize), 128>::new();
-    let mut pre_allocated_entries = ArrayVec::<(usize, usize), 1024>::new();
+    let mut r_entries = ArrayVec::<AddressRange, 128>::new();
+    let mut rw_entries = ArrayVec::<AddressRange, 128>::new();
+    let mut rwx_entries = ArrayVec::<AddressRange, 128>::new();
+    let mut pre_allocated_entries = ArrayVec::<AddressRange, 1024>::new();
 
     // Add entries/descriptors in the pagetable for all of accessible memory regions.
     // That way in the future, mapping those entries won't require any memory allocations,
     // just settings the entry to valid and filling up the bits.
     device_tree.for_all_memory_regions(|regions| {
-        regions.for_each(|entry| {
-            pre_allocated_entries.try_push(entry).unwrap();
+        regions.for_each(|(base, size)| {
+            pre_allocated_entries
+                .try_push(AddressRange::with_size(base, size))
+                .unwrap();
 
             // TODO: this needs to be done differently, we're mapping all DRAM as rw...
-            rw_entries.try_push(entry).unwrap();
+            rw_entries
+                .try_push(AddressRange::with_size(base, size))
+                .unwrap();
         });
     });
-    let (dt_start, dt_end) = device_tree.memory_region();
-    let dt_size = dt_end - dt_start;
-    rw_entries.try_push((dt_start, dt_size)).unwrap();
+    debug!(
+        "adding region containing the device tree to rw entries {:X?}",
+        device_tree.memory_region()
+    );
+    rw_entries
+        .try_push(
+            device_tree
+                .memory_region()
+                .round_up_to_page(hal::mm::PAGE_SIZE),
+        )
+        .unwrap();
 
     let (kernel_r, kernel_rw, kernel_rwx) = map_kernel_rwx();
     kernel_r.for_each(|entry| r_entries.try_push(entry).unwrap());
@@ -135,7 +150,15 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
 
     for drv in drivers {
         if let Some((base, len)) = drv.get_address_range() {
-            rw_entries.try_push((base, len)).unwrap();
+            let len = hal::mm::align_up(len);
+            debug!(
+                "adding driver memory region to RW entries: [{:X}; {:X}]",
+                base,
+                base + len
+            );
+            rw_entries
+                .try_push(AddressRange::with_size(base, len))
+                .unwrap();
         }
     }
 

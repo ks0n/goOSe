@@ -1,6 +1,6 @@
 use hal_core::{
-    mm::{PageAllocFn, PageMap},
-    Error, Range,
+    mm::{self, PageAllocFn, PageMap},
+    AddressRange, Error,
 };
 
 use cortex_a::asm::barrier;
@@ -24,10 +24,10 @@ pub fn current() -> &'static mut PageTable {
 }
 
 pub fn init_paging(
-    r: impl Iterator<Item = Range>,
-    rw: impl Iterator<Item = Range>,
-    rwx: impl Iterator<Item = Range>,
-    pre_allocated: impl Iterator<Item = Range>,
+    r: impl Iterator<Item = AddressRange>,
+    rw: impl Iterator<Item = AddressRange>,
+    rwx: impl Iterator<Item = AddressRange>,
+    pre_allocated: impl Iterator<Item = AddressRange>,
     alloc: PageAllocFn,
 ) -> Result<(), Error> {
     hal_core::mm::init_paging::<PageTable>(r, rw, rwx, pre_allocated, alloc, |pt| {
@@ -72,4 +72,8 @@ unsafe fn load_pagetable(pt: &'static mut PageTable) {
     SCTLR_EL1.modify(SCTLR_EL1::M::Enable);
 
     barrier::isb(barrier::SY);
+}
+
+pub fn align_up(addr: usize) -> usize {
+    mm::align_up(addr, PageTable::PAGE_SIZE)
 }

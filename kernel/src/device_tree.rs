@@ -1,5 +1,7 @@
 use super::Error;
 
+use hal_core::AddressRange;
+
 use fdt::node::FdtNode;
 
 pub struct DeviceTree {
@@ -19,8 +21,8 @@ impl DeviceTree {
         })
     }
 
-    pub fn memory_region(&self) -> (usize, usize) {
-        (self.addr, self.addr + self.total_size)
+    pub fn memory_region(&self) -> AddressRange {
+        AddressRange::new(self.addr..self.addr + self.total_size)
     }
 
     pub fn for_all_memory_regions<F: FnMut(&mut dyn Iterator<Item = (usize, usize)>)>(
