@@ -1,4 +1,6 @@
-use super::{Error, Range};
+use log::trace;
+
+use super::{AddressRange, Error};
 
 #[derive(Debug, Clone, Copy)]
 pub struct VAddr {
@@ -103,6 +105,31 @@ pub trait PageMap {
 
         Ok(())
     }
+
+    fn add_invalid_entries(
+        &mut self,
+        range: AddressRange,
+        alloc: PageAllocFn,
+    ) -> Result<(), Error> {
+        for page in range.iter_pages(Self::PAGE_SIZE) {
+            self.add_invalid_entry(VAddr::new(page), alloc)?;
+        }
+
+        Ok(())
+    }
+
+    fn identity_map_addressrange(
+        &mut self,
+        range: AddressRange,
+        perms: Permissions,
+        alloc: PageAllocFn,
+    ) -> Result<(), Error> {
+        for page in range.iter_pages(Self::PAGE_SIZE) {
+            self.identity_map(VAddr::new(page), perms, alloc)?;
+        }
+
+        Ok(())
+    }
 }
 
 pub fn align_up(val: usize, page_sz: usize) -> usize {
@@ -110,43 +137,34 @@ pub fn align_up(val: usize, page_sz: usize) -> usize {
 }
 
 pub fn init_paging<P: PageMap + 'static>(
-    r: impl Iterator<Item = Range>,
-    rw: impl Iterator<Item = Range>,
-    rwx: impl Iterator<Item = Range>,
-    pre_allocated: impl Iterator<Item = Range>,
+    r: impl Iterator<Item = AddressRange>,
+    rw: impl Iterator<Item = AddressRange>,
+    rwx: impl Iterator<Item = AddressRange>,
+    pre_allocated: impl Iterator<Item = AddressRange>,
     alloc: PageAllocFn,
     store_pagetable: impl FnOnce(&'static mut P),
 ) -> Result<(), Error> {
     let pt: &'static mut P = P::new(alloc)?;
     let page_size = P::PAGE_SIZE;
 
-    for (addr, len) in pre_allocated {
-        let len = align_up(len, page_size);
-        for base in (addr..=addr + len).step_by(page_size) {
-            pt.add_invalid_entry(VAddr::new(base), alloc)?;
-        }
+    for range in pre_allocated {
+        pt.add_invalid_entries(range, alloc)?;
     }
 
-    for (addr, len) in r {
-        let page_count = align_up(len, page_size) / page_size;
-        pt.identity_map_range(VAddr::new(addr), page_count, Permissions::READ, alloc)?;
+    for range in r {
+        trace!("mapping as RO: {:X?}", range);
+        pt.identity_map_addressrange(range, Permissions::READ, alloc)?;
     }
 
-    for (addr, len) in rw {
-        let page_count = align_up(len, page_size) / page_size;
-        pt.identity_map_range(
-            VAddr::new(addr),
-            page_count,
-            Permissions::READ | Permissions::WRITE,
-            alloc,
-        )?;
+    for range in rw {
+        trace!("mapping as RW: {:X?}", range);
+        pt.identity_map_addressrange(range, Permissions::READ | Permissions::WRITE, alloc)?;
     }
 
-    for (addr, len) in rwx {
-        let page_count = align_up(len, page_size) / page_size;
-        pt.identity_map_range(
-            VAddr::new(addr),
-            page_count,
+    for range in rwx {
+        trace!("mapping as RWX: {:X?}", range);
+        pt.identity_map_addressrange(
+            range,
             Permissions::READ | Permissions::WRITE | Permissions::EXECUTE,
             alloc,
         )?
