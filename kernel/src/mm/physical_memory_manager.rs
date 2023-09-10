@@ -9,6 +9,8 @@ use hal_core::{
     AddressRange,
 };
 
+use hal::mm::PAGE_SIZE;
+
 use log::debug;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -59,17 +61,16 @@ pub enum AllocatorError {
 #[derive(Debug)]
 pub struct PhysicalMemoryManager {
     metadata: &'static mut [PhysicalPage],
-    page_size: usize,
 }
 
 impl PhysicalMemoryManager {
-    fn count_pages(regions: &[Option<AddressRange>], page_size: usize) -> usize {
+    fn count_pages(regions: &[Option<AddressRange>]) -> usize {
         let total_memory_bytes: usize = regions
             .iter()
             .filter_map(|maybe_region| maybe_region.map(|region| region.size()))
             .sum();
 
-        total_memory_bytes / page_size
+        total_memory_bytes / PAGE_SIZE
     }
 
     fn find_large_region(regions: &[Option<AddressRange>], minimum_size: usize) -> Option<usize> {
@@ -78,15 +79,6 @@ impl PhysicalMemoryManager {
             .flatten()
             .find(|region| region.size() >= minimum_size)
             .map(|region| region.start)
-    }
-
-    fn align_up(addr: usize, alignment: usize) -> usize {
-        ((addr) + alignment - 1) & !(alignment - 1)
-    }
-
-    fn align_down(addr: usize, alignment: usize) -> usize {
-        // TODO: can this be more optimized ?
-        Self::align_up(addr, alignment) + alignment
     }
 
     fn is_metadata_page(base: usize, metadata_start: usize, metadata_end: usize) -> bool {
@@ -155,7 +147,6 @@ impl PhysicalMemoryManager {
 
     fn available_memory_regions<const MAX_REGIONS: usize>(
         device_tree: &DeviceTree,
-        page_size: usize,
     ) -> [Option<AddressRange>; MAX_REGIONS] {
         // First put all regions in the array.
         let mut all_regions = [None; MAX_REGIONS];
@@ -187,8 +178,8 @@ impl PhysicalMemoryManager {
         // Re-align the regions, for exemple things we exclude are not always aligned to a page boundary.
         all_regions.iter_mut().for_each(|maybe_region| {
             if let Some(region) = maybe_region {
-                region.start = Self::align_down(region.start, page_size);
-                region.end = Self::align_up(region.end, page_size);
+                region.start = hal::mm::align_down(region.start);
+                region.end = hal::mm::align_up(region.end);
 
                 *maybe_region = if region.size() > 0 {
                     Some(*region)
@@ -209,27 +200,23 @@ impl PhysicalMemoryManager {
             )
         };
 
-        Self {
-            metadata,
-            page_size: 0,
-        }
+        Self { metadata }
     }
 
     /// Initialize a [`PageAllocator`] from the device tree.
     pub fn init_from_device_tree(
         &mut self,
         device_tree: &DeviceTree,
-        page_size: usize,
     ) -> Result<(), AllocatorError> {
-        let available_regions = Self::available_memory_regions::<10>(device_tree, page_size);
+        let available_regions = Self::available_memory_regions::<10>(device_tree);
 
         assert!(
             available_regions
                 .iter()
                 .flatten()
                 .all(
-                    |region| region.start == Self::align_up(region.start, page_size)
-                        && region.end == Self::align_up(region.end, page_size)
+                    |region| region.start == hal::mm::align_up(region.start)
+                        && region.end == hal::mm::align_up(region.end)
                 ),
             "Expected region bounds to be aligned to the page size (won't be possible to allocate pages otherwise)"
         );
@@ -238,9 +225,9 @@ impl PhysicalMemoryManager {
             debug!("region {}: {:X?}", i, reg);
         }
 
-        let page_count = Self::count_pages(&available_regions, page_size);
+        let page_count = Self::count_pages(&available_regions);
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();
-        let pages_needed = Self::align_up(metadata_size, page_size) / page_size;
+        let pages_needed = hal::mm::align_up(metadata_size) / PAGE_SIZE;
 
         let metadata_addr = Self::find_large_region(&available_regions, metadata_size)
             .ok_or(AllocatorError::NotEnoughMemoryForMetadata)?;
@@ -251,22 +238,23 @@ impl PhysicalMemoryManager {
         let physical_pages = available_regions
             .iter()
             .flatten()
-            .flat_map(|region| (region.start..region.end).step_by(page_size))
+            .flat_map(|region| region.iter_pages(PAGE_SIZE))
             .map(|base| {
                 Self::phys_addr_to_physical_page(
                     base,
                     metadata_addr,
-                    metadata_addr + pages_needed * page_size,
+                    metadata_addr + pages_needed * PAGE_SIZE,
                 )
             });
 
-        assert!(physical_pages.clone().count() == page_count);
+        let mut count = 0;
         for (i, page) in physical_pages.enumerate() {
             metadata[i] = page;
+            count += 1;
         }
+        assert!(count == page_count);
 
         self.metadata = metadata;
-        self.page_size = page_size;
 
         Ok(())
     }
@@ -287,7 +275,7 @@ impl PhysicalMemoryManager {
                 continue;
             }
 
-            if consecutive_pages > 0 && page.base != last_page_base + self.page_size {
+            if consecutive_pages > 0 && page.base != last_page_base + PAGE_SIZE {
                 consecutive_pages = 0;
                 continue;
             }
@@ -327,16 +315,12 @@ impl PhysicalMemoryManager {
         Ok(addr)
     }
 
-    pub fn page_size(&self) -> usize {
-        self.page_size
-    }
-
     pub fn metadata_pages(&self) -> impl core::iter::Iterator<Item = usize> {
         let metadata_start = (&self.metadata[0] as *const PhysicalPage) as usize;
         let metadata_last =
             (&self.metadata[self.metadata.len() - 1] as *const PhysicalPage) as usize;
 
-        (metadata_start..=metadata_last).step_by(self.page_size())
+        (metadata_start..=metadata_last).step_by(PAGE_SIZE)
     }
 
     pub fn allocated_pages(&self) -> impl core::iter::Iterator<Item = usize> + '_ {
