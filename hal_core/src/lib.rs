@@ -43,7 +43,7 @@ impl AddressRange {
     pub fn iter_pages(self, page_size: usize) -> impl Iterator<Item = usize> {
         assert_eq!(self.end, mm::align_up(self.end, page_size));
 
-        (self.start..=self.end).step_by(page_size)
+        (self.start..self.end).step_by(page_size)
     }
 
     pub fn count_pages(&self, page_size: usize) -> usize {
