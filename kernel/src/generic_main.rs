@@ -19,7 +19,7 @@ pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&
 
     // Memory init
     globals::PHYSICAL_MEMORY_MANAGER
-        .lock(|pmm| pmm.init_from_device_tree(&dt, 4096))
+        .lock(|pmm| pmm.init_from_device_tree(&dt))
         .unwrap();
     map_address_space(&dt, devices).expect("failed to map the addres space");
 

@@ -136,6 +136,12 @@ pub fn align_up(val: usize, page_sz: usize) -> usize {
     ((val + page_sz - 1) / page_sz) * page_sz
 }
 
+pub fn align_down(addr: usize, page_sz: usize) -> usize {
+    // TODO: can this be more optimized ?
+    // XXX: uh isn't this math wrong ?
+    align_up(addr, page_sz) + page_sz
+}
+
 pub fn init_paging<P: PageMap + 'static>(
     r: impl Iterator<Item = AddressRange>,
     rw: impl Iterator<Item = AddressRange>,

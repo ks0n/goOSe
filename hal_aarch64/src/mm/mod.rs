@@ -75,5 +75,9 @@ unsafe fn load_pagetable(pt: &'static mut PageTable) {
 }
 
 pub fn align_up(addr: usize) -> usize {
-    mm::align_up(addr, PageTable::PAGE_SIZE)
+    mm::align_up(addr, PAGE_SIZE)
+}
+
+pub fn align_down(addr: usize) -> usize {
+    mm::align_down(addr, PAGE_SIZE)
 }
