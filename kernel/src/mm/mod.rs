@@ -6,7 +6,7 @@ mod binary_buddy_allocator;
 use crate::device_tree::DeviceTree;
 use crate::globals;
 
-use crate::hal;
+use crate::hal::{self, mm::PAGE_SIZE};
 use crate::Error;
 use hal_core::mm::{align_up, PageMap, Permissions, VAddr};
 use hal_core::AddressRange;
@@ -116,17 +116,15 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
     let mut rwx_entries = ArrayVec::<AddressRange, 128>::new();
     let mut pre_allocated_entries = ArrayVec::<AddressRange, 1024>::new();
 
+    let alloc =
+        |count| alloc_pages_raw(count).expect("failure on page allocator passed to init_paging");
+
     // Add entries/descriptors in the pagetable for all of accessible memory regions.
     // That way in the future, mapping those entries won't require any memory allocations,
     // just settings the entry to valid and filling up the bits.
     device_tree.for_all_memory_regions(|regions| {
         regions.for_each(|(base, size)| {
             pre_allocated_entries
-                .try_push(AddressRange::with_size(base, size))
-                .unwrap();
-
-            // TODO: this needs to be done differently, we're mapping all DRAM as rw...
-            rw_entries
                 .try_push(AddressRange::with_size(base, size))
                 .unwrap();
         });
@@ -144,9 +142,9 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
         .unwrap();
 
     let (kernel_r, kernel_rw, kernel_rwx) = map_kernel_rwx();
-    kernel_r.for_each(|entry| r_entries.try_push(entry).unwrap());
-    kernel_rw.for_each(|entry| rw_entries.try_push(entry).unwrap());
-    kernel_rwx.for_each(|entry| rwx_entries.try_push(entry).unwrap());
+    r_entries.extend(kernel_r);
+    rw_entries.extend(kernel_rw);
+    rwx_entries.extend(kernel_rwx);
 
     for drv in drivers {
         if let Some((base, len)) = drv.get_address_range() {
@@ -162,34 +160,42 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
         }
     }
 
-    // rw_entries = rw_entries.chain(
-    //     globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| {
-    //         let metadata_pages = pmm.metadata_pages();
-    //         let allocated_pages = pmm.allocated_pages();
-    //         let pmm_pages = metadata_pages.chain(allocated_pages);
-    //     }),
-    // );
-    globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| {
-        // All pmm pages are located in DRAM so they are already in the pagetable (they are part of
-        // the pre_allocated_entries).
-        // Therefore no allocations will be made.
-        let _pmm_pages = iter::Iterator::chain(pmm.metadata_pages(), pmm.allocated_pages());
-        // XXX: put the pages as range in to rw_entries
-        //      for now just crammed all memory regions as rw_entries a bit higher in the function.
-    });
-
     debug!("r_entries: {:X?}", r_entries);
     debug!("rw_entries: {:X?}", rw_entries);
     debug!("rwx_entries: {:X?}", rwx_entries);
     debug!("pre_allocated_entries: {:X?}", pre_allocated_entries);
 
-    hal::mm::init_paging(
+    hal::mm::prefill_pagetable(
         r_entries.into_iter(),
         rw_entries.into_iter(),
         rwx_entries.into_iter(),
         pre_allocated_entries.into_iter(),
-        |count| alloc_pages_raw(count).expect("failure on page allocator passed to init_paging"),
+        alloc,
     )?;
+
+    globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| {
+        // All pmm pages are located in DRAM so they are already in the pagetable (they are part of
+        // the pre_allocated_entries).
+        // Therefore no allocations will be made.
+        for page in pmm.metadata_pages() {
+            hal::mm::current().identity_map(
+                VAddr::new(page),
+                Permissions::READ | Permissions::WRITE,
+                alloc,
+            );
+        }
+        for page in pmm.allocated_pages() {
+            log::debug!("pushing rw allocated page 0x{:X}", page);
+            hal::mm::current().identity_map(
+                VAddr::new(page),
+                Permissions::READ | Permissions::WRITE,
+                alloc,
+            );
+        }
+    });
+
+    hal::mm::enable_paging();
+
     unsafe { globals::STATE = globals::KernelState::MmuEnabledInit };
 
     Ok(())

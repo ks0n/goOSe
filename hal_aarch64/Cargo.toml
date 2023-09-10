@@ -9,3 +9,4 @@ edition = "2021"
 hal_core = { path = "../hal_core" }
 tock-registers = "0.8"
 cortex-a = "8.1"
+log = "0.4"

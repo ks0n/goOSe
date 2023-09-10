@@ -226,6 +226,9 @@ impl PageMap for PageTable {
 
     fn new(alloc: PageAllocFn) -> Result<&'static mut Self, Error> {
         let page = alloc(1);
+        if page.val == 0x40330000 {
+            log::debug!("creating pte 40330000");
+        }
         let page_table = page.ptr_cast::<PageTable>();
         // Safety: the PMM gave us the memory, it should be a valid pointer.
         let page_table: &mut PageTable = unsafe { page_table.as_mut().unwrap() };
