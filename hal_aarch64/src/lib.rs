@@ -17,12 +17,14 @@ mod devices;
 pub struct PanicInfo {
     esr_el1: u64,
     elr_el1: u64,
+    far_el1: u64,
 }
 
 pub fn panic_info() -> PanicInfo {
     PanicInfo {
         esr_el1: ESR_EL1.get(),
         elr_el1: ELR_EL1.get(),
+        far_el1: FAR_EL1.get(),
     }
 }
 

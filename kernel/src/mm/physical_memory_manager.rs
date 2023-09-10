@@ -255,6 +255,7 @@ impl PhysicalMemoryManager {
         assert!(count == page_count);
 
         self.metadata = metadata;
+        log::debug!("PMM metadata addr is 0x{:X}", self.metadata.as_ptr() as u64);
 
         Ok(())
     }
@@ -289,6 +290,8 @@ impl PhysicalMemoryManager {
                     .for_each(|page| page.set_allocated());
                 self.metadata[i].set_last();
 
+                let addr = self.metadata[first_page_index].base;
+
                 return Ok(self.metadata[first_page_index].base);
             }
         }
@@ -303,7 +306,10 @@ impl PhysicalMemoryManager {
         let first_page = self.alloc_pages(page_count)?;
         let addr: usize = first_page.into();
 
+        let our_page = addr == 0x40330000;
+
         if unsafe { globals::STATE.is_mmu_enabled() } {
+            log::debug!("our_page is mapped before handed off");
             hal::mm::current().identity_map_range(VAddr::new(addr), page_count, Permissions::READ | Permissions::WRITE, |_| {
                 // The mmu is enabled, therefore we already mapped all DRAM into the kernel's pagetable as
                 // invalid entries.
@@ -324,6 +330,11 @@ impl PhysicalMemoryManager {
     }
 
     pub fn allocated_pages(&self) -> impl core::iter::Iterator<Item = usize> + '_ {
+        log::debug!(
+            "allocated_pages: PMM metadata addr is 0x{:X}",
+            self.metadata.as_ptr() as u64
+        );
+        log::debug!("allocated_pages: metadata[254] {:?}", self.metadata[254]);
         self.metadata
             .iter()
             .filter(|page| page.is_allocated())

@@ -19,30 +19,39 @@ use core::cell::OnceCell;
 
 static mut GPT: OnceCell<&'static mut PageTable> = OnceCell::new();
 
+pub fn is_pagetable_installed() -> bool {
+    unsafe { GPT.get_mut().is_some() }
+}
+
 pub fn current() -> &'static mut PageTable {
     unsafe { GPT.get_mut().unwrap() }
 }
 
-pub fn init_paging(
+pub fn prefill_pagetable(
     r: impl Iterator<Item = AddressRange>,
     rw: impl Iterator<Item = AddressRange>,
     rwx: impl Iterator<Item = AddressRange>,
     pre_allocated: impl Iterator<Item = AddressRange>,
     alloc: PageAllocFn,
 ) -> Result<(), Error> {
-    hal_core::mm::init_paging::<PageTable>(r, rw, rwx, pre_allocated, alloc, |pt| {
-        // TODO: put into into the hal_core::Error
-        unsafe {
-            if GPT.set(pt).is_err() {
-                panic!("GPT is already set ?");
-            }
-        };
-        unsafe {
-            load_pagetable(current());
-        };
-    })?;
+    let pt = hal_core::mm::prefill_pagetable::<PageTable>(r, rw, rwx, pre_allocated, alloc)?;
+
+    // TODO: put into into the hal_core::Error
+    unsafe {
+        if GPT.set(pt).is_err() {
+            panic!("GPT is already set ?");
+        }
+    };
 
     Ok(())
+}
+
+pub fn enable_paging() {
+    unsafe {
+        load_pagetable(current());
+    };
+
+    log::trace!("hal_core::mm::init_paging finished");
 }
 
 unsafe fn load_pagetable(pt: &'static mut PageTable) {

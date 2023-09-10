@@ -142,14 +142,14 @@ pub fn align_down(addr: usize, page_sz: usize) -> usize {
     align_up(addr, page_sz) + page_sz
 }
 
-pub fn init_paging<P: PageMap + 'static>(
+pub fn prefill_pagetable<P: PageMap + 'static>(
     r: impl Iterator<Item = AddressRange>,
     rw: impl Iterator<Item = AddressRange>,
     rwx: impl Iterator<Item = AddressRange>,
     pre_allocated: impl Iterator<Item = AddressRange>,
     alloc: PageAllocFn,
-    store_pagetable: impl FnOnce(&'static mut P),
-) -> Result<(), Error> {
+) -> Result<&'static mut P, Error> {
+    trace!("hal_core::mm::prefill_pagetable");
     let pt: &'static mut P = P::new(alloc)?;
     let page_size = P::PAGE_SIZE;
 
@@ -176,7 +176,5 @@ pub fn init_paging<P: PageMap + 'static>(
         )?
     }
 
-    store_pagetable(pt);
-
-    Ok(())
+    Ok(pt)
 }
