@@ -1,5 +1,5 @@
 use hal_core::{
-    mm::{self, PageAllocFn, PageEntry, PageMap, Permissions},
+    mm::{self, PageAlloc, PageEntry, PageMap, Permissions},
     Error,
 };
 
@@ -224,12 +224,9 @@ impl PageMap for PageTable {
     const PAGE_SIZE: usize = 4096;
     type Entry = TableEntry;
 
-    fn new(alloc: PageAllocFn) -> Result<&'static mut Self, Error> {
-        let page = alloc(1);
-        if page.val == 0x40330000 {
-            log::debug!("creating pte 40330000");
-        }
-        let page_table = page.ptr_cast::<PageTable>();
+    fn new(allocator: &mut impl PageAlloc) -> Result<&'static mut Self, Error> {
+        let page = allocator.alloc(1)?;
+        let page_table = unsafe { page as *mut PageTable };
         // Safety: the PMM gave us the memory, it should be a valid pointer.
         let page_table: &mut PageTable = unsafe { page_table.as_mut().unwrap() };
 
@@ -246,7 +243,7 @@ impl PageMap for PageTable {
         va: mm::VAddr,
         pa: mm::PAddr,
         perms: Permissions,
-        alloc: PageAllocFn,
+        allocator: &mut impl PageAlloc,
     ) -> Result<&mut TableEntry, Error> {
         let va = VAddr::from(va);
         let pa = PAddr::from(pa);
@@ -269,7 +266,7 @@ impl PageMap for PageTable {
 
             let descriptor = unsafe { &mut content.descriptor };
             if descriptor.is_invalid() {
-                let new_page_table = PageTable::new(alloc)?;
+                let new_page_table = PageTable::new(allocator)?;
                 descriptor.set_next_level(new_page_table);
             }
 
@@ -279,14 +276,14 @@ impl PageMap for PageTable {
         unreachable!("We should have reached lvl 3 and returned by now...");
     }
 
-    fn add_invalid_entry(&mut self, va: mm::VAddr, alloc: PageAllocFn) -> Result<(), Error> {
+    fn add_invalid_entry(&mut self, va: mm::VAddr, allocator: &mut impl PageAlloc) -> Result<(), Error> {
         let entry = self.map(
             va,
             mm::PAddr {
                 val: 0x0A0A_0A0A_0A0A_0A0A,
             },
             mm::Permissions::READ,
-            alloc,
+            allocator,
         )?;
 
         entry.set_invalid();

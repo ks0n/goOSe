@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(return_position_impl_trait_in_trait)]
 
 use core::convert::Into;
 use core::ops::Range;
@@ -6,7 +7,15 @@ use core::ops::Range;
 pub mod mm;
 
 #[derive(Debug)]
-pub enum Error {}
+pub enum Error {
+    Alloc(mm::AllocatorError),
+}
+
+impl From<mm::AllocatorError> for Error {
+    fn from(e: mm::AllocatorError) -> Self {
+        Self::Alloc(e)
+    }
+}
 
 pub type TimerCallbackFn = fn();
 

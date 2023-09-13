@@ -1,5 +1,6 @@
 use crate::globals;
 use crate::hal::mm::PAGE_SIZE;
+use hal_core::mm::PageAlloc;
 
 use core::alloc::{GlobalAlloc, Layout};
 
@@ -29,7 +30,7 @@ unsafe impl GlobalAlloc for BinaryBuddyAllocator {
             } else {
                 layout.size() / PAGE_SIZE + 1
             };
-            pmm.alloc_rw_pages(page_count).unwrap_or(0usize.into()) as *mut u8
+            pmm.alloc(page_count).unwrap_or(0usize.into()) as *mut u8
         })
     }
 

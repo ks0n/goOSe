@@ -4,7 +4,7 @@ use super::drivers::Driver;
 use super::globals;
 
 use crate::hal;
-use crate::mm::{alloc_pages_for_hal, map_address_space};
+use crate::mm;
 
 use crate::tests::{self, TestResult};
 
@@ -21,12 +21,12 @@ pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&
     globals::PHYSICAL_MEMORY_MANAGER
         .lock(|pmm| pmm.init_from_device_tree(&dt))
         .unwrap();
-    map_address_space(&dt, devices).expect("failed to map the addres space");
+    mm::map_address_space(&dt, devices).expect("failed to map the addres space");
 
     // Driver stuff
     // let _drvmgr = DriverManager::with_devices(&dt).unwrap();
 
-    hal::irq::init_irq_chip((), alloc_pages_for_hal).expect("initialization of irq chip failed");
+    hal::irq::init_irq_chip((), globals::PHYSICAL_MEMORY_MANAGER.get()).expect("initialization of irq chip failed");
 
     hal::cpu::unmask_interrupts();
 
