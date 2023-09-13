@@ -1,5 +1,5 @@
 mod physical_memory_manager;
-pub use physical_memory_manager::{AllocatorError, PhysicalMemoryManager};
+pub use physical_memory_manager::PhysicalMemoryManager;
 
 mod binary_buddy_allocator;
 
@@ -8,7 +8,7 @@ use crate::globals;
 
 use crate::hal::{self, mm::PAGE_SIZE};
 use crate::Error;
-use hal_core::mm::{align_up, PageMap, Permissions, VAddr};
+use hal_core::mm::{align_up, PageMap, Permissions, VAddr, PageAlloc, NullPageAllocator};
 use hal_core::AddressRange;
 
 use crate::drivers;
@@ -75,38 +75,6 @@ fn map_kernel_rwx() -> (
     (iter::empty(), iter::empty(), rwx_entries)
 }
 
-pub fn alloc_pages_raw(count: usize) -> Result<hal_core::mm::PAddr, Error> {
-    // If there is a kernel pagetable, identity map the pages.
-    // Not sure this is the best idea, but I would say it follows the
-    // principle of least astonishment.
-    // TODO: remove unwrap
-    let start = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_rw_pages(count).unwrap());
-    let addr: usize = start.into();
-
-    if unsafe { globals::STATE.is_mmu_enabled() } {
-        hal::mm::current().identity_map_range(VAddr::new(addr), count, Permissions::READ | Permissions::WRITE, |_| {
-            // The mmu is enabled, therefore we already mapped all DRAM into the kernel's pagetable as
-            // invalid entries.
-            // Pagetable must only modify existing entries and not allocate.
-            panic!("alloc_rw_pages: pagetable tried to allocate memory when mapping it's rw_pages")
-        }).expect("mapping in this case should never fail as illustrated by the comment above...");
-    }
-
-    Ok(hal_core::mm::PAddr::new(addr))
-}
-
-pub fn alloc_pages(count: usize) -> Result<&'static mut [u8], Error> {
-    let addr = alloc_pages_raw(count)?;
-    let page_size = hal::mm::PAGE_SIZE;
-
-    Ok(unsafe { slice::from_raw_parts_mut(addr.val as *mut _, count * page_size) })
-}
-
-pub fn alloc_pages_for_hal(count: usize) -> hal_core::mm::PAddr {
-    alloc_pages_raw(count)
-        .expect("page allocation function passed to the hal has failed, critical...")
-}
-
 pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
     device_tree: &DeviceTree,
     drivers: I,
@@ -115,9 +83,6 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
     let mut rw_entries = ArrayVec::<AddressRange, 128>::new();
     let mut rwx_entries = ArrayVec::<AddressRange, 128>::new();
     let mut pre_allocated_entries = ArrayVec::<AddressRange, 1024>::new();
-
-    let alloc =
-        |count| alloc_pages_raw(count).expect("failure on page allocator passed to init_paging");
 
     // Add entries/descriptors in the pagetable for all of accessible memory regions.
     // That way in the future, mapping those entries won't require any memory allocations,
@@ -170,29 +135,22 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
         rw_entries.into_iter(),
         rwx_entries.into_iter(),
         pre_allocated_entries.into_iter(),
-        alloc,
+        globals::PHYSICAL_MEMORY_MANAGER.get(),
     )?;
 
-    globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| {
-        // All pmm pages are located in DRAM so they are already in the pagetable (they are part of
-        // the pre_allocated_entries).
-        // Therefore no allocations will be made.
-        for page in pmm.metadata_pages() {
-            hal::mm::current().identity_map(
-                VAddr::new(page),
-                Permissions::READ | Permissions::WRITE,
-                alloc,
-            );
-        }
-        for page in pmm.allocated_pages() {
-            log::debug!("pushing rw allocated page 0x{:X}", page);
-            hal::mm::current().identity_map(
-                VAddr::new(page),
-                Permissions::READ | Permissions::WRITE,
-                alloc,
-            );
-        }
-    });
+    // All pmm pages are located in DRAM so they are already in the pagetable (they are part of
+    // the pre_allocated_entries).
+    // Therefore no allocations will be made, pass the NullPageAllocator.
+    for page in globals::PHYSICAL_MEMORY_MANAGER.get().used_pages() {
+        log::debug!("pushing rw allocated page 0x{:X}", page);
+        // let range = AddressRange::new(page..page + PAGE_SIZE);
+        // rw_entries.try_push(range);
+        hal::mm::current().identity_map(
+            VAddr::new(page),
+            Permissions::READ | Permissions::WRITE,
+            &mut NullPageAllocator
+        );
+    }
 
     hal::mm::enable_paging();
 

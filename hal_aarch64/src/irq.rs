@@ -7,7 +7,7 @@ use hal_core::{Error, TimerCallbackFn};
 use crate::devices::gicv2::GicV2;
 
 use crate::mm;
-use hal_core::mm::{PageAllocFn, PageMap, Permissions, VAddr};
+use hal_core::mm::{PageAlloc, PageMap, Permissions, VAddr};
 
 use tock_registers::interfaces::Writeable;
 
@@ -64,19 +64,19 @@ impl IrqChip {
 
 static mut IRQ_CHIP: IrqChip = IrqChip::NoChip;
 
-pub fn init_irq_chip(_dt_node: (), alloc: PageAllocFn) -> Result<(), Error> {
+pub fn init_irq_chip(_dt_node: (), allocator: &mut impl PageAlloc) -> Result<(), Error> {
     let (gicd_base, gicc_base) = (0x800_0000, 0x801_0000);
     mm::current().identity_map_range(
         VAddr::new(gicd_base),
         0x0001_0000 / mm::PAGE_SIZE,
         Permissions::READ | Permissions::WRITE,
-        alloc,
+        allocator,
     )?;
     mm::current().identity_map_range(
         VAddr::new(gicc_base),
         0x0001_0000 / mm::PAGE_SIZE,
         Permissions::READ | Permissions::WRITE,
-        alloc,
+        allocator,
     )?;
 
     unsafe {

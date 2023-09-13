@@ -6,7 +6,7 @@ pub enum Error {
     NoMatchingDriver(&'static str),
     InvalidFdtNode,
     FdtError(fdt::FdtError),
-    Allocator(mm::AllocatorError),
+    Allocator(hal_core::mm::AllocatorError),
     Hal(hal_core::Error),
     SetLoggerError(log::SetLoggerError),
 }
@@ -17,8 +17,8 @@ impl From<fdt::FdtError> for Error {
     }
 }
 
-impl From<mm::AllocatorError> for Error {
-    fn from(e: mm::AllocatorError) -> Self {
+impl From<hal_core::mm::AllocatorError> for Error {
+    fn from(e: hal_core::mm::AllocatorError) -> Self {
         Self::Allocator(e)
     }
 }

@@ -10,7 +10,7 @@ use goblin::elf::program_header::program_header64::ProgramHeader;
 use goblin::elf::program_header::*;
 
 use crate::hal;
-use hal_core::mm::{PAddr, PageMap, Permissions, VAddr};
+use hal_core::mm::{PAddr, PageMap, Permissions, VAddr, PageAlloc};
 
 fn align_down(addr: usize, page_size: usize) -> usize {
     let page_mask = !(page_size - 1);
@@ -66,7 +66,7 @@ impl<'a> Elf<'a> {
     }
 
     pub fn load(&self) -> Result<(), Error> {
-        let pmm = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm);
+        let pmm = globals::PHYSICAL_MEMORY_MANAGER.get();
         let page_size = hal::mm::PAGE_SIZE;
 
         for segment in self.segments() {
@@ -79,7 +79,7 @@ impl<'a> Elf<'a> {
             let p_memsz = segment.p_memsz as usize;
 
             let pages_needed = Self::pages_needed(segment, page_size);
-            let physical_pages = pmm.alloc_rw_pages(pages_needed).unwrap();
+            let physical_pages = pmm.alloc(pages_needed).unwrap();
             let virtual_pages = segment.p_paddr as *mut u8;
             let offset_in_page =
                 (virtual_pages as usize) - align_down(virtual_pages as usize, page_size);
@@ -113,10 +113,7 @@ impl<'a> Elf<'a> {
                         VAddr::new(align_down(virtual_pages as usize, page_size) + page_offset),
                         PAddr::new(usize::from(physical_pages) + page_offset),
                         perms,
-                        |count| {
-                            mm::alloc_pages_raw(count)
-                                .expect("failure on page allocator passed during elf loading")
-                        },
+                        pmm
                     )
                     .unwrap();
             }

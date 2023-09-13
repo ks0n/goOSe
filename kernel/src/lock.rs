@@ -17,6 +17,10 @@ impl<T> Lock<T> {
 
         f(data)
     }
+
+    pub fn get(&self) -> &'static mut T {
+        unsafe { &mut *self.data.get() }
+    }
 }
 
 unsafe impl<T> Send for Lock<T> where T: Sized + Send {}

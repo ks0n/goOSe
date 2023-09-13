@@ -9,6 +9,7 @@
 #![feature(const_for)]
 #![feature(alloc_error_handler)]
 #![feature(trait_upcasting)]
+#![feature(return_position_impl_trait_in_trait)]
 
 pub extern crate alloc;
 
@@ -19,7 +20,6 @@ pub mod error;
 pub use error::Error;
 
 pub mod device_tree;
-pub mod driver_manager;
 pub mod executable;
 pub mod generic_main;
 pub mod globals;

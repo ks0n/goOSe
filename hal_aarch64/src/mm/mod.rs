@@ -1,5 +1,5 @@
 use hal_core::{
-    mm::{self, PageAllocFn, PageMap},
+    mm::{self, PageAlloc, PageMap},
     AddressRange, Error,
 };
 
@@ -32,9 +32,9 @@ pub fn prefill_pagetable(
     rw: impl Iterator<Item = AddressRange>,
     rwx: impl Iterator<Item = AddressRange>,
     pre_allocated: impl Iterator<Item = AddressRange>,
-    alloc: PageAllocFn,
+    allocator: &mut impl PageAlloc,
 ) -> Result<(), Error> {
-    let pt = hal_core::mm::prefill_pagetable::<PageTable>(r, rw, rwx, pre_allocated, alloc)?;
+    let pt = hal_core::mm::prefill_pagetable::<PageTable>(r, rw, rwx, pre_allocated, allocator)?;
 
     // TODO: put into into the hal_core::Error
     unsafe {

@@ -3,10 +3,10 @@ use log::{debug, info, trace};
 use core::slice;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::globals;
 use crate::executable::elf::Elf;
-use crate::hal;
-use crate::mm::{alloc_pages, alloc_pages_for_hal};
-use hal_core::mm::{PageMap, Permissions};
+use crate::hal::{self, mm::PAGE_SIZE};
+use hal_core::mm::{PageAlloc, PageMap, Permissions};
 
 use align_data::include_aligned;
 use align_data::Align4K;
@@ -97,12 +97,14 @@ fn test_timer_interrupt() -> TestResult {
 fn test_pagetable_remap() -> TestResult {
     info!("Testing the remapping capabilities of our pagetable...");
 
-    let page_src = alloc_pages(1).unwrap();
+    let page_src = globals::PHYSICAL_MEMORY_MANAGER.get().alloc(1).unwrap();
+    let page_src = unsafe { slice::from_raw_parts_mut(page_src as *mut u8, PAGE_SIZE) };
     let dst_addr = 0x0450_0000;
     let page_dst = unsafe { slice::from_raw_parts(dst_addr as *const u8, hal::mm::PAGE_SIZE) };
     let deadbeef = [0xDE, 0xAD, 0xBE, 0xEF];
 
     // Put data in source page
+
     page_src[0..deadbeef.len()].copy_from_slice(&deadbeef);
 
     // Remap source page to destination page
@@ -111,7 +113,7 @@ fn test_pagetable_remap() -> TestResult {
             hal_core::mm::VAddr::new(dst_addr),
             hal_core::mm::PAddr::new(page_src.as_ptr() as usize),
             Permissions::READ | Permissions::WRITE,
-            alloc_pages_for_hal,
+            globals::PHYSICAL_MEMORY_MANAGER.get()
         )
         .unwrap();
 
