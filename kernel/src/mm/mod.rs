@@ -8,7 +8,7 @@ use crate::globals;
 
 use crate::hal::{self, mm::PAGE_SIZE};
 use crate::Error;
-use hal_core::mm::{align_up, PageMap, Permissions, VAddr, PageAlloc, NullPageAllocator};
+use hal_core::mm::{align_up, NullPageAllocator, PageAlloc, PageMap, Permissions, VAddr};
 use hal_core::AddressRange;
 
 use crate::drivers;
@@ -135,22 +135,22 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
         rw_entries.into_iter(),
         rwx_entries.into_iter(),
         pre_allocated_entries.into_iter(),
-        globals::PHYSICAL_MEMORY_MANAGER.get(),
+        &globals::PHYSICAL_MEMORY_MANAGER,
     )?;
 
     // All pmm pages are located in DRAM so they are already in the pagetable (they are part of
     // the pre_allocated_entries).
     // Therefore no allocations will be made, pass the NullPageAllocator.
-    for page in globals::PHYSICAL_MEMORY_MANAGER.get().used_pages() {
+    globals::PHYSICAL_MEMORY_MANAGER.used_pages(|page| {
         log::debug!("pushing rw allocated page 0x{:X}", page);
         // let range = AddressRange::new(page..page + PAGE_SIZE);
         // rw_entries.try_push(range);
         hal::mm::current().identity_map(
             VAddr::new(page),
             Permissions::READ | Permissions::WRITE,
-            &mut NullPageAllocator
+            &mut NullPageAllocator,
         );
-    }
+    });
 
     hal::mm::enable_paging();
 

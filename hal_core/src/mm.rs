@@ -57,26 +57,25 @@ pub enum AllocatorError {
     OutOfMemory,
 }
 
-pub trait PageAlloc {
-    fn alloc(&mut self, page_count: usize) -> Result<usize, AllocatorError>;
-    fn dealloc(&mut self, base: usize, page_count: usize) -> Result<(), AllocatorError>;
-    fn used_pages(&self) -> impl Iterator<Item = usize> + '_;
+pub trait PageAlloc: Sync {
+    fn alloc(&self, page_count: usize) -> Result<usize, AllocatorError>;
+    fn dealloc(&self, base: usize, page_count: usize) -> Result<(), AllocatorError>;
+    fn used_pages<F: FnMut(usize)>(&self, f: F);
 }
 
 pub struct NullPageAllocator;
 
 impl PageAlloc for NullPageAllocator {
-    fn alloc(&mut self, page_count: usize) -> Result<usize, AllocatorError> {
+    fn alloc(&self, _page_count: usize) -> Result<usize, AllocatorError> {
         panic!("the null page allocator mustn't allocate");
     }
 
-    fn dealloc(&mut self, base: usize, page_count: usize) -> Result<(), AllocatorError> {
+    fn dealloc(&self, _base: usize, _page_count: usize) -> Result<(), AllocatorError> {
         panic!("the null page allocator cannot deallocate");
     }
 
-    fn used_pages(&self) -> impl Iterator<Item = usize> + '_ {
+    fn used_pages<F: FnMut(usize)>(&self, _f: F) {
         panic!("obviously the null allocator has no pages that are in use");
-        core::iter::empty()
     }
 }
 
@@ -88,17 +87,17 @@ pub trait PageMap {
     const PAGE_SIZE: usize;
     type Entry: PageEntry;
 
-    fn new(allocator: &mut impl PageAlloc) -> Result<&'static mut Self, Error>;
+    fn new(allocator: &impl PageAlloc) -> Result<&'static mut Self, Error>;
 
     fn map(
         &mut self,
         va: VAddr,
         pa: PAddr,
         perms: Permissions,
-        allocator: &mut impl PageAlloc,
+        allocator: &impl PageAlloc,
     ) -> Result<&mut Self::Entry, Error>;
 
-    fn add_invalid_entry(&mut self, va: VAddr, allocator: &mut impl PageAlloc) -> Result<(), Error> {
+    fn add_invalid_entry(&mut self, va: VAddr, allocator: &impl PageAlloc) -> Result<(), Error> {
         self.map(
             va,
             PAddr::new(0x0A0A_0A0A_0A0A_0A0A),
@@ -114,7 +113,7 @@ pub trait PageMap {
         &mut self,
         addr: VAddr,
         perms: Permissions,
-        allocator: &mut impl PageAlloc,
+        allocator: &impl PageAlloc,
     ) -> Result<(), Error> {
         self.map(addr, PAddr::new(addr.val), perms, allocator)
             .map(|_| ())
@@ -125,7 +124,7 @@ pub trait PageMap {
         addr: VAddr,
         page_count: usize,
         perms: Permissions,
-        allocator: &mut impl PageAlloc,
+        allocator: &impl PageAlloc,
     ) -> Result<(), Error> {
         let start = addr.val;
         for i in 0..page_count {
@@ -138,7 +137,7 @@ pub trait PageMap {
     fn add_invalid_entries(
         &mut self,
         range: AddressRange,
-        allocator: &mut impl PageAlloc,
+        allocator: &impl PageAlloc,
     ) -> Result<(), Error> {
         for page in range.iter_pages(Self::PAGE_SIZE) {
             self.add_invalid_entry(VAddr::new(page), allocator)?;
@@ -151,7 +150,7 @@ pub trait PageMap {
         &mut self,
         range: AddressRange,
         perms: Permissions,
-        allocator: &mut impl PageAlloc,
+        allocator: &impl PageAlloc,
     ) -> Result<(), Error> {
         for page in range.iter_pages(Self::PAGE_SIZE) {
             self.identity_map(VAddr::new(page), perms, allocator)?;
@@ -176,7 +175,7 @@ pub fn prefill_pagetable<P: PageMap + 'static>(
     rw: impl Iterator<Item = AddressRange>,
     rwx: impl Iterator<Item = AddressRange>,
     pre_allocated: impl Iterator<Item = AddressRange>,
-    allocator: &mut impl PageAlloc,
+    allocator: &impl PageAlloc,
 ) -> Result<&'static mut P, Error> {
     trace!("hal_core::mm::prefill_pagetable");
     let pt: &'static mut P = P::new(allocator)?;
