@@ -24,14 +24,14 @@ unsafe impl GlobalAlloc for BinaryBuddyAllocator {
         //   - be thread-safe
         //   - disable interrupts when entering, then re-enable
 
-        globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| {
-            let page_count = if layout.size() <= PAGE_SIZE {
-                1
-            } else {
-                layout.size() / PAGE_SIZE + 1
-            };
-            pmm.alloc(page_count).unwrap_or(0usize.into()) as *mut u8
-        })
+        let page_count = if layout.size() <= PAGE_SIZE {
+            1
+        } else {
+            layout.size() / PAGE_SIZE + 1
+        };
+        globals::PHYSICAL_MEMORY_MANAGER
+            .alloc(page_count)
+            .unwrap_or(0usize.into()) as *mut u8
     }
 
     unsafe fn dealloc(&self, _: *mut u8, _: Layout) {

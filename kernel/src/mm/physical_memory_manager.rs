@@ -5,13 +5,14 @@ use crate::mm;
 use crate::Error;
 use core::mem;
 use hal_core::{
-    mm::{PageMap, Permissions, VAddr, PageAlloc, AllocatorError, NullPageAllocator},
+    mm::{AllocatorError, NullPageAllocator, PageAlloc, PageMap, Permissions, VAddr},
     AddressRange,
 };
 
 use hal::mm::PAGE_SIZE;
 
 use log::debug;
+use spin::mutex::Mutex;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum PageKind {
@@ -54,7 +55,7 @@ impl PhysicalPage {
 
 #[derive(Debug)]
 pub struct PhysicalMemoryManager {
-    metadata: &'static mut [PhysicalPage],
+    metadata: Mutex<&'static mut [PhysicalPage]>,
 }
 
 impl PhysicalMemoryManager {
@@ -194,14 +195,13 @@ impl PhysicalMemoryManager {
             )
         };
 
-        Self { metadata }
+        Self {
+            metadata: Mutex::new(metadata),
+        }
     }
 
     /// Initialize a [`PageAllocator`] from the device tree.
-    pub fn init_from_device_tree(
-        &mut self,
-        device_tree: &DeviceTree,
-    ) -> Result<(), AllocatorError> {
+    pub fn init_from_device_tree(&self, device_tree: &DeviceTree) -> Result<(), AllocatorError> {
         let available_regions = Self::available_memory_regions::<10>(device_tree);
 
         assert!(
@@ -248,35 +248,27 @@ impl PhysicalMemoryManager {
         }
         assert!(count == page_count);
 
-        self.metadata = metadata;
-        log::debug!("PMM metadata addr is 0x{:X}", self.metadata.as_ptr() as u64);
+        *self.metadata.lock() = metadata;
 
         Ok(())
     }
 
     fn metadata_pages(&self) -> impl core::iter::Iterator<Item = usize> {
-        let metadata_start = (&self.metadata[0] as *const PhysicalPage) as usize;
-        let metadata_last =
-            (&self.metadata[self.metadata.len() - 1] as *const PhysicalPage) as usize;
+        let metadata = self.metadata.lock();
+        let metadata_start = (&metadata[0] as *const PhysicalPage) as usize;
+        let metadata_last = (&metadata[metadata.len() - 1] as *const PhysicalPage) as usize;
 
         (metadata_start..=metadata_last).step_by(PAGE_SIZE)
     }
 
-    fn allocated_pages(&self) -> impl core::iter::Iterator<Item = usize> + '_ {
-        log::debug!("allocated_pages: PMM metadata addr is 0x{:X}", self.metadata.as_ptr() as u64);
-        log::debug!("allocated_pages: metadata[254] {:?}", self.metadata[254]);
-        self.metadata
-            .iter()
-            .filter(|page| page.is_allocated())
-            .map(|page| page.base)
-    }
-
-    pub fn alloc_pages(&mut self, page_count: usize) -> Result<usize, AllocatorError> {
+    pub fn alloc_pages(&self, page_count: usize) -> Result<usize, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
         let mut last_page_base: usize = 0;
 
-        for (i, page) in self.metadata.iter().enumerate() {
+        let mut metadata = self.metadata.lock();
+
+        for (i, page) in metadata.iter().enumerate() {
             if consecutive_pages == 0 {
                 first_page_index = i;
                 last_page_base = page.base;
@@ -296,14 +288,14 @@ impl PhysicalMemoryManager {
             last_page_base = page.base;
 
             if consecutive_pages == page_count {
-                self.metadata[first_page_index..=i]
+                metadata[first_page_index..=i]
                     .iter_mut()
                     .for_each(|page| page.set_allocated());
-                self.metadata[i].set_last();
+                metadata[i].set_last();
 
-                let addr = self.metadata[first_page_index].base;
+                let addr = metadata[first_page_index].base;
 
-                return Ok(self.metadata[first_page_index].base);
+                return Ok(metadata[first_page_index].base);
             }
         }
 
@@ -311,9 +303,8 @@ impl PhysicalMemoryManager {
     }
 }
 
-
 impl PageAlloc for PhysicalMemoryManager {
-    fn alloc(&mut self, page_count: usize) -> Result<usize, AllocatorError> {
+    fn alloc(&self, page_count: usize) -> Result<usize, AllocatorError> {
         // If there is a kernel pagetable, identity map the pages.
         let first_page = self.alloc_pages(page_count)?;
         let addr: usize = first_page.into();
@@ -322,19 +313,18 @@ impl PageAlloc for PhysicalMemoryManager {
             // The mmu is enabled, therefore we already mapped all DRAM into the kernel's pagetable
             // as invalid entries.
             // Pagetable must only modify existing entries and not allocate.
-            hal::mm::current()
-                .identity_map_range(
-                    VAddr::new(addr),
-                    page_count,
-                    Permissions::READ | Permissions::WRITE,
-                    &mut NullPageAllocator,
-                );
+            hal::mm::current().identity_map_range(
+                VAddr::new(addr),
+                page_count,
+                Permissions::READ | Permissions::WRITE,
+                &mut NullPageAllocator,
+            );
         }
 
         Ok(addr)
     }
 
-    fn dealloc(&mut self, _base: usize, _page_count: usize) -> Result<(), AllocatorError> {
+    fn dealloc(&self, _base: usize, _page_count: usize) -> Result<(), AllocatorError> {
         // TODO:
         //  - if MMU is on, unmap the page
         //  - set as free
@@ -342,19 +332,19 @@ impl PageAlloc for PhysicalMemoryManager {
         Ok(())
     }
 
-    pub fn allocated_pages(&self) -> impl core::iter::Iterator<Item = usize> + '_ {
-        log::debug!(
-            "allocated_pages: PMM metadata addr is 0x{:X}",
-            self.metadata.as_ptr() as u64
-        );
-        log::debug!("allocated_pages: metadata[254] {:?}", self.metadata[254]);
-        self.metadata
+    fn used_pages<F: FnMut(usize)>(&self, f: F) {
+        let metadata = self.metadata.lock();
+
+        let metadata_start = (&metadata[0] as *const PhysicalPage) as usize;
+        let metadata_last = (&metadata[metadata.len() - 1] as *const PhysicalPage) as usize;
+
+        let metadata_pages = (metadata_start..=metadata_last).step_by(PAGE_SIZE);
+        let allocated_pages = metadata
             .iter()
             .filter(|page| page.is_allocated())
-            .map(|page| page.base)
-    }
-    fn used_pages(&self) -> impl Iterator<Item = usize> + '_ {
-        self.metadata_pages().chain(self.allocated_pages())
+            .map(|page| page.base);
+
+        metadata_pages.chain(allocated_pages).for_each(f);
     }
 }
 

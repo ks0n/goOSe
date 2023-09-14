@@ -64,7 +64,7 @@ impl IrqChip {
 
 static mut IRQ_CHIP: IrqChip = IrqChip::NoChip;
 
-pub fn init_irq_chip(_dt_node: (), allocator: &mut impl PageAlloc) -> Result<(), Error> {
+pub fn init_irq_chip(_dt_node: (), allocator: &impl PageAlloc) -> Result<(), Error> {
     let (gicd_base, gicc_base) = (0x800_0000, 0x801_0000);
     mm::current().identity_map_range(
         VAddr::new(gicd_base),

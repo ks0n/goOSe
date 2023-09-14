@@ -224,7 +224,7 @@ impl PageMap for PageTable {
     const PAGE_SIZE: usize = 4096;
     type Entry = TableEntry;
 
-    fn new(allocator: &mut impl PageAlloc) -> Result<&'static mut Self, Error> {
+    fn new(allocator: &impl PageAlloc) -> Result<&'static mut Self, Error> {
         let page = allocator.alloc(1)?;
         let page_table = unsafe { page as *mut PageTable };
         // Safety: the PMM gave us the memory, it should be a valid pointer.
@@ -243,7 +243,7 @@ impl PageMap for PageTable {
         va: mm::VAddr,
         pa: mm::PAddr,
         perms: Permissions,
-        allocator: &mut impl PageAlloc,
+        allocator: &impl PageAlloc,
     ) -> Result<&mut TableEntry, Error> {
         let va = VAddr::from(va);
         let pa = PAddr::from(pa);
@@ -276,7 +276,11 @@ impl PageMap for PageTable {
         unreachable!("We should have reached lvl 3 and returned by now...");
     }
 
-    fn add_invalid_entry(&mut self, va: mm::VAddr, allocator: &mut impl PageAlloc) -> Result<(), Error> {
+    fn add_invalid_entry(
+        &mut self,
+        va: mm::VAddr,
+        allocator: &impl PageAlloc,
+    ) -> Result<(), Error> {
         let entry = self.map(
             va,
             mm::PAddr {

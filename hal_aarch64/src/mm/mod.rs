@@ -32,7 +32,7 @@ pub fn prefill_pagetable(
     rw: impl Iterator<Item = AddressRange>,
     rwx: impl Iterator<Item = AddressRange>,
     pre_allocated: impl Iterator<Item = AddressRange>,
-    allocator: &mut impl PageAlloc,
+    allocator: &impl PageAlloc,
 ) -> Result<(), Error> {
     let pt = hal_core::mm::prefill_pagetable::<PageTable>(r, rw, rwx, pre_allocated, allocator)?;
 
