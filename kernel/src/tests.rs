@@ -34,6 +34,10 @@ const TESTS: &[Test] = &[
         name: "basic elf loader",
         test: test_elf_loader_basic,
     },
+    Test {
+        name: "userland elf loader",
+        test: test_elf_loader_userland,
+    },
 ];
 
 pub fn launch() -> TestResult {
@@ -72,15 +76,15 @@ fn test_timer_interrupt() -> TestResult {
         hal::irq::set_timer_handler(|| {
             trace!(".");
 
-            if CNT.fetch_add(1, Ordering::Relaxed) < NUM_INTERRUPTS {
-                hal::irq::set_timer(50_000)
-                    .expect("failed to set timer in the timer handler of the test");
-            }
+            hal::cpu::clear_physical_timer();
+
+            CNT.fetch_add(1, Ordering::Relaxed);
         });
 
-        hal::irq::set_timer(50_000).expect("failed to set timer for test");
-
-        while CNT.load(Ordering::Relaxed) < NUM_INTERRUPTS {}
+        while CNT.load(Ordering::Relaxed) < NUM_INTERRUPTS {
+            hal::irq::set_timer(100_000).expect("failed to set timer for test");
+            unsafe {core::arch::asm!("wfi")};
+        }
 
         // TODO: restore the timer handler
         hal::cpu::clear_physical_timer();
@@ -137,7 +141,25 @@ fn test_elf_loader_basic() -> TestResult {
     let entry_point: extern "C" fn() -> u8 =
         unsafe { core::mem::transmute(test_bin.get_entry_point()) };
     debug!("[OK] Elf loaded, entry point is {:?}", entry_point);
-    entry_point();
+    hal::context::switch(entry_point);
+    debug!("[OK] Returned for Elf");
+
+    TestResult::Success
+}
+
+fn test_elf_loader_userland() -> TestResult {
+    static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS"));
+
+    let test_bin = Elf::from_bytes(TEST_BIN);
+    let stack = alloc_pages(1).unwrap();
+
+    debug!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS"));
+    test_bin.load().unwrap();
+    debug!("[OK] Elf loaded");
+    let entry_point: extern "C" fn() -> u8 =
+        unsafe { core::mem::transmute(test_bin.get_entry_point()) };
+    debug!("[OK] Elf loaded, entry point is {:?}", entry_point );
+    hal::context::switch_userland(entry_point, stack.as_mut_ptr());
     debug!("[OK] Returned for Elf");
 
     TestResult::Success

@@ -9,6 +9,7 @@ use core::arch::asm;
 pub mod cpu;
 pub mod irq;
 pub mod mm;
+pub mod context;
 
 mod devices;
 

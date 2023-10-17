@@ -24,6 +24,7 @@
             }))
             qemu
             rust-analyzer
+            stdenv.cc
           ];
         };
       }

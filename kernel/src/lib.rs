@@ -11,6 +11,10 @@
 #![feature(trait_upcasting)]
 
 pub extern crate alloc;
+#[cfg(target_arch = "riscv64")]
+extern crate hal_riscv64 as hal_arch;
+#[cfg(target_arch = "aarch64")]
+extern crate hal_aarch64 as hal_arch;
 
 pub mod drivers;
 mod utils;

@@ -5,6 +5,7 @@
 pub mod cpu;
 pub mod irq;
 pub mod mm;
+pub mod context;
 mod plic;
 mod registers;
 

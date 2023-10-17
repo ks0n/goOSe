@@ -217,6 +217,15 @@ extern "C" fn timer_handler() {
 unsafe extern "C" fn trap_handler() {
     asm!(
         "
+        # Store current stack
+        csrrw sp, sscratch, sp
+        # If we come from userland we are good to go
+        bnez sp, _save_context
+
+        # We come from kernel. Sp was correct. Restore the value we stored
+        csrr sp, sscratch
+
+    _save_context:
         addi sp, sp, -0x100
 
         sd x31, 0x100(sp)
