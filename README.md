@@ -23,17 +23,16 @@ provide the basic kernel functionalities (UART, interrupt hardware, ...)
 :warning: **At the moment userland drivers are not implemented**
 
 ## Try it out
-When using cargo, you need to specify which target triplet to use with 
-`--target <triplet_here>`. Here is the list of triplet to use depending on the 
-targeted architecture:
-- RISC-V --> `riscv64gc-unknown-none-elf`
-- AArch64 --> `aarch64-unknown-none`
-
-If not installed yet, use `rustup target add <triple_here>`
-
-You also need to select which board to use with `--bin`:
+Choose your desired board:
 - Qemu RISC-V (virt) --> `riscv_qemuvirt`
 - Qemu AArch64 (virt) --> `aarch64_qemuvirt`
+
+Then just run:
+```console
+$ cargo run
+```
+
+For qemu target it will launch Qemu. For other targets the hope is to flash them instead
 
 ### Requirement
 - A rust nightly toolchain
@@ -44,17 +43,22 @@ If you use Nix you can run `nix develop` to get a shell with everything needed
 to test GoOSe
 
 ### Build
+#### Board project
+Go to a board project (ex. riscv_qemuvirt) and then:
 ```console
-$ cargo build --bin <bin_here> --target <triplet_here>
+$ cargo build
 ```
 
-### Run
-Each platform configuration might contains a custom runner setup, meaning that
-depending on your use-case `cargo run` will be able to launch an emulator or
-flash a connected microcontroller.
+#### Kernel, hal, ...
+When building, you need to specify which target triplet to use with 
+`--target <triplet_here>`. Here is the list of triplet to use depending on the 
+targeted architecture:
+- RISC-V --> `riscv64gc-unknown-none-elf`
+- AArch64 --> `aarch64-unknown-none`
 
+Go to the component folder and then:
 ```console
-$ cargo run --bin <bin_here> --target <triplet_here>
+$ cargo build --target <triplet_here>
 ```
 
 ### Tests
