@@ -1,5 +1,5 @@
 use hal_core::{
-    mm::{PageAllocFn, PageMap, Permissions, VAddr},
+    mm::{PageAlloc, PageMap, Permissions, VAddr},
     Error, TimerCallbackFn,
 };
 
@@ -20,7 +20,7 @@ pub fn init_exception_handlers() {
 
 static mut IRQ_CHIP: Option<Plic> = None;
 
-pub fn init_irq_chip(_dt_node: (), alloc: PageAllocFn) -> Result<(), Error> {
+pub fn init_irq_chip(_dt_node: (), allocator: &impl PageAlloc) -> Result<(), Error> {
     // TODO map the dt_node
     let base = 0xc000000;
     let max_offset = 0x3FFFFFC;
@@ -29,7 +29,7 @@ pub fn init_irq_chip(_dt_node: (), alloc: PageAllocFn) -> Result<(), Error> {
         VAddr::new(base),
         max_offset / mm::PAGE_SIZE + 1,
         Permissions::READ | Permissions::WRITE,
-        alloc,
+        allocator,
     )?;
     unsafe {
         IRQ_CHIP = Some(Plic::new(base));
