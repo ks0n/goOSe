@@ -1,6 +1,6 @@
 use modular_bitfield::{bitfield, prelude::*};
 
-use hal_core::mm::{self, PageAllocFn, PageEntry, PageMap};
+use hal_core::mm::{self, PageAlloc, PageEntry, PageMap};
 use hal_core::Error;
 
 #[repr(C)]
@@ -167,14 +167,16 @@ impl PageMap for PageTable {
     const PAGE_SIZE: usize = 4096;
     type Entry = PageTableEntry;
 
-    fn new(alloc: PageAllocFn) -> Result<&'static mut Self, Error> {
-        let page = alloc(1);
-
-        let page_table = page.ptr_cast::<PageTable>();
+    fn new(allocator: &impl PageAlloc) -> Result<&'static mut Self, Error> {
+        let page = allocator.alloc(1)?;
+        let page_table = unsafe { page as *mut PageTable };
         // Safety: the PMM gave us the memory, it should be a valid pointer.
-        let page_table = unsafe { page_table.as_mut().unwrap() };
+        let page_table: &mut PageTable = unsafe { page_table.as_mut().unwrap() };
 
-        page_table.entries.iter_mut().for_each(|pte| pte.clear());
+        page_table
+            .entries
+            .iter_mut()
+            .for_each(|pte| pte.set_invalid());
 
         Ok(page_table)
     }
@@ -184,7 +186,7 @@ impl PageMap for PageTable {
         va: mm::VAddr,
         pa: mm::PAddr,
         perms: mm::Permissions,
-        alloc: PageAllocFn,
+        allocator: &impl PageAlloc,
     ) -> Result<&mut Self::Entry, Error> {
         let paddr: PAddr = pa.into();
         let vaddr: VAddr = va.into();
@@ -207,7 +209,7 @@ impl PageMap for PageTable {
 
             // If the entry is not valid we will need to allocate a new PageTable
             if !pte.is_valid() {
-                let new_page_table = PageTable::new(alloc);
+                let new_page_table = PageTable::new(allocator);
 
                 // Set new PageTable as target of this entry
                 pte.set_target(new_page_table? as *mut PageTable);

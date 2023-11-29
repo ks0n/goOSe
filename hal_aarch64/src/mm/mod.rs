@@ -50,8 +50,6 @@ pub fn enable_paging() {
     unsafe {
         load_pagetable(current());
     };
-
-    log::trace!("hal_core::mm::init_paging finished");
 }
 
 unsafe fn load_pagetable(pt: &'static mut PageTable) {
