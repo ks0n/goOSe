@@ -26,10 +26,7 @@ pub struct Matcher<T: ?Sized> {
 
 impl<T: ?Sized> Matcher<T> {
     pub fn matches(&self, compatible: &str) -> bool {
-        self.compatibles
-            .iter()
-            .find(|&s| s == &compatible)
-            .is_some()
+        self.compatibles.iter().any(|s| s == &compatible)
     }
 }
 type ConsoleMatcher = Matcher<dyn Console + Send + Sync>;

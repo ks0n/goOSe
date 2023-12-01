@@ -1,5 +1,3 @@
-use crate::lock::Lock;
-
 use crate::mm;
 
 pub static PHYSICAL_MEMORY_MANAGER: mm::PhysicalMemoryManager = mm::PhysicalMemoryManager::new();

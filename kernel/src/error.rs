@@ -1,5 +1,3 @@
-use super::mm;
-
 #[derive(Debug)]
 pub enum Error {
     DeviceNotFound(&'static str),

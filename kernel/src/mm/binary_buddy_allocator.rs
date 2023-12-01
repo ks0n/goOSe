@@ -31,7 +31,7 @@ unsafe impl GlobalAlloc for BinaryBuddyAllocator {
         };
         globals::PHYSICAL_MEMORY_MANAGER
             .alloc(page_count)
-            .unwrap_or(0usize.into()) as *mut u8
+            .unwrap_or(0usize) as *mut u8
     }
 
     unsafe fn dealloc(&self, _: *mut u8, _: Layout) {

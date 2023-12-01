@@ -179,7 +179,6 @@ pub fn prefill_pagetable<P: PageMap + 'static>(
 ) -> Result<&'static mut P, Error> {
     trace!("hal_core::mm::prefill_pagetable");
     let pt: &'static mut P = P::new(allocator)?;
-    let page_size = P::PAGE_SIZE;
 
     for range in pre_allocated {
         pt.add_invalid_entries(range, allocator)?;

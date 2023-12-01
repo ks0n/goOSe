@@ -115,10 +115,6 @@ pub struct PageTableEntry {
 }
 
 impl PageTableEntry {
-    fn clear(&mut self) {
-        *self = PageTableEntry::from_bytes([0u8; 8])
-    }
-
     fn is_valid(&self) -> bool {
         self.v() == 1
     }
@@ -169,7 +165,7 @@ impl PageMap for PageTable {
 
     fn new(allocator: &impl PageAlloc) -> Result<&'static mut Self, Error> {
         let page = allocator.alloc(1)?;
-        let page_table = unsafe { page as *mut PageTable };
+        let page_table = page as *mut PageTable;
         // Safety: the PMM gave us the memory, it should be a valid pointer.
         let page_table: &mut PageTable = unsafe { page_table.as_mut().unwrap() };
 

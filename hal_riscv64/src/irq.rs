@@ -202,11 +202,10 @@ extern "C" fn undefined_handler() {
 }
 
 extern "C" fn timer_handler() {
-    let timer_ptr = TIMER_CALLBACK.load(Ordering::Relaxed);
-    if !timer_ptr.is_null() {
+    let timer_cb = TIMER_CALLBACK.load(Ordering::Relaxed);
+    if !timer_cb.is_null() {
         unsafe {
-            let timer: fn() = core::mem::transmute::<_, fn()>(timer_ptr);
-            timer();
+            core::mem::transmute::<_, fn()>(timer_cb)();
         }
     }
 }

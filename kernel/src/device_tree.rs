@@ -76,8 +76,6 @@ impl DeviceTree {
 
         // The heuristic, the root irq chip doesn't have a reg property.
         // Works on aarch64 and riscv64.
-        let interrupt_controller = interrupt_controllers.find(|intc| intc.reg().is_some());
-
-        interrupt_controller
+        interrupt_controllers.find(|intc| intc.reg().is_some())
     }
 }
