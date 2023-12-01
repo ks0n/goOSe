@@ -13,7 +13,7 @@ pub const PAGE_SIZE: usize = PageTable::PAGE_SIZE;
 static mut GPT: OnceCell<&'static mut PageTable> = OnceCell::new();
 
 pub fn current() -> &'static mut PageTable {
-    unsafe { *GPT.get_mut().unwrap() }
+    unsafe { GPT.get_mut().unwrap() }
 }
 
 pub fn prefill_pagetable(

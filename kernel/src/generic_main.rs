@@ -15,7 +15,7 @@ pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&
     let qemu_exit = QemuExit::new();
     let qemu_exit_slice = [&qemu_exit as &dyn Driver];
 
-    let devices = hacky_devices.into_iter().chain(&qemu_exit_slice);
+    let devices = hacky_devices.iter().chain(&qemu_exit_slice);
 
     // Memory init
     globals::PHYSICAL_MEMORY_MANAGER

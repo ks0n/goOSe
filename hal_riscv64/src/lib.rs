@@ -10,9 +10,7 @@ mod registers;
 
 use core::arch::asm;
 
-pub fn panic_info() -> () {
-    ()
-}
+pub fn panic_info() {}
 
 #[naked]
 #[no_mangle]

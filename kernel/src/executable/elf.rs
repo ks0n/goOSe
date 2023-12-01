@@ -1,7 +1,6 @@
 use core::iter::Iterator;
 
 use crate::globals;
-use crate::mm;
 use crate::Error;
 
 use goblin;
@@ -86,7 +85,7 @@ impl<'a> Elf<'a> {
                 (virtual_pages as usize) - align_down(virtual_pages as usize, page_size);
 
             let segment_data_src_addr = ((self.data.as_ptr() as usize) + p_offset) as *const u8;
-            let segment_data_dst_addr = (usize::from(physical_pages) + offset_in_page) as *mut u8;
+            let segment_data_dst_addr = (physical_pages + offset_in_page) as *mut u8;
 
             let segment_data_src: &[u8] =
                 unsafe { core::slice::from_raw_parts(segment_data_src_addr, p_filesz) };
@@ -95,9 +94,7 @@ impl<'a> Elf<'a> {
                     unsafe { core::slice::from_raw_parts_mut(segment_data_dst_addr, p_memsz) };
 
                 // Zeroing uninitialized data
-                for i in p_filesz..p_memsz {
-                    dst[i as usize] = 0u8;
-                }
+                dst[p_filesz..p_memsz].iter_mut().for_each(|e| *e = 0u8);
 
                 dst
             };
@@ -112,7 +109,7 @@ impl<'a> Elf<'a> {
                 hal::mm::current()
                     .map(
                         VAddr::new(align_down(virtual_pages as usize, page_size) + page_offset),
-                        PAddr::new(usize::from(physical_pages) + page_offset),
+                        PAddr::new(physical_pages + page_offset),
                         perms,
                         &globals::PHYSICAL_MEMORY_MANAGER,
                     )

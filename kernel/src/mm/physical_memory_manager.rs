@@ -2,7 +2,6 @@ use crate::device_tree::DeviceTree;
 use crate::globals;
 use crate::hal;
 use crate::mm;
-use crate::Error;
 use core::mem;
 use hal_core::{
     mm::{AllocatorError, NullPageAllocator, PageAlloc, PageMap, Permissions, VAddr},
@@ -253,14 +252,6 @@ impl PhysicalMemoryManager {
         Ok(())
     }
 
-    fn metadata_pages(&self) -> impl core::iter::Iterator<Item = usize> {
-        let metadata = self.metadata.lock();
-        let metadata_start = (&metadata[0] as *const PhysicalPage) as usize;
-        let metadata_last = (&metadata[metadata.len() - 1] as *const PhysicalPage) as usize;
-
-        (metadata_start..=metadata_last).step_by(PAGE_SIZE)
-    }
-
     pub fn alloc_pages(&self, page_count: usize) -> Result<usize, AllocatorError> {
         let mut consecutive_pages: usize = 0;
         let mut first_page_index: usize = 0;
@@ -293,8 +284,6 @@ impl PhysicalMemoryManager {
                     .for_each(|page| page.set_allocated());
                 metadata[i].set_last();
 
-                let addr = metadata[first_page_index].base;
-
                 return Ok(metadata[first_page_index].base);
             }
         }
@@ -307,21 +296,22 @@ impl PageAlloc for PhysicalMemoryManager {
     fn alloc(&self, page_count: usize) -> Result<usize, AllocatorError> {
         // If there is a kernel pagetable, identity map the pages.
         let first_page = self.alloc_pages(page_count)?;
-        let addr: usize = first_page.into();
 
         if unsafe { globals::STATE.is_mmu_enabled() } {
             // The mmu is enabled, therefore we already mapped all DRAM into the kernel's pagetable
             // as invalid entries.
             // Pagetable must only modify existing entries and not allocate.
-            hal::mm::current().identity_map_range(
-                VAddr::new(addr),
-                page_count,
-                Permissions::READ | Permissions::WRITE,
-                &mut NullPageAllocator,
-            );
+            hal::mm::current()
+                .identity_map_range(
+                    VAddr::new(first_page),
+                    page_count,
+                    Permissions::READ | Permissions::WRITE,
+                    &NullPageAllocator,
+                )
+                .unwrap();
         }
 
-        Ok(addr)
+        Ok(first_page)
     }
 
     fn dealloc(&self, _base: usize, _page_count: usize) -> Result<(), AllocatorError> {

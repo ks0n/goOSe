@@ -6,16 +6,16 @@ mod binary_buddy_allocator;
 use crate::device_tree::DeviceTree;
 use crate::globals;
 
-use crate::hal::{self, mm::PAGE_SIZE};
+use crate::hal;
 use crate::Error;
-use hal_core::mm::{align_up, NullPageAllocator, PageAlloc, PageMap, Permissions, VAddr};
+use hal_core::mm::{NullPageAllocator, PageAlloc, PageMap, Permissions, VAddr};
 use hal_core::AddressRange;
 
 use crate::drivers;
 use drivers::Driver;
 
 use arrayvec::ArrayVec;
-use core::{iter, slice};
+use core::iter;
 
 use log::debug;
 
@@ -142,14 +142,13 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
     // the pre_allocated_entries).
     // Therefore no allocations will be made, pass the NullPageAllocator.
     globals::PHYSICAL_MEMORY_MANAGER.used_pages(|page| {
-        log::debug!("pushing rw allocated page 0x{:X}", page);
-        // let range = AddressRange::new(page..page + PAGE_SIZE);
-        // rw_entries.try_push(range);
-        hal::mm::current().identity_map(
-            VAddr::new(page),
-            Permissions::READ | Permissions::WRITE,
-            &mut NullPageAllocator,
-        );
+        hal::mm::current()
+            .identity_map(
+                VAddr::new(page),
+                Permissions::READ | Permissions::WRITE,
+                &NullPageAllocator,
+            )
+            .unwrap();
     });
 
     hal::mm::enable_paging();

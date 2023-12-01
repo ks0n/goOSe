@@ -103,11 +103,12 @@ extern "C" fn irq_current_el_sp0() {
             // Clear the timer in order to EOI it.
             cpu::clear_physical_timer();
 
-            let timer_ptr = TIMER_CALLBACK.load(Ordering::Relaxed);
-            if !timer_ptr.is_null() {
+            let timer_cb = TIMER_CALLBACK.load(Ordering::Relaxed);
+            if !timer_cb.is_null() {
                 unsafe {
-                    let timer: fn() = core::mem::transmute::<_, fn()>(timer_ptr);
-                    timer();
+                    // Cannot simply dereference TIMER_CALLBACK here.
+                    // We are using an AtomicPtr and TIMER_CALLBACK already holds the fn().
+                    core::mem::transmute::<_, fn()>(timer_cb)();
                 }
             }
 
