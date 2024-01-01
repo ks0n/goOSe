@@ -9,7 +9,7 @@ use tock_registers::interfaces::{ReadWriteable, Writeable};
 
 mod pgt48;
 
-use pgt48::PageTable;
+pub use pgt48::PageTable;
 
 pub type EntryType = usize;
 

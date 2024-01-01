@@ -6,6 +6,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use crate::executable::elf::Elf;
 use crate::globals;
 use crate::hal::{self, mm::PAGE_SIZE};
+use crate::process::Process;
 use hal_core::mm::{PageAlloc, PageMap, Permissions};
 
 use align_data::include_aligned;
@@ -33,6 +34,10 @@ const TESTS: &[Test] = &[
     Test {
         name: "basic elf loader",
         test: test_elf_loader_basic,
+    },
+    Test {
+        name: "make sure we can at least jump into userland",
+        test: test_userland_easy,
     },
 ];
 
@@ -129,6 +134,22 @@ fn test_pagetable_remap() -> TestResult {
     TestResult::Success
 }
 
+fn jump_to_userland(proc: &Process, retpc: usize) {
+    use core::arch::asm;
+
+    let spsr_el1 = 0u64;
+
+    unsafe {
+        asm!(
+            "msr ELR_EL1, {retpc}",
+            "msr SPSR_EL1, {spsr_el1}",
+            "eret",
+            retpc = in(reg) retpc,
+            spsr_el1 = in(reg) spsr_el1,
+        );
+    }
+}
+
 fn test_elf_loader_basic() -> TestResult {
     static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS"));
 
@@ -141,6 +162,28 @@ fn test_elf_loader_basic() -> TestResult {
     debug!("[OK] Elf loaded, entry point is {:?}", entry_point);
     entry_point();
     debug!("[OK] Returned for Elf");
+
+    TestResult::Success
+}
+
+fn test_userland_easy() -> TestResult {
+    let p = Process::new().unwrap();
+    let blank_page = globals::PHYSICAL_MEMORY_MANAGER.alloc(1).unwrap();
+    let blank_page = unsafe { slice::from_raw_parts_mut(blank_page as *mut u8, PAGE_SIZE) };
+
+    blank_page[..4].copy_from_slice(&[0x40u8, 0x05, 0x80, 0xd2]); // mov x0, #42
+    blank_page[4..8].copy_from_slice(&[0x41, 0x05, 0x00, 0xd4]); // svc #42
+
+    // p.pagetable.map(
+    hal::mm::current()
+    .map(
+        hal_core::mm::VAddr::new(0x40_0000),
+        hal_core::mm::PAddr::new(blank_page.as_ptr() as usize),
+        Permissions::READ | Permissions::WRITE | Permissions::EXECUTE | Permissions::USER,
+        &globals::PHYSICAL_MEMORY_MANAGER,
+    ).unwrap();
+
+    jump_to_userland(&p, 0x40_0000);
 
     TestResult::Success
 }

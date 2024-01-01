@@ -9,7 +9,8 @@ use crate::devices::gicv2::GicV2;
 use crate::mm;
 use hal_core::mm::{PageAlloc, PageMap, Permissions, VAddr};
 
-use tock_registers::interfaces::Writeable;
+use cortex_a::registers::*;
+use tock_registers::interfaces::{Readable, Writeable};
 
 const PHYSICAL_TIMER_LINE: u32 = 30;
 
@@ -149,6 +150,14 @@ extern "C" fn serror_current_el_spx() {
 
 #[no_mangle]
 extern "C" fn sync_lower_el() {
+    let ec = ESR_EL1.read(ESR_EL1::EC);
+
+    if ec == 0x15 {
+        let iss = ESR_EL1.read(ESR_EL1::ISS);
+        let imm16 = iss as u16;
+        panic!("received svc #{}", imm16);
+    }
+
     panic!("hit sync_lower_el");
 }
 

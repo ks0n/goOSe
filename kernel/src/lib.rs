@@ -25,6 +25,7 @@ pub mod generic_main;
 pub mod globals;
 pub mod kernel_console;
 pub mod mm;
+mod process;
 mod panic;
 mod tests;
 
