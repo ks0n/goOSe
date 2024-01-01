@@ -159,6 +159,40 @@ impl From<u64> for TrapType {
     }
 }
 
+struct TrapContext {
+    ra: usize,
+    sp: usize,
+    gp: usize,
+    tp: usize,
+    t0: usize,
+    t1: usize,
+    t2: usize,
+    s0: usize,
+    s1: usize,
+    a0: usize,
+    a1: usize,
+    a2: usize,
+    a3: usize,
+    a4: usize,
+    a5: usize,
+    a6: usize,
+    a7: usize,
+    s2: usize,
+    s3: usize,
+    s4: usize,
+    s5: usize,
+    s6: usize,
+    s7: usize,
+    s8: usize,
+    s9: usize,
+    s10: usize,
+    s11: usize,
+    t3: usize,
+    t4: usize,
+    t5: usize,
+    t6: usize,
+}
+
 static mut INTERRUPT_VECTOR: &[extern "C" fn()] = &[
     undefined_handler,
     undefined_handler,
@@ -175,7 +209,7 @@ static mut INTERRUPT_VECTOR: &[extern "C" fn()] = &[
 /// Dispatch interrupts and exceptions
 /// Returns 0 if it was synchronous, 1 otherwise
 #[no_mangle]
-extern "C" fn trap_dispatch(cause: u64) -> u64 {
+extern "C" fn trap_dispatch(ctx: &TrapContext, cause: u64) -> u64 {
     match TrapType::from(cause) {
         TrapType::Interrupt(itype) => {
             let exception_code: u64 = itype.into();
@@ -188,9 +222,18 @@ extern "C" fn trap_dispatch(cause: u64) -> u64 {
             }
         }
         TrapType::Exception(etype) => {
-            panic!("Exception '{:?}' not implemented yet", etype)
+            match etype {
+                ExceptionType::EnvironmentCallUMode => dispatch_syscall(ctx),
+                _ => panic!("Exception '{:?}' not implemented yet", etype),
+            };
+
+            1
         }
     }
+}
+
+pub fn dispatch_syscall(ctx: &TrapContext) {
+    panic!("Syscall #{} not implemented", ctx.a7);
 }
 
 extern "C" fn supervisor_external_interrupt_handler() {
@@ -220,12 +263,12 @@ unsafe extern "C" fn trap_handler() {
         # Store current stack
         csrrw sp, sscratch, sp
         # If we come from userland we are good to go
-        bnez sp, _save_context
+        bnez sp, 1f
 
         # We come from kernel. Sp was correct. Restore the value we stored
         csrr sp, sscratch
 
-    _save_context:
+    1:
         addi sp, sp, -0x100
 
         sd x31, 0x100(sp)
@@ -260,13 +303,13 @@ unsafe extern "C" fn trap_handler() {
         sd x2, 0x8(sp)
         sd x1, 0x0(sp)
 
-        // mv a0, sp // Pointer on stack for the register struct
         // csrr a1, sepc
         // csrr a2, stval
         // csrr a3, scause
         // csrr a5, sstatus
 
-        csrr a0, scause
+        mv a0, sp // Pointer on stack for the register struct
+        csrr a1, scause
         jal trap_dispatch
 
         bne a0, x0, 1f
