@@ -75,16 +75,20 @@ fn map_kernel_rwx() -> (
     (iter::empty(), iter::empty(), rwx_entries)
 }
 
-pub fn alloc_pages_raw(count: usize) -> Result<hal_core::mm::PAddr, Error> {
+pub fn alloc_pages_raw(count: usize, needs_user: bool) -> Result<hal_core::mm::PAddr, Error> {
     // If there is a kernel pagetable, identity map the pages.
     // Not sure this is the best idea, but I would say it follows the
     // principle of least astonishment.
     // TODO: remove unwrap
     let start = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm.alloc_rw_pages(count).unwrap());
     let addr: usize = start.into();
+    let mut perms = Permissions::READ | Permissions::WRITE;
+    if needs_user {
+        perms = perms | Permissions::USER;
+    }
 
     if unsafe { globals::STATE.is_mmu_enabled() } {
-        hal::mm::current().identity_map_range(VAddr::new(addr), count, Permissions::READ | Permissions::WRITE, |_| {
+        hal::mm::current().identity_map_range(VAddr::new(addr), count, perms, |_| {
             // The mmu is enabled, therefore we already mapped all DRAM into the kernel's pagetable as
             // invalid entries.
             // Pagetable must only modify existing entries and not allocate.
@@ -96,14 +100,21 @@ pub fn alloc_pages_raw(count: usize) -> Result<hal_core::mm::PAddr, Error> {
 }
 
 pub fn alloc_pages(count: usize) -> Result<&'static mut [u8], Error> {
-    let addr = alloc_pages_raw(count)?;
+    let addr = alloc_pages_raw(count, false)?;
+    let page_size = hal::mm::PAGE_SIZE;
+
+    Ok(unsafe { slice::from_raw_parts_mut(addr.val as *mut _, count * page_size) })
+}
+
+pub fn alloc_pages_user(count: usize) -> Result<&'static mut [u8], Error> {
+    let addr = alloc_pages_raw(count, true)?;
     let page_size = hal::mm::PAGE_SIZE;
 
     Ok(unsafe { slice::from_raw_parts_mut(addr.val as *mut _, count * page_size) })
 }
 
 pub fn alloc_pages_for_hal(count: usize) -> hal_core::mm::PAddr {
-    alloc_pages_raw(count)
+    alloc_pages_raw(count, false)
         .expect("page allocation function passed to the hal has failed, critical...")
 }
 
@@ -188,7 +199,7 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
         rw_entries.into_iter(),
         rwx_entries.into_iter(),
         pre_allocated_entries.into_iter(),
-        |count| alloc_pages_raw(count).expect("failure on page allocator passed to init_paging"),
+        |count| alloc_pages_raw(count, false).expect("failure on page allocator passed to init_paging"),
     )?;
     unsafe { globals::STATE = globals::KernelState::MmuEnabledInit };
 

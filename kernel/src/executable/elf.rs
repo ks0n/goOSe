@@ -65,7 +65,7 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn load(&self) -> Result<(), Error> {
+    pub fn load(&self, userland: bool) -> Result<(), Error> {
         let pmm = globals::PHYSICAL_MEMORY_MANAGER.lock(|pmm| pmm);
         let page_size = hal::mm::PAGE_SIZE;
 
@@ -103,7 +103,7 @@ impl<'a> Elf<'a> {
 
             segment_data_dst[0..p_filesz].clone_from_slice(segment_data_src);
 
-            let perms = elf_to_mm_permissions(segment.p_flags);
+            let perms = elf_to_mm_permissions(segment.p_flags, userland);
 
             for i in 0..pages_needed {
                 let page_offset = i * page_size;
@@ -114,7 +114,7 @@ impl<'a> Elf<'a> {
                         PAddr::new(usize::from(physical_pages) + page_offset),
                         perms,
                         |count| {
-                            mm::alloc_pages_raw(count)
+                            mm::alloc_pages_raw(count, false)
                                 .expect("failure on page allocator passed during elf loading")
                         },
                     )
@@ -127,8 +127,8 @@ impl<'a> Elf<'a> {
 }
 
 /// Convert ELF p_flags permissions to Permissions
-fn elf_to_mm_permissions(elf_permsission: u32) -> Permissions {
-    let mut perms = Permissions::empty();
+fn elf_to_mm_permissions(elf_permsission: u32, userland: bool) -> Permissions {
+    let mut perms = if userland { Permissions::USER } else { Permissions::empty() };
 
     if elf_permsission & PF_R != 0 {
         perms |= Permissions::READ;
