@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(naked_functions)]
+#![feature(fn_align)]
 
 use cortex_a::registers::*;
 use tock_registers::interfaces::Readable;
