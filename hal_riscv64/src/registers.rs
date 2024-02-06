@@ -1,5 +1,10 @@
 use core::arch::asm;
 
+#[derive(Default)]
+pub struct Registers {
+    x: [usize; 32],
+}
+
 pub fn set_sstatus_sie() {
     unsafe {
         asm!("csrrs zero, sstatus, {}", in(reg)1 << 1);

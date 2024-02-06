@@ -5,7 +5,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::executable::elf::Elf;
 use crate::hal;
-use crate::mm::{alloc_pages, alloc_pages_for_hal};
+use crate::mm::{alloc_pages, alloc_pages_user, alloc_pages_for_hal};
 use hal_core::mm::{PageMap, Permissions};
 
 use align_data::include_aligned;
@@ -132,11 +132,11 @@ fn test_pagetable_remap() -> TestResult {
 }
 
 fn test_elf_loader_basic() -> TestResult {
-    static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS"));
+    static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS_tests_bin"));
 
     let test_bin = Elf::from_bytes(TEST_BIN);
-    debug!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS"));
-    test_bin.load().unwrap();
+    debug!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS_tests_bin"));
+    test_bin.load(false).unwrap();
     debug!("[OK] Elf loaded");
     let entry_point: extern "C" fn() -> u8 =
         unsafe { core::mem::transmute(test_bin.get_entry_point()) };
@@ -148,18 +148,18 @@ fn test_elf_loader_basic() -> TestResult {
 }
 
 fn test_elf_loader_userland() -> TestResult {
-    static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS"));
+    static TEST_BIN: &[u8] = include_aligned!(Align4K, env!("CARGO_BIN_FILE_TESTS_test_userland_exit"));
 
     let test_bin = Elf::from_bytes(TEST_BIN);
-    let stack = alloc_pages(1).unwrap();
+    let stack = alloc_pages_user(1).unwrap();
 
-    debug!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS"));
-    test_bin.load().unwrap();
+    debug!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS_test_userland_exit"));
+    test_bin.load(true).unwrap();
     debug!("[OK] Elf loaded");
     let entry_point: extern "C" fn() -> u8 =
         unsafe { core::mem::transmute(test_bin.get_entry_point()) };
     debug!("[OK] Elf loaded, entry point is {:?}", entry_point );
-    hal::context::switch_userland(entry_point, stack.as_mut_ptr());
+    hal::context::switch_userland(entry_point, unsafe { stack.as_mut_ptr().add(hal::mm::PAGE_SIZE) });
     debug!("[OK] Returned for Elf");
 
     TestResult::Success

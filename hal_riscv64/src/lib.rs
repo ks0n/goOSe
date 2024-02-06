@@ -10,6 +10,7 @@ mod plic;
 mod registers;
 
 use core::arch::asm;
+pub use registers::Registers;
 
 pub fn panic_info() -> () {
     ()

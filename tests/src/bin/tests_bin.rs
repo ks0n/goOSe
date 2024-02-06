@@ -1,5 +1,6 @@
 #![no_main]
 #![no_std]
+#![allow(internal_features)]
 #![feature(lang_items)]
 #![feature(fn_align)]
 
