@@ -2,7 +2,8 @@ use core::arch::asm;
 
 #[derive(Default)]
 pub struct Registers {
-    x: [usize; 32],
+    pub x: [usize; 32],
+    pub pc: usize,
 }
 
 pub fn set_sstatus_sie() {

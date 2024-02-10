@@ -4,6 +4,7 @@ use core::slice;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::executable::elf::Elf;
+use crate::process::{self, Process};
 use crate::hal;
 use crate::mm::{alloc_pages, alloc_pages_user, alloc_pages_for_hal};
 use hal_core::mm::{PageMap, Permissions};
@@ -138,10 +139,9 @@ fn test_elf_loader_basic() -> TestResult {
     debug!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS_tests_bin"));
     test_bin.load(false).unwrap();
     debug!("[OK] Elf loaded");
-    let entry_point: extern "C" fn() -> u8 =
-        unsafe { core::mem::transmute(test_bin.get_entry_point()) };
-    debug!("[OK] Elf loaded, entry point is {:?}", entry_point);
-    hal::context::switch(entry_point);
+    debug!("[OK] Elf loaded, entry point is {:?}", test_bin.get_entry_point());
+    let mut process = Process::new(test_bin.get_entry_point(), 1);
+    process::run(&mut process);
     debug!("[OK] Returned for Elf");
 
     TestResult::Success
@@ -156,11 +156,11 @@ fn test_elf_loader_userland() -> TestResult {
     debug!("[OK] Elf from_bytes {}", env!("CARGO_BIN_FILE_TESTS_test_userland_exit"));
     test_bin.load(true).unwrap();
     debug!("[OK] Elf loaded");
-    let entry_point: extern "C" fn() -> u8 =
-        unsafe { core::mem::transmute(test_bin.get_entry_point()) };
-    debug!("[OK] Elf loaded, entry point is {:?}", entry_point );
-    hal::context::switch_userland(entry_point, unsafe { stack.as_mut_ptr().add(hal::mm::PAGE_SIZE) });
+    debug!("[OK] Elf loaded, entry point is {:?}", test_bin.get_entry_point() );
+    let mut process = Process::new(test_bin.get_entry_point(), 1);
+    process::run_in_userland(&mut process);
     debug!("[OK] Returned for Elf");
+
 
     TestResult::Success
 }

@@ -28,6 +28,7 @@ pub mod executable;
 pub mod generic_main;
 pub mod globals;
 pub mod kernel_console;
+pub mod process;
 mod lock;
 pub mod mm;
 mod panic;

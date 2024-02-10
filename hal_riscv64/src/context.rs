@@ -2,11 +2,11 @@ use log::debug;
 
 use core::arch::asm;
 
-pub fn switch(entry: extern "C" fn() -> u8) -> u8 {
-    entry()
+pub fn switch(entry: usize) {
+    unsafe { core::mem::transmute::<_, extern "C" fn()>(entry)() };
 }
 
-pub fn switch_userland(entry: extern "C" fn() -> u8, stack: *mut u8) -> u8 {
+pub fn switch_userland(entry: usize, stack: *mut u8) {
     debug!("Inside switch_userland");
 
     const u_mode_mask: usize = 1 << 8;
@@ -59,6 +59,4 @@ pub fn switch_userland(entry: extern "C" fn() -> u8, stack: *mut u8) -> u8 {
             in(reg) stack
         );
     }
-
-    0
 }
