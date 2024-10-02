@@ -1,19 +1,19 @@
-use super::fake_once_lock::FakeOnceLock;
 use super::mm::{self, Mmu, PageAlloc, PageMap};
+use super::once_lock::OnceLock;
 use super::AddressRange;
 use super::Error;
 use super::ReentrantSpinlock;
 use super::{IrqOps, TimerCallbackFn};
 
 pub struct Hal<P: PageMap + 'static, I: IrqOps> {
-    kpt: FakeOnceLock<ReentrantSpinlock<&'static mut P>>,
+    kpt: OnceLock<ReentrantSpinlock<&'static mut P>>,
     irq_ops: I,
 }
 
 impl<P: PageMap + Mmu + 'static, I: IrqOps> Hal<P, I> {
     pub const fn new(irq_ops: I) -> Hal<P, I> {
         Self {
-            kpt: FakeOnceLock::new(),
+            kpt: OnceLock::new(),
             irq_ops,
         }
     }
