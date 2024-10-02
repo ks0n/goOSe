@@ -1,21 +1,26 @@
 use super::mm::{self, Mmu, PageAlloc, PageMap};
 use super::once_lock::OnceLock;
 use super::AddressRange;
+use super::CoreInfo;
 use super::Error;
 use super::ReentrantSpinlock;
 use super::{IrqOps, TimerCallbackFn};
 
-pub struct Hal<P: PageMap + 'static, I: IrqOps> {
-    kpt: OnceLock<ReentrantSpinlock<&'static mut P>>,
+pub struct Hal<P: PageMap + 'static, I: IrqOps, G: CoreInfo> {
+    kpt: OnceLock<ReentrantSpinlock<G, &'static mut P>>,
     irq_ops: I,
 }
 
-impl<P: PageMap + Mmu + 'static, I: IrqOps> Hal<P, I> {
-    pub const fn new(irq_ops: I) -> Hal<P, I> {
+impl<P: PageMap + Mmu + 'static, I: IrqOps, G: CoreInfo> Hal<P, I, G> {
+    pub const fn new(irq_ops: I) -> Hal<P, I, G> {
         Self {
             kpt: OnceLock::new(),
             irq_ops,
         }
+    }
+
+    pub fn init_core_info(&self, core_id: usize) {
+        G::init(core_id)
     }
 
     pub fn init_irqs(&'static self) {
@@ -91,7 +96,7 @@ impl<P: PageMap + Mmu + 'static, I: IrqOps> Hal<P, I> {
         mm::align_down(val, self.page_size())
     }
 
-    pub fn kpt(&'static self) -> &ReentrantSpinlock<&'static mut P> {
+    pub fn kpt(&'static self) -> &ReentrantSpinlock<G, &'static mut P> {
         self.kpt.get().unwrap()
     }
 }

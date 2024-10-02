@@ -137,7 +137,6 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
         pre_allocated_entries.into_iter(),
         &globals::PHYSICAL_MEMORY_MANAGER,
     )?;
-
     // All pmm pages are located in DRAM so they are already in the pagetable (they are part of
     // the pre_allocated_entries).
     // Therefore no allocations will be made, pass the NullPageAllocator.

@@ -9,6 +9,7 @@ const PLIC_NUMBER_SOURCE_REGISTER: u16 =
 const PLIC_MAX_CONTEXT: u16 = 0x3e00;
 const PLIC_CLAIM_OFFSET: usize = 0x201004;
 
+#[derive(Debug)]
 pub struct Plic {
     base_register_address: usize,
 }

@@ -1,28 +1,25 @@
+use core::marker::PhantomData;
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use lock_api::{GuardSend, RawMutex};
 
-pub struct RawReentrantSpinlock {
+use crate::CoreInfo;
+
+pub struct RawReentrantSpinlock<G> {
     user: AtomicUsize,
     lock: AtomicBool,
+    _marker: PhantomData<G>,
 }
 
-fn core_id() -> usize {
-    let mut id: u64;
-
-    unsafe { core::arch::asm!("mrs {:x}, mpidr_el1", out(reg) id) };
-
-    id as usize
-}
-
-unsafe impl RawMutex for RawReentrantSpinlock {
+unsafe impl<G: CoreInfo> RawMutex for RawReentrantSpinlock<G> {
     // The underlying const with interior mutability is fine because it is only used for
     // construction.
     // Clippy recommends using a const fn for constructors but I don't have that freedom of choice
     // since we depend on lock_api.
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: RawReentrantSpinlock = RawReentrantSpinlock {
+    const INIT: RawReentrantSpinlock<G> = RawReentrantSpinlock::<G> {
         user: AtomicUsize::new(usize::MAX),
         lock: AtomicBool::new(false),
+        _marker: PhantomData,
     };
 
     // A spinlock guard can be sent to another thread and unlocked there
@@ -35,7 +32,7 @@ unsafe impl RawMutex for RawReentrantSpinlock {
     }
 
     fn try_lock(&self) -> bool {
-        let my_id = core_id();
+        let my_id = G::core_id();
 
         if self.user.load(Ordering::Acquire) == my_id {
             assert!(self.lock.load(Ordering::Relaxed));
@@ -54,7 +51,7 @@ unsafe impl RawMutex for RawReentrantSpinlock {
             .is_ok()
             && self
                 .user
-                .compare_exchange(usize::MAX, core_id(), Ordering::Acquire, Ordering::Relaxed)
+                .compare_exchange(usize::MAX, my_id, Ordering::Acquire, Ordering::Relaxed)
                 .is_ok()
     }
 
@@ -64,4 +61,4 @@ unsafe impl RawMutex for RawReentrantSpinlock {
     }
 }
 
-pub type ReentrantSpinlock<T> = lock_api::Mutex<RawReentrantSpinlock, T>;
+pub type ReentrantSpinlock<G, T> = lock_api::Mutex<RawReentrantSpinlock<G>, T>;

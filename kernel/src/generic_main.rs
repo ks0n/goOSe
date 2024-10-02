@@ -28,10 +28,10 @@ pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&
     // Driver stuff
     // let _drvmgr = DriverManager::with_devices(&dt).unwrap();
 
-    log::trace!("mapping gic pages");
-
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "aarch64")] {
+            // XXX: Ideally we'd read the device tree but we're not doing for now...
+            log::trace!("mapping gic pages");
             let (gicd_base, gicc_base) = (0x800_0000, 0x801_0000);
             HAL.kpt().lock().identity_map_range(
                 VAddr::new(gicd_base),
@@ -44,6 +44,15 @@ pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&
                 0x0001_0000 / HAL.page_size(),
                 Permissions::READ | Permissions::WRITE,
                 &globals::PHYSICAL_MEMORY_MANAGER
+            ).unwrap();
+        } else if #[cfg(target_arch = "riscv64")] {
+            let base = 0xc000000;
+            let max_offset = 0x3FFFFFC;
+            HAL.kpt().lock().identity_map_range(
+                VAddr::new(base),
+                max_offset / HAL.page_size() + 1,
+                Permissions::READ | Permissions::WRITE,
+                &globals::PHYSICAL_MEMORY_MANAGER,
             ).unwrap();
         }
     }
