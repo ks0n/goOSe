@@ -1,5 +1,4 @@
-use crate::globals;
-use crate::hal::mm::PAGE_SIZE;
+use crate::{globals, HAL};
 use hal_core::mm::PageAlloc;
 
 use core::alloc::{GlobalAlloc, Layout};
@@ -24,10 +23,10 @@ unsafe impl GlobalAlloc for BinaryBuddyAllocator {
         //   - be thread-safe
         //   - disable interrupts when entering, then re-enable
 
-        let page_count = if layout.size() <= PAGE_SIZE {
+        let page_count = if layout.size() <= HAL.page_size() {
             1
         } else {
-            layout.size() / PAGE_SIZE + 1
+            layout.size() / HAL.page_size() + 1
         };
         globals::PHYSICAL_MEMORY_MANAGER
             .alloc(page_count)

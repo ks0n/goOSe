@@ -3,12 +3,14 @@ use super::drivers::qemuexit::QemuExit;
 use super::drivers::Driver;
 use super::globals;
 
-use crate::hal;
 use crate::mm;
+use crate::HAL;
 
 use crate::tests::{self, TestResult};
 
 use log::info;
+
+use hal_core::mm::{PageMap, Permissions, VAddr};
 
 pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&dyn Driver]) -> ! {
     info!("Entered generic_main");
@@ -26,10 +28,33 @@ pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&
     // Driver stuff
     // let _drvmgr = DriverManager::with_devices(&dt).unwrap();
 
-    hal::irq::init_irq_chip((), &globals::PHYSICAL_MEMORY_MANAGER)
+    log::trace!("mapping gic pages");
+
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "aarch64")] {
+            let (gicd_base, gicc_base) = (0x800_0000, 0x801_0000);
+            HAL.kpt().lock().identity_map_range(
+                VAddr::new(gicd_base),
+                0x0001_0000 / HAL.page_size(),
+                Permissions::READ | Permissions::WRITE,
+                &globals::PHYSICAL_MEMORY_MANAGER
+            ).unwrap();
+            HAL.kpt().lock().identity_map_range(
+                VAddr::new(gicc_base),
+                0x0001_0000 / HAL.page_size(),
+                Permissions::READ | Permissions::WRITE,
+                &globals::PHYSICAL_MEMORY_MANAGER
+            ).unwrap();
+        }
+    }
+
+    log::trace!("initializing irq chip");
+
+    crate::HAL
+        .init_irq_chip(&globals::PHYSICAL_MEMORY_MANAGER)
         .expect("initialization of irq chip failed");
 
-    hal::cpu::unmask_interrupts();
+    HAL.unmask_interrupts();
 
     if LAUNCH_TESTS {
         match tests::launch() {

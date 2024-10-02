@@ -2,13 +2,13 @@ use core::iter::Iterator;
 
 use crate::globals;
 use crate::Error;
+use crate::HAL;
 
 use goblin;
 use goblin::elf::header::header64::Header;
 use goblin::elf::program_header::program_header64::ProgramHeader;
 use goblin::elf::program_header::*;
 
-use crate::hal;
 use hal_core::mm::{PAddr, PageAlloc, PageMap, Permissions, VAddr};
 
 fn align_down(addr: usize, page_size: usize) -> usize {
@@ -65,7 +65,7 @@ impl<'a> Elf<'a> {
     }
 
     pub fn load(&self) -> Result<(), Error> {
-        let page_size = hal::mm::PAGE_SIZE;
+        let page_size = HAL.page_size();
 
         for segment in self.segments() {
             if segment.p_type != PT_LOAD {
@@ -106,7 +106,8 @@ impl<'a> Elf<'a> {
             for i in 0..pages_needed {
                 let page_offset = i * page_size;
                 // FIXME: No unwrap
-                hal::mm::current()
+                HAL.kpt()
+                    .lock()
                     .map(
                         VAddr::new(align_down(virtual_pages as usize, page_size) + page_offset),
                         PAddr::new(physical_pages + page_offset),

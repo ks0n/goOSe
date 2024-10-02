@@ -1,0 +1,23 @@
+- gic mappings
+  - kpt.lock().map(allocator=PMM)
+    map needs to allocate new node
+    - pmm.alloc
+      - kpt.lock().map(allocator=NPA) # second locks
+
+my bug
+- pgt.map(allocator=PMM)
+  needs to allocate new pte
+  - pmm.give_page
+    need to map that page
+    pgt.map(allocated=PMM) etc...
+    but we need to use the current pagetable instead
+
+
+case when pagetable maps its own stuff
+- pgt.map(allocator=PMM)
+  lock the mutex
+  needs to allocate new pte
+  - pmm.give_page
+    need to map that page 
+    GLOBAL_PAGETABLE.map(allocated=PMM) if pgt == GLOBAL_PAGETABLR back to step 1
+      - this make use try to lock the mutex again, hang forever
