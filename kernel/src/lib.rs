@@ -12,6 +12,7 @@
 
 pub extern crate alloc;
 
+pub mod driver_manager;
 pub mod drivers;
 mod utils;
 

@@ -62,7 +62,7 @@ impl Pl011 {
     }
 }
 
-pub(super) const MATCHER: ConsoleMatcher = ConsoleMatcher {
+pub(super) static MATCHER: ConsoleMatcher = ConsoleMatcher {
     compatibles: &["arm,pl011"],
     constructor: |reg| {
         Ok(Box::new(Pl011::new(
