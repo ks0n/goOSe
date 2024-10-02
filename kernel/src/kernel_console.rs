@@ -3,14 +3,14 @@ use core::fmt::{self, Write};
 use crate::drivers::Console;
 use crate::Error;
 
-use alloc::sync::Arc;
+use alloc::boxed::Box;
 
 use log::{Level, LevelFilter, Metadata, Record};
 use spin::Mutex;
 
 struct KernelConsole {
     earlyinit_console: Option<&'static (dyn Console + Sync)>,
-    console: Option<Arc<dyn Console + Sync + Send>>,
+    console: Option<Box<dyn Console + Sync + Send>>,
 }
 
 impl KernelConsole {
@@ -38,7 +38,7 @@ impl fmt::Write for KernelConsole {
     }
 }
 
-fn print_fmt(args: fmt::Arguments) {
+pub fn print_fmt(args: fmt::Arguments) {
     KERNEL_CONSOLE.lock().write_fmt(args).unwrap();
 }
 
@@ -72,7 +72,7 @@ pub fn set_earlyinit_console(new_console: &'static (dyn Console + Sync)) {
     KERNEL_CONSOLE.lock().earlyinit_console = Some(new_console);
 }
 
-pub fn set_console(new_console: Arc<dyn Console + Sync + Send>) -> Result<(), Error> {
+pub fn set_console(new_console: Box<dyn Console + Sync + Send>) -> Result<(), Error> {
     KERNEL_CONSOLE.lock().console = Some(new_console);
 
     // TODO: return an error if the error already was some (unless we consider it is ok)

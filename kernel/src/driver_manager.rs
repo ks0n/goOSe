@@ -1,36 +1,20 @@
-use alloc::{boxed::Box, collections::LinkedList, sync::Arc};
+use alloc::boxed::Box;
 
 use super::device_tree::DeviceTree;
 use super::drivers::{self, Matcher};
 use super::error::Error;
 use super::kernel_console;
-use drivers::{Console, Driver};
-use fdt::node::FdtNode;
+use drivers::Console;
+use fdt::{node::FdtNode, standard_nodes::MemoryRegion};
 
-use crate::hal;
-use crate::mm::alloc_pages_for_hal;
-use hal_core::mm::{PageMap, Permissions};
+use crate::globals;
+use crate::HAL;
+use hal_core::mm::{NullPageAllocator, PageMap, Permissions};
 
-pub struct DriverManager {
-    drivers: LinkedList<Arc<dyn Driver>>,
-}
+pub struct DriverManager;
 
 impl DriverManager {
-    fn new() -> Self {
-        Self {
-            drivers: LinkedList::new(),
-        }
-    }
-
-    pub fn with_devices(dt: &DeviceTree) -> Result<Self, Error> {
-        let mut mgr = Self::new();
-
-        mgr.do_console(dt)?;
-
-        Ok(mgr)
-    }
-
-    fn do_console(&mut self, dt: &DeviceTree) -> Result<(), Error> {
+    pub fn do_console(dt: &DeviceTree) -> Result<(), Error> {
         let cons_node = dt.console_node().ok_or(Error::DeviceNotFound(
             "dtb doesn't contain a console node...",
         ))?;
@@ -38,14 +22,24 @@ impl DriverManager {
         map_dt_regions(&cons_node)?;
 
         if let Some(cons_driver) =
-            self.find_driver::<dyn Console + Sync + Send>(&cons_node, drivers::CONSOLE_MATCHERS)
+            Self::find_driver::<dyn Console + Sync + Send>(&cons_node, drivers::CONSOLE_MATCHERS)
         {
-            self.register_console(cons_driver)?;
+            kernel_console::set_console(cons_driver)?;
             Ok(())
         } else {
             unmap_dt_regions(&cons_node)?;
             Err(Error::NoMatchingDriver("console"))
         }
+    }
+
+    pub fn map_irq_chip(dt: &DeviceTree) -> Result<(), Error> {
+        let intc = dt
+            .interrupt_controller()
+            .expect("device tree has no interrupt-controller node...");
+
+        map_dt_regions(&intc)?;
+
+        Ok(())
     }
 
     fn extract_compatibles<'a>(node: &'a FdtNode) -> impl Iterator<Item = &'a str> {
@@ -57,11 +51,7 @@ impl DriverManager {
         compatible.split('\0')
     }
 
-    pub fn find_driver<T: ?Sized>(
-        &self,
-        node: &FdtNode,
-        matchers: &[&Matcher<T>],
-    ) -> Option<Box<T>> {
+    pub fn find_driver<T: ?Sized>(node: &FdtNode, matchers: &[&Matcher<T>]) -> Option<Box<T>> {
         for compat in Self::extract_compatibles(node) {
             let matching_constructor = matchers
                 .iter()
@@ -76,32 +66,30 @@ impl DriverManager {
 
         None
     }
+}
 
-    fn register_console(&mut self, cons: Box<dyn Console + Sync + Send>) -> Result<(), Error> {
-        let cons: Arc<dyn Console + Sync + Send> = Arc::from(cons);
-        self.register_driver(cons.clone());
-        kernel_console::set_console(cons.clone())?;
+fn num_pages(memory_region: &MemoryRegion) -> Result<usize, Error> {
+    let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
 
-        Ok(())
-    }
-
-    fn register_driver(&mut self, drv: Arc<dyn Driver>) {
-        self.drivers.push_back(drv);
+    if size < HAL.page_size() {
+        Ok(1)
+    } else {
+        Ok(size / HAL.page_size())
     }
 }
 
 fn map_dt_regions(node: &FdtNode) -> Result<(), Error> {
     if let Some(reg) = node.reg() {
+        let mut kpt = HAL.kpt().lock();
         for memory_region in reg {
             let start = memory_region.starting_address as usize;
-            let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
+            let num_pages = num_pages(&memory_region)?;
 
-            assert!(size % hal::mm::PAGE_SIZE == 0);
-            hal::mm::current().identity_map_range(
+            kpt.identity_map_range(
                 start.into(),
-                size / hal::mm::PAGE_SIZE,
+                num_pages,
                 Permissions::READ | Permissions::WRITE,
-                alloc_pages_for_hal,
+                &globals::PHYSICAL_MEMORY_MANAGER,
             )?;
         }
     }
@@ -110,18 +98,16 @@ fn map_dt_regions(node: &FdtNode) -> Result<(), Error> {
 }
 
 fn unmap_dt_regions(node: &FdtNode) -> Result<(), Error> {
-    let pagesize = hal::mm::PAGE_SIZE;
-
     if let Some(reg) = node.reg() {
         for memory_region in reg {
             let start = memory_region.starting_address as usize;
             let size = memory_region.size.ok_or(Error::InvalidFdtNode)?;
-            assert!(size % hal::mm::PAGE_SIZE == 0);
+            assert!(size % HAL.page_size() == 0);
 
-            let kernel_pt = hal::mm::current();
-            for page in (start..start + size).step_by(pagesize) {
+            let mut kernel_pt = HAL.kpt().lock();
+            for page in (start..start + size).step_by(HAL.page_size()) {
                 kernel_pt
-                    .add_invalid_entry(page.into(), |_| unreachable!())
+                    .add_invalid_entry(page.into(), &NullPageAllocator)
                     .unwrap();
             }
         }
