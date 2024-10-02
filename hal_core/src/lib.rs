@@ -1,8 +1,25 @@
 #![no_std]
-#![feature(return_position_impl_trait_in_trait)]
+#![feature(const_mut_refs)]
 
 use core::convert::Into;
 use core::ops::Range;
+
+mod hal;
+pub use hal::Hal;
+
+mod fake_once_lock;
+
+mod reentrant_spinlock;
+pub use reentrant_spinlock::ReentrantSpinlock;
+
+pub trait IrqOps {
+    fn init(&'static self);
+    fn init_irq_chip(&self, allocator: &impl mm::PageAlloc) -> Result<(), Error>;
+    fn unmask_interrupts(&self);
+    fn set_timer_handler(&self, h: TimerCallbackFn);
+    fn set_timer(&self, ticks: usize) -> Result<(), Error>;
+    fn clear_timer(&self);
+}
 
 pub mod mm;
 

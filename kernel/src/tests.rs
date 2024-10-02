@@ -5,7 +5,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::executable::elf::Elf;
 use crate::globals;
-use crate::hal::{self, mm::PAGE_SIZE};
+use crate::HAL;
 use hal_core::mm::{PageAlloc, PageMap, Permissions};
 
 use align_data::include_aligned;
@@ -67,23 +67,25 @@ fn test_timer_interrupt() -> TestResult {
             NUM_INTERRUPTS
         );
 
-        hal::cpu::clear_physical_timer();
+        HAL.clear_timer();
 
-        hal::irq::set_timer_handler(|| {
+        HAL.set_timer_handler(|| {
             trace!(".");
 
             if CNT.fetch_add(1, Ordering::Relaxed) < NUM_INTERRUPTS {
-                hal::irq::set_timer(50_000)
+                crate::HAL
+                    .set_timer(50_000)
                     .expect("failed to set timer in the timer handler of the test");
             }
         });
-
-        hal::irq::set_timer(50_000).expect("failed to set timer for test");
+        crate::HAL
+            .set_timer(50_000)
+            .expect("failed to set timer for test");
 
         while CNT.load(Ordering::Relaxed) < NUM_INTERRUPTS {}
 
         // TODO: restore the timer handler
-        hal::cpu::clear_physical_timer();
+        HAL.clear_timer();
         TestResult::Success
     } else {
         // // Synchronous exception
@@ -98,9 +100,9 @@ fn test_pagetable_remap() -> TestResult {
     info!("Testing the remapping capabilities of our pagetable...");
 
     let page_src = globals::PHYSICAL_MEMORY_MANAGER.alloc(1).unwrap();
-    let page_src = unsafe { slice::from_raw_parts_mut(page_src as *mut u8, PAGE_SIZE) };
+    let page_src = unsafe { slice::from_raw_parts_mut(page_src as *mut u8, HAL.page_size()) };
     let dst_addr = 0x0450_0000;
-    let page_dst = unsafe { slice::from_raw_parts(dst_addr as *const u8, hal::mm::PAGE_SIZE) };
+    let page_dst = unsafe { slice::from_raw_parts(dst_addr as *const u8, HAL.page_size()) };
     let deadbeef = [0xDE, 0xAD, 0xBE, 0xEF];
 
     // Put data in source page
@@ -108,7 +110,8 @@ fn test_pagetable_remap() -> TestResult {
     page_src[0..deadbeef.len()].copy_from_slice(&deadbeef);
 
     // Remap source page to destination page
-    hal::mm::current()
+    HAL.kpt()
+        .lock()
         .map(
             hal_core::mm::VAddr::new(dst_addr),
             hal_core::mm::PAddr::new(page_src.as_ptr() as usize),

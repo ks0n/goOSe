@@ -1,7 +1,10 @@
 use hal_core::{
-    mm::{self, PageAlloc, PageEntry, PageMap, Permissions},
+    mm::{self, Mmu, PageAlloc, PageEntry, PageMap, Permissions},
     Error,
 };
+
+use cortex_a::asm::barrier;
+use cortex_a::registers::*;
 
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 use tock_registers::register_bitfields;
@@ -225,9 +228,13 @@ impl PageMap for PageTable {
     type Entry = TableEntry;
 
     fn new(allocator: &impl PageAlloc) -> Result<&'static mut Self, Error> {
+        // If the allocator is not giving a page of the same size as our PTE, things are going
+        // down...
         let page = allocator.alloc(1)?;
+
         let page_table = page as *mut PageTable;
-        // Safety: the PMM gave us the memory, it should be a valid pointer.
+
+        // safety: the pmm gave us the memory, it should be a valid pointer.
         let page_table: &mut PageTable = unsafe { page_table.as_mut().unwrap() };
 
         page_table
@@ -236,6 +243,10 @@ impl PageMap for PageTable {
             .for_each(|content| unsafe { &mut content.descriptor }.set_invalid());
 
         Ok(page_table)
+    }
+
+    fn ptr(&self) -> *const () {
+        self as *const Self as *const ()
     }
 
     fn map(
@@ -266,8 +277,7 @@ impl PageMap for PageTable {
 
             let descriptor = unsafe { &mut content.descriptor };
             if descriptor.is_invalid() {
-                let new_page_table = PageTable::new(allocator)?;
-                descriptor.set_next_level(new_page_table);
+                descriptor.set_next_level(PageTable::new(allocator)?);
             }
 
             pagetable = descriptor.get_next_level();
@@ -293,5 +303,36 @@ impl PageMap for PageTable {
         entry.set_invalid();
 
         Ok(())
+    }
+}
+
+impl Mmu for PageTable {
+    fn mmu_on<P: PageMap>(pagetable: &P) {
+        MAIR_EL1.write(
+            // Attribute 0 - NonCacheable normal DRAM. FIXME: enable cache?
+            MAIR_EL1::Attr0_Normal_Outer::NonCacheable + MAIR_EL1::Attr0_Normal_Inner::NonCacheable,
+        );
+        TTBR0_EL1.set_baddr(pagetable.ptr() as u64);
+        TCR_EL1.write(
+            TCR_EL1::TBI0::Used
+            + TCR_EL1::IPS::Bits_48
+            + TCR_EL1::TG0::KiB_4
+            // + TCR_EL1::SH0::Inner
+            + TCR_EL1::SH0::None
+            // + TCR_EL1::ORGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable
+            + TCR_EL1::ORGN0::NonCacheable
+            // + TCR_EL1::IRGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable
+            + TCR_EL1::IRGN0::NonCacheable
+            + TCR_EL1::EPD0::EnableTTBR0Walks
+            + TCR_EL1::A1::TTBR0
+            + TCR_EL1::T0SZ.val(16)
+            + TCR_EL1::EPD1::DisableTTBR1Walks,
+        );
+
+        barrier::isb(barrier::SY);
+
+        SCTLR_EL1.modify(SCTLR_EL1::M::Enable);
+
+        barrier::isb(barrier::SY);
     }
 }

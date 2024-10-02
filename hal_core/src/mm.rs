@@ -59,6 +59,7 @@ pub enum AllocatorError {
 
 pub trait PageAlloc: Sync {
     fn alloc(&self, page_count: usize) -> Result<usize, AllocatorError>;
+    fn give_page(&self) -> Result<usize, AllocatorError>;
     fn dealloc(&self, base: usize, page_count: usize) -> Result<(), AllocatorError>;
     fn used_pages<F: FnMut(usize)>(&self, f: F);
 }
@@ -68,6 +69,10 @@ pub struct NullPageAllocator;
 impl PageAlloc for NullPageAllocator {
     fn alloc(&self, _page_count: usize) -> Result<usize, AllocatorError> {
         panic!("the null page allocator mustn't allocate");
+    }
+
+    fn give_page(&self) -> Result<usize, AllocatorError> {
+        panic!("the null page allocator mustn't allocate (give_page)");
     }
 
     fn dealloc(&self, _base: usize, _page_count: usize) -> Result<(), AllocatorError> {
@@ -88,6 +93,8 @@ pub trait PageMap {
     type Entry: PageEntry;
 
     fn new(allocator: &impl PageAlloc) -> Result<&'static mut Self, Error>;
+
+    fn ptr(&self) -> *const ();
 
     fn map(
         &mut self,
@@ -160,11 +167,15 @@ pub trait PageMap {
     }
 }
 
-pub fn align_up(val: usize, page_sz: usize) -> usize {
+pub trait Mmu {
+    fn mmu_on<P: PageMap>(pagetable: &P);
+}
+
+pub const fn align_up(val: usize, page_sz: usize) -> usize {
     ((val + page_sz - 1) / page_sz) * page_sz
 }
 
-pub fn align_down(addr: usize, page_sz: usize) -> usize {
+pub const fn align_down(addr: usize, page_sz: usize) -> usize {
     // TODO: can this be more optimized ?
     // XXX: uh isn't this math wrong ?
     align_up(addr, page_sz) + page_sz
@@ -202,6 +213,8 @@ pub fn prefill_pagetable<P: PageMap + 'static>(
             allocator,
         )?
     }
+
+    log::debug!("hal_core::mm::prefill_pagetable finished the fill");
 
     Ok(pt)
 }

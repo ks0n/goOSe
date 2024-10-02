@@ -6,8 +6,8 @@ mod binary_buddy_allocator;
 use crate::device_tree::DeviceTree;
 use crate::globals;
 
-use crate::hal;
 use crate::Error;
+use crate::HAL;
 use hal_core::mm::{NullPageAllocator, PageAlloc, PageMap, Permissions, VAddr};
 use hal_core::AddressRange;
 
@@ -65,7 +65,7 @@ fn map_kernel_rwx() -> (
     impl Iterator<Item = AddressRange>,
     impl Iterator<Item = AddressRange>,
 ) {
-    let page_size = hal::mm::PAGE_SIZE;
+    let page_size = HAL.page_size();
     let kernel_start = unsafe { crate::utils::external_symbol_value(&KERNEL_START) };
     let kernel_end = unsafe { crate::utils::external_symbol_value(&KERNEL_END) };
     let kernel_end_align = ((kernel_end + page_size - 1) / page_size) * page_size;
@@ -102,7 +102,7 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
         .try_push(
             device_tree
                 .memory_region()
-                .round_up_to_page(hal::mm::PAGE_SIZE),
+                .round_up_to_page(HAL.page_size()),
         )
         .unwrap();
 
@@ -113,7 +113,7 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
 
     for drv in drivers {
         if let Some((base, len)) = drv.get_address_range() {
-            let len = hal::mm::align_up(len);
+            let len = HAL.align_up(len);
             debug!(
                 "adding driver memory region to RW entries: [{:X}; {:X}]",
                 base,
@@ -130,7 +130,7 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
     debug!("rwx_entries: {:X?}", rwx_entries);
     debug!("pre_allocated_entries: {:X?}", pre_allocated_entries);
 
-    hal::mm::prefill_pagetable(
+    HAL.init_kpt(
         r_entries.into_iter(),
         rw_entries.into_iter(),
         rwx_entries.into_iter(),
@@ -142,7 +142,8 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
     // the pre_allocated_entries).
     // Therefore no allocations will be made, pass the NullPageAllocator.
     globals::PHYSICAL_MEMORY_MANAGER.used_pages(|page| {
-        hal::mm::current()
+        HAL.kpt()
+            .lock()
             .identity_map(
                 VAddr::new(page),
                 Permissions::READ | Permissions::WRITE,
@@ -151,7 +152,9 @@ pub fn map_address_space<'a, I: Iterator<Item = &'a &'a dyn Driver>>(
             .unwrap();
     });
 
-    hal::mm::enable_paging();
+    log::trace!("going to enable paging...");
+    HAL.enable_paging()?;
+    log::trace!("enabled paging !");
 
     unsafe { globals::STATE = globals::KernelState::MmuEnabledInit };
 

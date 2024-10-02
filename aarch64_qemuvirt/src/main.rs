@@ -14,9 +14,15 @@ const LAUNCH_TESTS: bool = cfg!(feature = "launch_tests");
 
 use log::info;
 
+unsafe fn disable_fp_trapping() {
+    asm!("msr CPACR_EL1, {:x}", in(reg) 0b11 << 20)
+}
+
 #[no_mangle]
 extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
-    kernel::hal::cpu::disable_fp_trapping();
+    unsafe {
+        disable_fp_trapping();
+    }
 
     static PL011: Pl011 = Pl011::new(0x0900_0000);
     kernel::kernel_console::set_earlyinit_console(&PL011);
@@ -25,9 +31,7 @@ extern "C" fn k_main(_device_tree_ptr: usize) -> ! {
 
     info!("hello, I am a goOSe! proud member of the gagelen !!!");
 
-    unsafe {
-        kernel::hal::irq::init_el1_exception_handlers();
-    }
+    kernel::HAL.init_irqs();
 
     unsafe {
         asm!("isb SY");
