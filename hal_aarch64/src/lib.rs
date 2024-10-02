@@ -41,3 +41,18 @@ unsafe extern "C" fn _start() -> ! {
         ",
     );
 }
+
+pub struct Aarch64CoreInfo;
+
+impl hal_core::CoreInfo for Aarch64CoreInfo {
+    fn init(_core_id: usize) {
+        // We just read MPIDR_EL1 on aarch64.
+    }
+
+    fn core_id() -> usize {
+        let mpidr = MPIDR_EL1.get() as usize;
+        assert!(mpidr < usize::MAX);
+
+        mpidr
+    }
+}

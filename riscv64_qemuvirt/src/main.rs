@@ -15,15 +15,20 @@ pub const UART_INTERRUPT_NUMBER: u16 = 10;
 const LAUNCH_TESTS: bool = cfg!(feature = "launch_tests");
 
 #[no_mangle]
-extern "C" fn k_main(_core_id: usize, device_tree_ptr: usize) -> ! {
+extern "C" fn k_main(core_id: usize, device_tree_ptr: usize) -> ! {
+    kernel::HAL.init_core_info(core_id);
+    kernel::HAL.init_irqs();
+
     static NS16550: Ns16550 = Ns16550::new(UART_ADDR);
     kernel::kernel_console::set_earlyinit_console(&NS16550);
 
     kernel::kernel_console::init_logging().unwrap();
 
+    assert_eq!(
+        core_id, 0,
+        "Kernel must be booted on the first core with id == 0"
+    );
     info!("GoOSe is booting");
-
-    kernel::hal::irq::init_exception_handlers();
 
     let device_tree = kernel::device_tree::DeviceTree::new(device_tree_ptr).unwrap();
     kernel::generic_main::generic_main::<LAUNCH_TESTS>(device_tree, &[&NS16550]);

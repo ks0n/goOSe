@@ -38,11 +38,18 @@ cfg_if::cfg_if! {
         use hal_aarch64::{
             mm::pgt48,
             irq::Aarch64Irqs,
+            Aarch64CoreInfo,
         };
         use hal_core::Hal;
-        pub static HAL: Hal<pgt48::PageTable, Aarch64Irqs> = Hal::new(Aarch64Irqs::new());
+        pub static HAL: Hal<pgt48::PageTable, Aarch64Irqs, Aarch64CoreInfo> = Hal::new(Aarch64Irqs::new());
     } else if #[cfg(target_arch = "riscv64")] {
         pub type ConsoleImpl = drivers::ns16550::Ns16550;
-        pub use hal_riscv64 as hal;
+        use hal_riscv64::{
+            mm::sv39,
+            irq::Riscv64Irqs,
+            Riscv64CoreInfo,
+        };
+        use hal_core::Hal;
+        pub static HAL: Hal<sv39::PageTable, Riscv64Irqs, Riscv64CoreInfo> = Hal::new(Riscv64Irqs::new());
     }
 }

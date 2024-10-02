@@ -13,6 +13,11 @@ pub mod once_lock;
 mod reentrant_spinlock;
 pub use reentrant_spinlock::ReentrantSpinlock;
 
+pub trait CoreInfo {
+    fn init(core_id: usize);
+    fn core_id() -> usize;
+}
+
 pub trait IrqOps {
     fn init(&'static self);
     fn init_irq_chip(&self, allocator: &impl mm::PageAlloc) -> Result<(), Error>;

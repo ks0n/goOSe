@@ -1,6 +1,7 @@
 use modular_bitfield::{bitfield, prelude::*};
 
-use hal_core::mm::{self, PageAlloc, PageEntry, PageMap};
+use core::arch;
+use hal_core::mm::{self, Mmu, PageAlloc, PageEntry, PageMap};
 use hal_core::Error;
 
 #[repr(C)]
@@ -177,6 +178,10 @@ impl PageMap for PageTable {
         Ok(page_table)
     }
 
+    fn ptr(&self) -> *const () {
+        self as *const Self as *const ()
+    }
+
     fn map(
         &mut self,
         va: mm::VAddr,
@@ -217,6 +222,20 @@ impl PageMap for PageTable {
         }
 
         unreachable!("We should have returned by now");
+    }
+}
+
+impl Mmu for PageTable {
+    fn mmu_on<P: PageMap>(pagetable: &P) {
+        let pt_addr = pagetable.ptr() as usize;
+        let ppn = pt_addr >> 12;
+
+        let satp = Satp::with_values(ppn as u64, 0, SatpMode::Sv39);
+
+        unsafe {
+            arch::asm!("csrw satp, {}", in(reg)u64::from(satp));
+            arch::asm!("sfence.vma");
+        }
     }
 }
 

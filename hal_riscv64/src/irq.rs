@@ -1,54 +1,96 @@
-use hal_core::{
-    mm::{PageAlloc, PageMap, Permissions, VAddr},
-    Error, TimerCallbackFn,
-};
+use hal_core::{mm::PageAlloc, once_lock::OnceLock, Error, IrqOps, TimerCallbackFn};
 
-use super::mm;
+use log;
+
 use super::plic::Plic;
 use super::registers;
 
-use core::arch::asm;
+use core::arch::naked_asm;
 use core::ptr;
 use core::sync::atomic::{AtomicPtr, Ordering};
 
 use riscv;
 use sbi;
 
-pub fn init_exception_handlers() {
-    registers::set_stvec(trap_handler as usize);
+static IRQS: OnceLock<&Riscv64Irqs> = OnceLock::new();
+
+#[derive(Debug)]
+pub struct Riscv64Irqs {
+    irq_chip: OnceLock<Plic>,
+    timer_callback: AtomicPtr<TimerCallbackFn>,
 }
 
-static mut IRQ_CHIP: Option<Plic> = None;
+unsafe impl Sync for Riscv64Irqs {}
 
-pub fn init_irq_chip(_dt_node: (), allocator: &impl PageAlloc) -> Result<(), Error> {
-    // TODO map the dt_node
-    let base = 0xc000000;
-    let max_offset = 0x3FFFFFC;
-
-    mm::current().identity_map_range(
-        VAddr::new(base),
-        max_offset / mm::PAGE_SIZE + 1,
-        Permissions::READ | Permissions::WRITE,
-        allocator,
-    )?;
-    unsafe {
-        IRQ_CHIP = Some(Plic::new(base));
+impl IrqOps for Riscv64Irqs {
+    fn init(&'static self) {
+        registers::set_stvec(asm_trap_handler as usize);
+        IRQS.set(self).expect(
+            "Looks like Riscv64Irqs::init has already been called, must only be called once !",
+        );
     }
 
-    Ok(())
+    fn unmask_interrupts(&self) {
+        registers::set_sstatus_sie();
+        registers::set_sie_ssie();
+        registers::set_sie_seie();
+        registers::set_sie_stie();
+    }
+
+    fn init_irq_chip(&self, _allocator: &impl PageAlloc) -> Result<(), Error> {
+        let base = 0xc000000;
+        self.irq_chip
+            .set(Plic::new(base))
+            .expect("Riscv64Irqs has already been called");
+
+        Ok(())
+    }
+
+    fn set_timer_handler(&self, h: TimerCallbackFn) {
+        self.timer_callback.store(h as *mut _, Ordering::Relaxed);
+    }
+
+    fn set_timer(&self, ticks: usize) -> Result<(), Error> {
+        let target_time = riscv::register::time::read() + ticks;
+        sbi::timer::set_timer(target_time as u64).unwrap();
+
+        Ok(())
+    }
+
+    fn clear_timer(&self) {
+        sbi::timer::set_timer(u64::MAX).unwrap();
+    }
 }
 
-static TIMER_CALLBACK: AtomicPtr<TimerCallbackFn> = AtomicPtr::new(ptr::null_mut());
+impl Riscv64Irqs {
+    pub const fn new() -> Self {
+        Self {
+            irq_chip: OnceLock::new(),
+            timer_callback: AtomicPtr::new(ptr::null_mut()),
+        }
+    }
 
-pub fn set_timer_handler(h: TimerCallbackFn) {
-    TIMER_CALLBACK.store(h as *mut _, Ordering::Relaxed);
-}
+    fn trap_dispatch(&self, exception_code: u64) {
+        match InterruptType::from(exception_code) {
+            InterruptType::SupervisorTimer => {
+                let timer_cb = self.timer_callback.load(Ordering::Relaxed);
+                if !timer_cb.is_null() {
+                    unsafe {
+                        // Cannot simply dereference TIMER_CALLBACK here.
+                        // We are using an AtomicPtr and TIMER_CALLBACK already holds the fn().
+                        core::mem::transmute::<_, fn()>(timer_cb)();
+                    }
+                }
 
-pub fn set_timer(ticks: usize) -> Result<(), Error> {
-    let target_time = riscv::register::time::read() + ticks;
-    sbi::timer::set_timer(target_time as u64).unwrap();
-
-    Ok(())
+                // Clear the timer or it will trigger again.
+                self.clear_timer();
+            }
+            InterruptType::SupervisorExternal => {
+                log::trace!("caught an external interrupt");
+            }
+            e => panic!("getting caught by unhandler exception {:?}", e),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -159,27 +201,16 @@ impl From<u64> for TrapType {
     }
 }
 
-static mut INTERRUPT_VECTOR: &[extern "C" fn()] = &[
-    undefined_handler,
-    undefined_handler,
-    undefined_handler,
-    undefined_handler,
-    undefined_handler,
-    timer_handler,
-    undefined_handler,
-    undefined_handler,
-    undefined_handler,
-    supervisor_external_interrupt_handler,
-];
-
 /// Dispatch interrupts and exceptions
 /// Returns 0 if it was synchronous, 1 otherwise
 #[no_mangle]
-extern "C" fn trap_dispatch(cause: u64) -> u64 {
+extern "C" fn c_trap_dispatch(cause: u64) -> u64 {
     match TrapType::from(cause) {
         TrapType::Interrupt(itype) => {
             let exception_code: u64 = itype.into();
-            unsafe { INTERRUPT_VECTOR[exception_code as usize]() };
+            IRQS.get()
+                .expect("no one has init'ed the rscv64 hal yet...")
+                .trap_dispatch(exception_code);
 
             if itype.is_asynchronous() {
                 1
@@ -193,28 +224,11 @@ extern "C" fn trap_dispatch(cause: u64) -> u64 {
     }
 }
 
-extern "C" fn supervisor_external_interrupt_handler() {
-    todo!("fwd the external int to the irq_chip or smthing...");
-}
-
-extern "C" fn undefined_handler() {
-    panic!("Interruption is not handled yet");
-}
-
-extern "C" fn timer_handler() {
-    let timer_cb = TIMER_CALLBACK.load(Ordering::Relaxed);
-    if !timer_cb.is_null() {
-        unsafe {
-            core::mem::transmute::<_, fn()>(timer_cb)();
-        }
-    }
-}
-
 #[naked]
 #[no_mangle]
 #[repr(align(4))]
-unsafe extern "C" fn trap_handler() {
-    asm!(
+unsafe extern "C" fn asm_trap_handler() {
+    naked_asm!(
         "
         addi sp, sp, -0x100
 
@@ -257,7 +271,7 @@ unsafe extern "C" fn trap_handler() {
         // csrr a5, sstatus
 
         csrr a0, scause
-        jal trap_dispatch
+        jal c_trap_dispatch
 
         bne a0, x0, 1f
 
@@ -265,7 +279,7 @@ unsafe extern "C" fn trap_handler() {
         addi t0, t0, 4
         csrw sepc, t0
 
-1:
+        1:
         ld x1, 0x0(sp)
         ld x2, 0x8(sp)
         ld x3, 0x10(sp)
@@ -301,7 +315,6 @@ unsafe extern "C" fn trap_handler() {
         addi sp, sp, 0x100
 
         sret",
-        options(noreturn)
     );
     // Obviously this isn't done, we need to jump back to the previous context before the
     // interrupt using mpp/spp and mepc/sepc.
