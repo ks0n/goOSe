@@ -8,9 +8,8 @@ use hal_core::{Error, TimerCallbackFn};
 use crate::devices::gicv2::GicV2;
 
 use hal_core::mm::PageAlloc;
+use hal_core::once_lock::OnceLock;
 use hal_core::IrqOps;
-
-use core::cell::OnceCell;
 
 use cortex_a::registers::*;
 use tock_registers::interfaces::{ReadWriteable, Writeable};
@@ -100,7 +99,8 @@ enum InterruptType {
     SerrorLowerElAarch32,
 }
 
-static mut IRQS: core::cell::OnceCell<&Aarch64Irqs> = core::cell::OnceCell::new();
+/// Need a once lock because this is unset until Aarch64Irqs::init has been called by the hal.
+static IRQS: OnceLock<&Aarch64Irqs> = OnceLock::new();
 
 #[no_mangle]
 unsafe extern "C" fn aarch64_common_trap(offset: u64) {
@@ -133,17 +133,17 @@ unsafe extern "C" fn aarch64_common_trap(offset: u64) {
 
 #[derive(Debug)]
 pub struct Aarch64Irqs {
-    irq_chip: OnceCell<GicV2>,
+    irq_chip: OnceLock<GicV2>,
     timer_callback: AtomicPtr<TimerCallbackFn>,
 }
 
-/// Safety: I know what I'm doing :D
+/// Safety: Not safe because GicV2 is not Sync
 unsafe impl Sync for Aarch64Irqs {}
 
 impl Aarch64Irqs {
     pub const fn new() -> Self {
         Self {
-            irq_chip: OnceCell::new(),
+            irq_chip: OnceLock::new(),
             timer_callback: AtomicPtr::new(ptr::null_mut()),
         }
     }
@@ -185,10 +185,8 @@ impl Aarch64Irqs {
 impl IrqOps for Aarch64Irqs {
     fn init(&'static self) {
         cortex_a::registers::VBAR_EL1.set(el1_vector_table as usize as u64);
-        unsafe {
-            IRQS.set(self)
-                .expect("looks like init has already been called")
-        };
+        IRQS.set(self)
+            .expect("looks like init has already been called");
     }
 
     fn init_irq_chip(&self, _allocator: &impl PageAlloc) -> Result<(), Error> {

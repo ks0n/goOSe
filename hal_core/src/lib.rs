@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(const_mut_refs)]
+#![feature(never_type)]
 
 use core::convert::Into;
 use core::ops::Range;
@@ -7,7 +8,7 @@ use core::ops::Range;
 mod hal;
 pub use hal::Hal;
 
-mod fake_once_lock;
+pub mod once_lock;
 
 mod reentrant_spinlock;
 pub use reentrant_spinlock::ReentrantSpinlock;
