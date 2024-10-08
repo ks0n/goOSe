@@ -14,13 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-            toolchain: nightly
-            targets: ${{ env.TARGET }}
+      - uses: cachix/install-nix-action@v27
 
       - name: Build doc
-        run: cd kernel && cargo doc --target ${{ env.TARGET }} --all-features
+        run: nix develop --command sh -c "
+          cd kernel &&
+          cargo doc --target ${{ env.TARGET }} --all-features
+          "
 
   doc_aarch64:
     runs-on: ubuntu-latest
@@ -29,10 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-            toolchain: nightly
-            targets: ${{ env.TARGET }}
+      - uses: cachix/install-nix-action@v27
 
       - name: Build doc
-        run: cd kernel && cargo doc --target ${{ env.TARGET }} --all-features
+        run: nix develop --command sh -c "
+          cd kernel &&
+          cargo doc --target ${{ env.TARGET }} --all-features
+          "

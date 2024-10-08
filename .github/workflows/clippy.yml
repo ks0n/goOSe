@@ -14,12 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-            toolchain: nightly
-            components: clippy
-            targets: ${{ env.TARGET }}
-      - run: cd riscv64_qemuvirt && cargo clippy --all-features --target ${{ env.TARGET }}
+      - uses: cachix/install-nix-action@v27
+
+      - name: Run clippy
+        run: nix develop --command sh -c "
+          cd riscv64_qemuvirt &&
+          cargo clippy --all-features --target ${{ env.TARGET }}
+          "
 
   clippy_aarch64:
     runs-on: ubuntu-latest
@@ -28,9 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-            toolchain: nightly
-            components: clippy
-            targets: ${{ env.TARGET }}
-      - run: cd aarch64_qemuvirt && cargo clippy --all-features --target ${{ env.TARGET }}
+      - uses: cachix/install-nix-action@v27
+
+      - name: Run clippy
+        run: nix develop --command sh -c "
+          cd aarch64_qemuvirt &&
+          cargo clippy --all-features --target ${{ env.TARGET }}
+          "
