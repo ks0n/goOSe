@@ -9,36 +9,29 @@ on:
 jobs:
   test_riscv64:
     runs-on: ubuntu-latest
-    env:
-      TARGET: riscv64gc-unknown-none-elf
     steps:
       - uses: actions/checkout@v2
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-            toolchain: nightly
-            components: clippy
-            targets: ${{ env.TARGET }}
+      - uses: cachix/install-nix-action@v27
 
-      - name: Install qemu
-        run: sudo apt-get update && sudo apt-get install qemu-system-misc opensbi
-
-      - run: cd riscv64_qemuvirt && cargo run -F launch_tests
+      - name: Run tests
+        run: nix develop --command sh -c "
+          cd riscv64_qemuvirt &&
+          cargo run -F launch_tests
+          "
 
   test_aarch64:
     runs-on: ubuntu-latest
-    env:
-      TARGET: aarch64-unknown-none
     steps:
       - uses: actions/checkout@v2
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-            toolchain: nightly
-            components: clippy
-            targets: ${{ env.TARGET }}
+      - uses: cachix/install-nix-action@v27
 
-      - name: Install qemu
-        run: sudo apt-get update && sudo apt-get install qemu-system-arm
+      - name: Enter nix
+        run: nix develop
 
-      - run: cd aarch64_qemuvirt && cargo run -F launch_tests
+      - name: Run tests
+        run: nix develop --command sh -c "
+          cd aarch64_qemuvirt &&
+          cargo run -F launch_tests
+          "
