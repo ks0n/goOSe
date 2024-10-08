@@ -9,23 +9,11 @@ on:
 jobs:
   doc_riscv64:
     runs-on: ubuntu-latest
-    env:
-      TARGET: riscv64gc-unknown-none-elf
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: cachix/install-nix-action@v27
-
-      - name: Build doc
-        run: nix develop --command sh -c "
-          cd kernel &&
-          cargo doc --target ${{ env.TARGET }} --all-features
-          "
-
-  doc_aarch64:
-    runs-on: ubuntu-latest
-    env:
-      TARGET: aarch64-unknown-none
+    strategy:
+      matrix:
+        target:
+          - aarch64-unknown-none
+          - riscv64gc-unknown-none-elf
     steps:
       - uses: actions/checkout@v2
 
