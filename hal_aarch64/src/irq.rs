@@ -1,3 +1,4 @@
+use core::arch::naked_asm;
 use core::ptr;
 use core::sync::atomic::{AtomicPtr, Ordering};
 
@@ -6,185 +7,213 @@ use hal_core::{Error, TimerCallbackFn};
 
 use crate::devices::gicv2::GicV2;
 
-use crate::mm;
-use hal_core::mm::{PageAlloc, PageMap, Permissions, VAddr};
+use hal_core::mm::PageAlloc;
+use hal_core::once_lock::OnceLock;
+use hal_core::IrqOps;
 
-use tock_registers::interfaces::Writeable;
+use cortex_a::registers::*;
+use tock_registers::interfaces::{ReadWriteable, Writeable};
 
 const PHYSICAL_TIMER_LINE: u32 = 30;
 
-pub unsafe fn init_el1_exception_handlers() {
-    extern "Rust" {
-        static el1_vector_table: core::cell::UnsafeCell<()>;
-    }
-    cortex_a::registers::VBAR_EL1.set(el1_vector_table.get() as u64);
+macro_rules! gen_isr_stub {
+    () => {
+        concat!(
+            r#"
+            .balign 0x80
+            msr spsel, xzr
+            stp x0, x1, [sp, #-16]!
+            stp x2, x3, [sp, #-16]!
+            stp x4, x5, [sp, #-16]!
+            stp x6, x7, [sp, #-16]!
+            stp x8, x9, [sp, #-16]!
+            stp x10, x11, [sp, #-16]!
+            stp x12, x13, [sp, #-16]!
+            stp x14, x15, [sp, #-16]!
+            stp x16, x17, [sp, #-16]!
+            stp x18, x29, [sp, #-16]!
+            stp x30, xzr, [sp, #-16]!
+
+            mov x0, . - el1_vector_table
+            bl aarch64_common_trap
+
+            ldp x30, xzr, [sp], #16
+            ldp x18, x29, [sp], #16
+            ldp x16, x17, [sp], #16
+            ldp x14, x15, [sp], #16
+            ldp x12, x13, [sp], #16
+            ldp x10, x11, [sp], #16
+            ldp x8, x9, [sp], #16
+            ldp x6, x7, [sp], #16
+            ldp x4, x5, [sp], #16
+            ldp x2, x3, [sp], #16
+            ldp x0, x1, [sp], #16
+            eret
+            "#
+        )
+    };
 }
 
-static TIMER_CALLBACK: AtomicPtr<TimerCallbackFn> = AtomicPtr::new(ptr::null_mut());
-
-pub fn set_timer_handler(h: TimerCallbackFn) {
-    TIMER_CALLBACK.store(h as *mut _, Ordering::Relaxed);
+#[naked]
+#[no_mangle]
+#[repr(align(0x800))]
+unsafe extern "C" fn el1_vector_table() {
+    naked_asm!(
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+        gen_isr_stub!(),
+    );
 }
 
-pub fn set_timer(ticks: usize) -> Result<(), Error> {
-    enable_line(PHYSICAL_TIMER_LINE)?;
-    super::cpu::set_physical_timer(ticks);
-    super::cpu::unmask_interrupts();
-
-    Ok(())
+#[repr(u64)]
+#[derive(Debug)]
+enum InterruptType {
+    // Current EL with SP0
+    SyncCurrentElSp0,
+    IrqCurrentElSp0,
+    FiqCurrentElSp0,
+    SerrorCurrentElSp0,
+    // Current EL with SPx
+    SyncCurrentElSpx,
+    IrqCurrentElSpx,
+    FiqCurrentElSpx,
+    SerrorCurrentElSpx,
+    // Lower EL
+    SyncLowerEl,
+    IrqLowerEl,
+    FiqLowerEl,
+    SerrorLowerEl,
+    // Lower EL with aarch32
+    SyncLowerElAarch32,
+    IrqLowerElAarch32,
+    FiqLowerElAarch32,
+    SerrorLowerElAarch32,
 }
 
-enum IrqChip {
-    NoChip,
-    GicV2(GicV2),
-}
-
-impl IrqChip {
-    fn get_int(&mut self) -> Result<u32, Error> {
-        match self {
-            Self::NoChip => unreachable!("does not support this"),
-            Self::GicV2(gic) => gic.get_int(),
-        }
-    }
-
-    fn clear_int(&mut self, int: u32) {
-        match self {
-            Self::NoChip => unreachable!("does not support this"),
-            Self::GicV2(gic) => gic.clear_int(int),
-        }
-    }
-
-    fn enable_int(&mut self, int: u32) -> Result<(), Error> {
-        match self {
-            Self::NoChip => unreachable!("does not support"),
-            Self::GicV2(gic) => gic.enable_line(int),
-        }
-    }
-}
-
-static mut IRQ_CHIP: IrqChip = IrqChip::NoChip;
-
-pub fn init_irq_chip(_dt_node: (), allocator: &impl PageAlloc) -> Result<(), Error> {
-    let (gicd_base, gicc_base) = (0x800_0000, 0x801_0000);
-    mm::current().identity_map_range(
-        VAddr::new(gicd_base),
-        0x0001_0000 / mm::PAGE_SIZE,
-        Permissions::READ | Permissions::WRITE,
-        allocator,
-    )?;
-    mm::current().identity_map_range(
-        VAddr::new(gicc_base),
-        0x0001_0000 / mm::PAGE_SIZE,
-        Permissions::READ | Permissions::WRITE,
-        allocator,
-    )?;
-
-    unsafe {
-        IRQ_CHIP = IrqChip::GicV2(GicV2::new(gicd_base, gicc_base));
-    }
-    Ok(())
-}
-
-fn enable_line(line: u32) -> Result<(), Error> {
-    unsafe { IRQ_CHIP.enable_int(line) }
-}
+/// Need a once lock because this is unset until Aarch64Irqs::init has been called by the hal.
+static IRQS: OnceLock<&Aarch64Irqs> = OnceLock::new();
 
 #[no_mangle]
-extern "C" fn sync_current_el_sp0() {
-    panic!("hit sync_current_el_sp0");
+unsafe extern "C" fn aarch64_common_trap(offset: u64) {
+    log::debug!("aarch64_common_trap(0x{:x})", offset);
+
+    let int_type = match offset {
+        0x000..=0x07f => InterruptType::SyncCurrentElSp0,
+        0x080..=0x0ff => InterruptType::IrqCurrentElSp0,
+        0x100..=0x17f => InterruptType::FiqCurrentElSp0,
+        0x180..=0x1ff => InterruptType::SerrorCurrentElSp0,
+        0x200..=0x27f => InterruptType::SyncCurrentElSpx,
+        0x280..=0x2ff => InterruptType::IrqCurrentElSpx,
+        0x300..=0x37f => InterruptType::FiqCurrentElSpx,
+        0x380..=0x3ff => InterruptType::SerrorCurrentElSpx,
+        0x400..=0x47f => InterruptType::SyncLowerEl,
+        0x480..=0x4ff => InterruptType::IrqLowerEl,
+        0x500..=0x57f => InterruptType::FiqLowerEl,
+        0x580..=0x5ff => InterruptType::SerrorLowerEl,
+        0x600..=0x67f => InterruptType::SyncLowerElAarch32,
+        0x680..=0x6ff => InterruptType::IrqLowerElAarch32,
+        0x700..=0x77f => InterruptType::FiqLowerElAarch32,
+        0x780..=0x7ff => InterruptType::SerrorLowerElAarch32,
+        _ => unreachable!(),
+    };
+
+    IRQS.get()
+        .expect("no one has init'ed the aarch64 hal yet...")
+        .handler(int_type);
 }
 
-#[no_mangle]
-extern "C" fn irq_current_el_sp0() {
-    let int = unsafe { IRQ_CHIP.get_int() };
+#[derive(Debug)]
+pub struct Aarch64Irqs {
+    irq_chip: OnceLock<GicV2>,
+    timer_callback: AtomicPtr<TimerCallbackFn>,
+}
 
-    match int {
-        Ok(PHYSICAL_TIMER_LINE) => {
-            // Clear the timer in order to EOI it.
-            cpu::clear_physical_timer();
+/// Safety: Not safe because GicV2 is not Sync
+unsafe impl Sync for Aarch64Irqs {}
 
-            let timer_cb = TIMER_CALLBACK.load(Ordering::Relaxed);
-            if !timer_cb.is_null() {
-                unsafe {
-                    // Cannot simply dereference TIMER_CALLBACK here.
-                    // We are using an AtomicPtr and TIMER_CALLBACK already holds the fn().
-                    core::mem::transmute::<_, fn()>(timer_cb)();
+impl Aarch64Irqs {
+    pub const fn new() -> Self {
+        Self {
+            irq_chip: OnceLock::new(),
+            timer_callback: AtomicPtr::new(ptr::null_mut()),
+        }
+    }
+
+    fn irq_chip(&self) -> &GicV2 {
+        self.irq_chip.get().expect("something is trying to program the IRQ chip but `init_irq_chip` has not been called yet")
+    }
+
+    fn handler(&self, int: InterruptType) {
+        match int {
+            InterruptType::IrqCurrentElSp0 => {
+                let int = self.irq_chip().get_int();
+
+                match int {
+                    Ok(PHYSICAL_TIMER_LINE) => {
+                        // Clear the timer in order to EOI it.
+                        self.clear_timer();
+
+                        let timer_cb = self.timer_callback.load(Ordering::Relaxed);
+                        if !timer_cb.is_null() {
+                            unsafe {
+                                // Cannot simply dereference TIMER_CALLBACK here.
+                                // We are using an AtomicPtr and TIMER_CALLBACK already holds the fn().
+                                #[allow(clippy::crosspointer_transmute)]
+                                core::mem::transmute::<_, fn()>(timer_cb)();
+                            }
+                        }
+
+                        self.irq_chip().clear_int(int.unwrap());
+                    }
+                    _ => panic!("got an irq but fuck knows"),
                 }
             }
-
-            unsafe { IRQ_CHIP.clear_int(int.unwrap()) };
+            _ => panic!("unhandled int {:?}", int),
         }
-        _ => panic!("got an irq but fuck knows"),
     }
 }
-#[no_mangle]
-extern "C" fn fiq_current_el_sp0() {
-    panic!("hit fiq_current_el_sp0");
-}
 
-#[no_mangle]
-extern "C" fn serror_current_el_sp0() {
-    panic!("hit serror_current_el_sp0");
-}
+impl IrqOps for Aarch64Irqs {
+    fn init(&'static self) {
+        cortex_a::registers::VBAR_EL1.set(el1_vector_table as usize as u64);
+        IRQS.set(self)
+            .expect("looks like init has already been called");
+    }
 
-#[no_mangle]
-extern "C" fn sync_current_el_spx() {
-    panic!("hit sync_current_el_spx");
-}
+    fn init_irq_chip(&self, _allocator: &impl PageAlloc) -> Result<(), Error> {
+        let (gicd_base, gicc_base) = (0x800_0000, 0x801_0000);
+        self.irq_chip
+            .set(GicV2::new(gicd_base, gicc_base))
+            .expect("init_irq_chip has already been called");
+        Ok(())
+    }
 
-#[no_mangle]
-extern "C" fn irq_current_el_spx() {
-    panic!("hit irq_current_el_spx");
-}
+    fn unmask_interrupts(&self) {
+        cpu::unmask_interrupts();
+    }
 
-#[no_mangle]
-extern "C" fn fiq_current_el_spx() {
-    panic!("hit fiq_current_el_spx");
-}
+    fn set_timer_handler(&self, h: TimerCallbackFn) {
+        self.timer_callback.store(h as *mut _, Ordering::Relaxed);
+    }
 
-#[no_mangle]
-extern "C" fn serror_current_el_spx() {
-    panic!("hit serror_current_el_spx");
-}
+    fn set_timer(&self, ticks: usize) -> Result<(), Error> {
+        self.irq_chip().enable_line(PHYSICAL_TIMER_LINE)?;
+        super::cpu::set_physical_timer(ticks);
+        super::cpu::unmask_interrupts();
 
-#[no_mangle]
-extern "C" fn sync_lower_el() {
-    panic!("hit sync_lower_el");
-}
+        Ok(())
+    }
 
-#[no_mangle]
-extern "C" fn irq_lower_el() {
-    panic!("hit irq_lower_el");
+    fn clear_timer(&self) {
+        CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR);
+    }
 }
-
-#[no_mangle]
-extern "C" fn fiq_lower_el() {
-    panic!("hit fiq_lower_el");
-}
-
-#[no_mangle]
-extern "C" fn serror_lower_el() {
-    panic!("hit serror_lower_el");
-}
-
-#[no_mangle]
-extern "C" fn sync_lower_el_aarch32() {
-    panic!("hit sync_lower_el_aarch32");
-}
-
-#[no_mangle]
-extern "C" fn irq_lower_el_aarch32() {
-    panic!("hit irq_lower_el_aarch32");
-}
-
-#[no_mangle]
-extern "C" fn fiq_lower_el_aarch32() {
-    panic!("hit fiq_lower_el_aarch32");
-}
-
-#[no_mangle]
-extern "C" fn serror_lower_el_aarch32() {
-    panic!("hit serror_lower_el_aarch32");
-}
-
-core::arch::global_asm!(include_str!("exceptions.S"));

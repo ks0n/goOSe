@@ -1,14 +1,12 @@
 use crate::device_tree::DeviceTree;
 use crate::globals;
-use crate::hal;
 use crate::mm;
+use crate::HAL;
 use core::mem;
 use hal_core::{
     mm::{AllocatorError, NullPageAllocator, PageAlloc, PageMap, Permissions, VAddr},
     AddressRange,
 };
-
-use hal::mm::PAGE_SIZE;
 
 use log::debug;
 use spin::mutex::Mutex;
@@ -64,7 +62,7 @@ impl PhysicalMemoryManager {
             .filter_map(|maybe_region| maybe_region.map(|region| region.size()))
             .sum();
 
-        total_memory_bytes / PAGE_SIZE
+        total_memory_bytes / HAL.page_size()
     }
 
     fn find_large_region(regions: &[Option<AddressRange>], minimum_size: usize) -> Option<usize> {
@@ -172,8 +170,8 @@ impl PhysicalMemoryManager {
         // Re-align the regions, for exemple things we exclude are not always aligned to a page boundary.
         all_regions.iter_mut().for_each(|maybe_region| {
             if let Some(region) = maybe_region {
-                region.start = hal::mm::align_down(region.start);
-                region.end = hal::mm::align_up(region.end);
+                region.start = HAL.align_down(region.start);
+                region.end = HAL.align_up(region.end);
 
                 *maybe_region = if region.size() > 0 {
                     Some(*region)
@@ -208,8 +206,8 @@ impl PhysicalMemoryManager {
                 .iter()
                 .flatten()
                 .all(
-                    |region| region.start == hal::mm::align_up(region.start)
-                        && region.end == hal::mm::align_up(region.end)
+                    |region| region.start == HAL.align_up(region.start)
+                        && region.end == HAL.align_up(region.end)
                 ),
             "Expected region bounds to be aligned to the page size (won't be possible to allocate pages otherwise)"
         );
@@ -220,7 +218,7 @@ impl PhysicalMemoryManager {
 
         let page_count = Self::count_pages(&available_regions);
         let metadata_size = page_count * mem::size_of::<PhysicalPage>();
-        let pages_needed = hal::mm::align_up(metadata_size) / PAGE_SIZE;
+        let pages_needed = HAL.align_up(metadata_size) / HAL.page_size();
 
         let metadata_addr = Self::find_large_region(&available_regions, metadata_size)
             .ok_or(AllocatorError::NotEnoughMemoryForMetadata)?;
@@ -231,12 +229,12 @@ impl PhysicalMemoryManager {
         let physical_pages = available_regions
             .iter()
             .flatten()
-            .flat_map(|region| region.iter_pages(PAGE_SIZE))
+            .flat_map(|region| region.iter_pages(HAL.page_size()))
             .map(|base| {
                 Self::phys_addr_to_physical_page(
                     base,
                     metadata_addr,
-                    metadata_addr + pages_needed * PAGE_SIZE,
+                    metadata_addr + pages_needed * HAL.page_size(),
                 )
             });
 
@@ -270,7 +268,7 @@ impl PhysicalMemoryManager {
                 continue;
             }
 
-            if consecutive_pages > 0 && page.base != last_page_base + PAGE_SIZE {
+            if consecutive_pages > 0 && page.base != last_page_base + HAL.page_size() {
                 consecutive_pages = 0;
                 continue;
             }
@@ -294,6 +292,7 @@ impl PhysicalMemoryManager {
 
 impl PageAlloc for PhysicalMemoryManager {
     fn alloc(&self, page_count: usize) -> Result<usize, AllocatorError> {
+        // log::debug!("PhysicalMemoryManager::alloc(page_count={})", page_count);
         // If there is a kernel pagetable, identity map the pages.
         let first_page = self.alloc_pages(page_count)?;
 
@@ -301,7 +300,8 @@ impl PageAlloc for PhysicalMemoryManager {
             // The mmu is enabled, therefore we already mapped all DRAM into the kernel's pagetable
             // as invalid entries.
             // Pagetable must only modify existing entries and not allocate.
-            hal::mm::current()
+            HAL.kpt()
+                .lock()
                 .identity_map_range(
                     VAddr::new(first_page),
                     page_count,
@@ -312,6 +312,10 @@ impl PageAlloc for PhysicalMemoryManager {
         }
 
         Ok(first_page)
+    }
+
+    fn give_page(&self) -> Result<usize, AllocatorError> {
+        self.alloc_pages(1)
     }
 
     fn dealloc(&self, _base: usize, _page_count: usize) -> Result<(), AllocatorError> {
@@ -328,7 +332,7 @@ impl PageAlloc for PhysicalMemoryManager {
         let metadata_start = (&metadata[0] as *const PhysicalPage) as usize;
         let metadata_last = (&metadata[metadata.len() - 1] as *const PhysicalPage) as usize;
 
-        let metadata_pages = (metadata_start..=metadata_last).step_by(PAGE_SIZE);
+        let metadata_pages = (metadata_start..=metadata_last).step_by(HAL.page_size());
         let allocated_pages = metadata
             .iter()
             .filter(|page| page.is_allocated())

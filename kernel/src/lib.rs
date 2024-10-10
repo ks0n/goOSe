@@ -9,10 +9,10 @@
 #![feature(const_for)]
 #![feature(alloc_error_handler)]
 #![feature(trait_upcasting)]
-#![feature(return_position_impl_trait_in_trait)]
 
 pub extern crate alloc;
 
+pub mod driver_manager;
 pub mod drivers;
 mod utils;
 
@@ -33,11 +33,24 @@ mod tests;
 
 // TODO: cleanup how we handle features
 cfg_if::cfg_if! {
-    if  #[cfg(target_arch = "aarch64")] {
+    if #[cfg(target_arch = "aarch64")] {
         pub type ConsoleImpl = drivers::pl011::Pl011;
-        pub use hal_aarch64 as hal;
+
+        use hal_aarch64::{
+            mm::pgt48,
+            irq::Aarch64Irqs,
+            Aarch64CoreInfo,
+        };
+        use hal_core::Hal;
+        pub static HAL: Hal<pgt48::PageTable, Aarch64Irqs, Aarch64CoreInfo> = Hal::new(Aarch64Irqs::new());
     } else if #[cfg(target_arch = "riscv64")] {
         pub type ConsoleImpl = drivers::ns16550::Ns16550;
-        pub use hal_riscv64 as hal;
+        use hal_riscv64::{
+            mm::sv39,
+            irq::Riscv64Irqs,
+            Riscv64CoreInfo,
+        };
+        use hal_core::Hal;
+        pub static HAL: Hal<sv39::PageTable, Riscv64Irqs, Riscv64CoreInfo> = Hal::new(Riscv64Irqs::new());
     }
 }
