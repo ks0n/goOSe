@@ -5,7 +5,7 @@ use log;
 use super::plic::Plic;
 use super::registers;
 
-use core::arch::asm;
+use core::arch::naked_asm;
 use core::ptr;
 use core::sync::atomic::{AtomicPtr, Ordering};
 
@@ -228,7 +228,7 @@ extern "C" fn c_trap_dispatch(cause: u64) -> u64 {
 #[no_mangle]
 #[repr(align(4))]
 unsafe extern "C" fn asm_trap_handler() {
-    asm!(
+    naked_asm!(
         "
         addi sp, sp, -0x100
 
@@ -315,7 +315,6 @@ unsafe extern "C" fn asm_trap_handler() {
         addi sp, sp, 0x100
 
         sret",
-        options(noreturn)
     );
     // Obviously this isn't done, we need to jump back to the previous context before the
     // interrupt using mpp/spp and mepc/sepc.

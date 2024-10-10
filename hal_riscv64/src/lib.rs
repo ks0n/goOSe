@@ -7,14 +7,14 @@ pub mod mm;
 mod plic;
 mod registers;
 
-use core::arch::asm;
+use core::arch::naked_asm;
 
 pub fn panic_info() {}
 
 #[naked]
 #[no_mangle]
 unsafe extern "C" fn _start() -> ! {
-    asm!("la sp, STACK_START", "call k_main", options(noreturn));
+    naked_asm!("la sp, STACK_START", "call k_main");
 }
 
 pub struct Riscv64CoreInfo;

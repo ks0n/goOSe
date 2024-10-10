@@ -1,3 +1,4 @@
+use core::arch::naked_asm;
 use core::ptr;
 use core::sync::atomic::{AtomicPtr, Ordering};
 
@@ -57,7 +58,7 @@ macro_rules! gen_isr_stub {
 #[no_mangle]
 #[repr(align(0x800))]
 unsafe extern "C" fn el1_vector_table() {
-    core::arch::asm!(
+    naked_asm!(
         gen_isr_stub!(),
         gen_isr_stub!(),
         gen_isr_stub!(),
@@ -70,7 +71,6 @@ unsafe extern "C" fn el1_vector_table() {
         gen_isr_stub!(),
         gen_isr_stub!(),
         gen_isr_stub!(),
-        options(noreturn)
     );
 }
 
