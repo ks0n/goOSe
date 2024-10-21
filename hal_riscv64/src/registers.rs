@@ -29,3 +29,19 @@ pub fn set_stvec(addr: usize) {
         asm!("csrw stvec, {}", in(reg)(addr));
     }
 }
+
+pub fn set_sscratch(val: usize) {
+    unsafe {
+        asm!("csrw sscratch, {}", in(reg)(val));
+    }
+}
+
+pub fn get_sscratch() -> usize {
+    let mut val: usize;
+
+    unsafe {
+        asm!("csrr {}, sscratch", out(reg)(val));
+    }
+
+    val
+}

@@ -2,11 +2,24 @@ use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 use tock_registers::register_bitfields;
 use tock_registers::registers::{ReadOnly, ReadWrite};
 
+use core::fmt;
 use hal_core::Error;
 
 pub struct GicV2 {
     pub distributor: &'static GicDistributor,
     pub cpu: &'static GicCpu,
+}
+
+impl fmt::Debug for GicV2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GicV2")
+            .field(
+                "distributor",
+                &(self.distributor as *const GicDistributor as *const ()),
+            )
+            .field("cpu", &(self.cpu as *const _ as *const ()))
+            .finish()
+    }
 }
 
 impl GicV2 {
@@ -17,32 +30,32 @@ impl GicV2 {
                 .unwrap()
         };
         let cpu = unsafe { (cpu_base as *const GicCpu).as_ref().unwrap() };
-        let mut gic = Self { distributor, cpu };
+        let gic = Self { distributor, cpu };
 
         gic.init_distributor();
 
         gic
     }
 
-    pub fn disable_interrupts(&mut self) {
+    pub fn disable_interrupts(&self) {
         self.distributor
             .CTLR
             .modify(GICD_CTLR::EnableGrp0::Disable + GICD_CTLR::EnableGrp1::Disable);
     }
 
-    pub fn enable_interrupts(&mut self) {
+    pub fn enable_interrupts(&self) {
         self.distributor
             .CTLR
             .modify(GICD_CTLR::EnableGrp0::Enable + GICD_CTLR::EnableGrp1::Enable);
     }
 
-    pub fn get_int(&mut self) -> Result<u32, Error> {
+    pub fn get_int(&self) -> Result<u32, Error> {
         let intno = self.cpu.IAR.get();
 
         Ok(intno)
     }
 
-    pub fn clear_int(&mut self, int: u32) {
+    pub fn clear_int(&self, int: u32) {
         // TODO: check (maybe in the TRM) if this could fail / give an error.
         self.cpu.EOIR.modify(GICC_EOIR::EOIINTID.val(int));
     }
@@ -54,7 +67,7 @@ impl GicV2 {
     }
 
     /// Put the Gic in a known state.
-    fn init_distributor(&mut self) {
+    fn init_distributor(&self) {
         self.disable_interrupts();
 
         for i in 0..(self.nlines() / 32) {
@@ -98,7 +111,7 @@ impl GicV2 {
         );
     }
 
-    pub fn enable_line(&mut self, line: u32) -> Result<(), Error> {
+    pub fn enable_line(&self, line: u32) -> Result<(), Error> {
         let line = line as usize;
         let enable_reg_index = line >> 5;
         let enable_bit: u32 = 1u32 << (line % 32);
@@ -158,6 +171,11 @@ pub struct GicDistributor {
     _reserved7: [u32; 40],
     _impdef3: [u32; 12],
 }
+
+/// Safety:
+/// I don't think this benefits from locking, if two cores write to the same
+///     reg, afaik it will just send two packets to the GIC, the latter will just accept both.
+unsafe impl Sync for GicDistributor {}
 
 register_bitfields! {u32,
     pub GICD_CTLR [
@@ -226,6 +244,10 @@ pub struct GicCpu {
     /// Aliased Highest Priority Pending Interrupt Register
     pub AHPPIR: ReadWrite<u32>,
 }
+
+/// Safety:
+/// Already per-cpu (one page per cpu), not need to lock it.
+unsafe impl Sync for GicCpu {}
 
 register_bitfields! {u32,
     pub GICC_CTLR [

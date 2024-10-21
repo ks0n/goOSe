@@ -7,4 +7,7 @@ edition = "2021"
 
 [dependencies]
 bitflags = "2.3"
+generic_once_cell = "0.1.1"
 log = "0.4"
+spin = { version = "0.9.8", features = ["lock_api", "mutex"] }
+lock_api = "0.4.11"

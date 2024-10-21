@@ -31,4 +31,4 @@ impl<T: ?Sized> Matcher<T> {
 }
 type ConsoleMatcher = Matcher<dyn Console + Send + Sync>;
 
-pub const CONSOLE_MATCHERS: &[&ConsoleMatcher] = &[&pl011::MATCHER, &ns16550::MATCHER];
+pub static CONSOLE_MATCHERS: &[&ConsoleMatcher] = &[&pl011::MATCHER, &ns16550::MATCHER];

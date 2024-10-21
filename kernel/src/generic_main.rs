@@ -1,10 +1,11 @@
 use super::device_tree::DeviceTree;
+use super::driver_manager::DriverManager;
 use super::drivers::qemuexit::QemuExit;
 use super::drivers::Driver;
 use super::globals;
 
-use crate::hal;
 use crate::mm;
+use crate::HAL;
 
 use crate::tests::{self, TestResult};
 
@@ -21,15 +22,17 @@ pub fn generic_main<const LAUNCH_TESTS: bool>(dt: DeviceTree, hacky_devices: &[&
     globals::PHYSICAL_MEMORY_MANAGER
         .init_from_device_tree(&dt)
         .unwrap();
+    // Below this comment, using alloc is possible.
     mm::map_address_space(&dt, devices).expect("failed to map the addres space");
 
-    // Driver stuff
-    // let _drvmgr = DriverManager::with_devices(&dt).unwrap();
+    DriverManager::do_console(&dt).expect("couldn't initialize a console from the device tree");
+    DriverManager::map_irq_chip(&dt).expect("failed to map irq chip from the device tree");
 
-    hal::irq::init_irq_chip((), &globals::PHYSICAL_MEMORY_MANAGER)
+    log::trace!("initializing irq chip");
+    HAL.init_irq_chip(&globals::PHYSICAL_MEMORY_MANAGER)
         .expect("initialization of irq chip failed");
 
-    hal::cpu::unmask_interrupts();
+    HAL.unmask_interrupts();
 
     if LAUNCH_TESTS {
         match tests::launch() {

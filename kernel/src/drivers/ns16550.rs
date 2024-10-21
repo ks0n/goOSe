@@ -81,7 +81,7 @@ impl Console for Ns16550 {
     }
 }
 
-pub(super) const MATCHER: ConsoleMatcher = ConsoleMatcher {
+pub(super) static MATCHER: ConsoleMatcher = ConsoleMatcher {
     compatibles: &["ns16550a"],
     constructor: |reg| {
         Ok(Box::new(Ns16550::new(
