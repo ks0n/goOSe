@@ -22,5 +22,5 @@ jobs:
       - name: Build doc
         run: nix develop --command sh -c "
           cd kernel &&
-          cargo doc --target ${{ env.TARGET }} --all-features
+          cargo doc --target ${{ matrix.target }} --all-features
           "
